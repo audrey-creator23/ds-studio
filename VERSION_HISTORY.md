@@ -5,6 +5,19 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.5.0 — 2026-10-27
+
+- **Type** : minor (interface, données inchangées)
+- **Fichiers** : `app/shared/brief.ts`, `app/client/useTasks.ts`,
+  `app/client/ProjectContent.tsx`, `app/client/styles.css`,
+  `tests/tasks.test.ts`
+- **Résumé** : textes du chrome +2 px (composants du DS inchangés, pilotés par
+  les tokens). Brief : grille Bento 6/4/2/1 colonnes sur toute la largeur et la
+  hauteur, emojis en bannière (≈ ×5, adaptés à la hauteur d’écran), frise sans
+  coupure (verticale sur mobile) colorée selon les statuts réels des tâches :
+  validé, terminé, en cours, en retard, à venir. Données du brief centralisées
+  dans `app/shared/brief.ts`.
+
 ## 2.4.0 — 2026-10-27
 
 - **Type** : minor (nouvelle API locale `/api/tasks`, données existantes intactes)
