@@ -15,7 +15,8 @@ import type { AgentAdapter } from '../../connectors/agents/types.js';
 import { figmaStatus } from '../../connectors/figma/contract.js';
 import {
   ClaudeAssistant,
-  CLAUDE_MODEL,
+  claudeModels,
+  claudeModelIds,
   assistantLimits,
   describeAssistantError,
   type Assistant,
@@ -133,7 +134,8 @@ export async function createStudioServer(options: {
             });
             return send(200, {
               status: await assistant.status(),
-              model: CLAUDE_MODEL,
+              model: await chat.model(),
+              models: claudeModels.map(({ id, label }) => ({ id, label })),
               limits: assistantLimits,
               sources,
               messages: await chat.read(),
@@ -271,6 +273,14 @@ export async function createStudioServer(options: {
             res.off('close', cancel);
           }
         }
+        if (url.pathname === '/api/assistant/model') {
+          const b = z
+            .object({ model: z.enum(claudeModelIds) })
+            .strict()
+            .parse(body);
+          if (chatBusy) throw new StudioError('Une réponse est en cours.', 429);
+          return send(200, { model: await chat.setModel(b.model) });
+        }
         if (url.pathname === '/api/assistant/clear') {
           z.object({}).strict().parse(body);
           if (chatBusy) throw new StudioError('Une réponse est en cours.', 429);
@@ -325,6 +335,7 @@ export async function createStudioServer(options: {
               system,
               [...history, asked],
               controller.signal,
+              await chat.model(),
             )) {
               if (event.type === 'text') {
                 text += event.text;

@@ -5,7 +5,19 @@ import { readPrivate } from '../../app/server/files.js';
 
 // Assistant Claude en lecture seule : aucun outil, aucune écriture. La clé reste
 // côté serveur (variable d'environnement ou .env ignoré par Git), jamais renvoyée.
-export const CLAUDE_MODEL = 'claude-opus-5-5';
+// Modèles actuels de l'API Anthropic. Le repli serveur (`fallbacks`) n'existe
+// pas pour Haiku : il n'est envoyé qu'aux modèles qui l'acceptent.
+export const claudeModels = [
+  { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', fallback: true },
+  { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', fallback: true },
+  { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5', fallback: false },
+] as const;
+export type ClaudeModel = (typeof claudeModels)[number]['id'];
+export const claudeModelIds = claudeModels.map((m) => m.id) as [
+  ClaudeModel,
+  ...ClaudeModel[],
+];
+export const DEFAULT_MODEL: ClaudeModel = 'claude-opus-5-5';
 export const assistantLimits = {
   maxOutputTokens: 8000,
   historyMessages: 20,
@@ -29,6 +41,7 @@ export interface Assistant {
     system: string,
     turns: ChatTurn[],
     signal: AbortSignal,
+    model: ClaudeModel,
   ): AsyncGenerator<AssistantEvent>;
 }
 
@@ -51,7 +64,7 @@ export class ClaudeAssistant implements Assistant {
     return this.client || (await readApiKey(this.root))
       ? {
           available: true,
-          detail: `Claude (${CLAUDE_MODEL}) via l’API Anthropic`,
+          detail: 'Connecté à l’API Anthropic depuis le serveur local.',
         }
       : {
           available: false,
@@ -59,18 +72,28 @@ export class ClaudeAssistant implements Assistant {
             'Clé API absente : ajoutez ANTHROPIC_API_KEY dans .env (ignoré par Git) puis rechargez la page.',
         };
   }
-  async *stream(system: string, turns: ChatTurn[], signal: AbortSignal) {
+  async *stream(
+    system: string,
+    turns: ChatTurn[],
+    signal: AbortSignal,
+    model: ClaudeModel,
+  ) {
+    const fallback = claudeModels.find((m) => m.id === model)?.fallback;
     const client =
       this.client ??
       new Anthropic({ apiKey: await readApiKey(this.root), maxRetries: 1 });
     const stream = client.beta.messages.stream(
       {
-        model: CLAUDE_MODEL,
+        model,
         max_tokens: assistantLimits.maxOutputTokens,
         output_config: { effort: 'medium' },
-        // Repli serveur si le modèle décline une demande.
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
+        // Repli serveur si le modèle décline une demande (Opus, Sonnet).
+        ...(fallback
+          ? {
+              betas: ['server-side-fallback-2026-07-01'],
+              fallbacks: 'default' as const,
+            }
+          : {}),
         system: [
           { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
         ],

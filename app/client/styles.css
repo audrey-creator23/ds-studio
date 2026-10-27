@@ -1599,27 +1599,36 @@ select.status-tag {
   }
 }
 
-/* Contexte & Assistant : conversation à gauche, pile de cartes à droite. */
+/* Contexte & Assistant : chat sur toute la hauteur restante, historique
+   défilant seul, saisie toujours visible ; colonne droite repliable. */
+.assistant-page {
+  height: calc(100dvh - 44px);
+  min-height: 520px;
+}
 .assistant-grid {
   flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--card-gap);
-  align-items: start;
 }
 .assistant-side {
   display: flex;
   flex-direction: column;
   gap: var(--card-gap);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px;
 }
 .assistant-chat {
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 .chat-thread {
   flex: 1;
-  min-height: 240px;
-  max-height: calc(100vh - 300px);
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -1739,12 +1748,20 @@ select.status-tag {
   }
 }
 @media (max-width: 1000px) {
+  /* Mobile et tablette : le chat d'abord, à hauteur d'écran. */
+  .assistant-page {
+    height: auto;
+  }
   .assistant-grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
   }
-  .chat-thread {
-    max-height: 60vh;
+  .assistant-chat {
+    height: calc(100dvh - 120px);
+    min-height: 420px;
+  }
+  .assistant-side {
+    overflow: visible;
   }
 }
 @media (max-width: 900px) {
@@ -2248,6 +2265,41 @@ select.status-tag {
   margin: 0;
   border: 0;
   padding: 0;
+}
+.assistant-brief .project-brief summary {
+  color: var(--ui-fg);
+  font-size: 16px;
+}
+.model-picker {
+  min-width: 220px;
+}
+.card-collapsible > summary {
+  margin: 0;
+  cursor: pointer;
+  list-style: none;
+}
+.card-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+.card-collapsible > summary::after {
+  content: '';
+  margin-left: 4px;
+  border-left: 6px solid var(--ui-fg-support);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s;
+}
+.card-collapsible[open] > summary::after {
+  transform: rotate(90deg);
+}
+.card-collapsible .card-meta {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-fg-support);
+}
+.card-collapsible-body {
+  padding-top: 8px;
 }
 @media (max-width: 1100px) {
   .design-layout {

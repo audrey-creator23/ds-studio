@@ -268,6 +268,7 @@ test('brief privé et Codex conservés sur la page Assistant', async ({
   await expect(page.getByLabel('Nom du PFE', { exact: true })).toHaveValue(
     'Mon atelier accessible',
   );
+  await page.locator('summary', { hasText: 'Codex' }).click();
   await expect(
     page.getByRole('combobox', { name: 'Mode de travail' }),
   ).toHaveValue('manual');
@@ -487,8 +488,27 @@ test('contexte & assistant : page Bento, sources en lecture seule, saisie multil
   ).toBeFocused();
   await expect(page.locator('.workshop')).toBeHidden();
   await expect(page.locator('.assistant-sources li')).toHaveCount(6);
+  await page.locator('summary', { hasText: 'Contexte' }).click();
   await expect(page.getByText('Brief, planning et checklist')).toBeVisible();
+  const model = page.getByRole('combobox', { name: 'Modèle' });
+  await expect(model.locator('option')).toHaveCount(3);
+  await model.selectOption('claude-sonnet-5-5');
+  await page.reload();
+  await expect(page.getByRole('combobox', { name: 'Modèle' })).toHaveValue(
+    'claude-sonnet-5-5',
+  );
+  await page
+    .getByRole('combobox', { name: 'Modèle' })
+    .selectOption('claude-opus-5-5');
+  // Saisie en bas de la carte, chat jusqu'au bas de l'écran.
+  const chat = (await page.locator('.assistant-chat').boundingBox())!;
+  const form = (await page.locator('.chat-form').boundingBox())!;
+  expect(chat.y + chat.height).toBeGreaterThan(
+    page.viewportSize()!.height - 40,
+  );
+  expect(form.y + form.height).toBeLessThanOrEqual(chat.y + chat.height);
   await expect(page.getByLabel('Votre message')).toBeVisible();
+  await page.locator('summary', { hasText: 'Connexion' }).click();
   await expect(page.getByText(/Clé conservée côté serveur/)).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
   expect(

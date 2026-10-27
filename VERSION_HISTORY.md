@@ -5,6 +5,21 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.13.0 — 2026-10-27
+
+- **Type** : minor (nouvelle route locale `/api/assistant/model`, champ
+  facultatif `model` dans `.ds-studio/assistant.json`, historique conservé)
+- **Fichiers** : `connectors/agents/claude.ts`, `app/server/assistant.ts`,
+  `app/server/http.ts`, `app/client/AssistantPage.tsx`, `app/client/Card.tsx`,
+  `app/client/styles.css`, `tests/assistant.test.ts`,
+  `tests/e2e/studio.spec.ts`, `docs/SECURITY.md`
+- **Résumé** : Contexte & Assistant : conversation sur toute la hauteur
+  (`100dvh` moins l’en-tête), historique défilant seul, saisie et Envoyer
+  toujours visibles. Sélecteur de modèle (Claude Opus 5.5, Sonnet 5.5,
+  Haiku 5.5) mémorisé côté serveur et utilisé pour chaque requête ; repli
+  serveur seulement pour les modèles qui l’acceptent. Colonne droite en
+  sections repliables (`CollapsibleCard`) ; chat prioritaire sur mobile.
+
 ## 2.12.0 — 2026-10-27
 
 - **Type** : minor (page Design refaite ; API, schéma de tokens et données

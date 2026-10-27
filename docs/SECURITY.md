@@ -86,5 +86,6 @@ Chaque question envoie à Anthropic : synthèse du brief, planning et statuts,
 L’assistant n’a aucun outil : il ne peut rien modifier ; les documents lui sont
 présentés comme des données. L’historique reste dans `.ds-studio/assistant.json`.
 Limites : 8 000 tokens par réponse, 20 messages de mémoire, 8 000 caractères par
-question, une réponse à la fois. Modèle `claude-opus-5-5`, repli serveur activé
-si une demande est déclinée.
+question, une réponse à la fois. Modèle au choix parmi une liste fermée
+(`claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`), mémorisé dans
+`.ds-studio/assistant.json` ; repli serveur activé pour Opus et Sonnet seulement.

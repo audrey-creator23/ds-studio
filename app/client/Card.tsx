@@ -78,3 +78,38 @@ export function Expandable({
     </>
   );
 }
+
+// Carte repliable : le titre et un résumé restent visibles, le détail se déplie.
+export function CollapsibleCard({
+  emoji,
+  title,
+  meta,
+  className = '',
+  defaultOpen = false,
+  children,
+}: {
+  emoji?: string;
+  title: string;
+  meta?: ReactNode;
+  className?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details
+      className={`card card-collapsible ${className}`}
+      open={defaultOpen}
+    >
+      <summary className="card-title">
+        {emoji && (
+          <span className="card-emoji" aria-hidden="true">
+            {emoji}
+          </span>
+        )}
+        {title}
+        {meta && <span className="card-meta">{meta}</span>}
+      </summary>
+      <div className="card-collapsible-body">{children}</div>
+    </details>
+  );
+}

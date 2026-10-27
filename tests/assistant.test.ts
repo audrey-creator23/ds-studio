@@ -28,13 +28,13 @@ const seed = tokensSchema.parse(
 
 // Assistant simulé : aucun appel réseau, aucune clé.
 function fake(fail = false) {
-  const calls: { system: string; turns: ChatTurn[] }[] = [];
+  const calls: { system: string; turns: ChatTurn[]; model: string }[] = [];
   const assistant: Assistant = {
     async status() {
       return { available: true, detail: 'Simulation' };
     },
-    async *stream(system, turns) {
-      calls.push({ system, turns });
+    async *stream(system, turns, _signal, model) {
+      calls.push({ system, turns, model });
       yield { type: 'text', text: 'Bonjour, ' };
       if (fail) throw new Error('coupure simulée');
       yield { type: 'text', text: '**Audrey**.\nSources : Brief' };
@@ -160,4 +160,67 @@ test('markdown : rendu sûr, sans HTML brut ni lien non http', () => {
   assert.match(html, /&lt;script&gt;/);
   assert.match(html, /href="https:\/\/figma.com"/);
   assert.doesNotMatch(html, /href="javascript/);
+});
+
+test('assistant : choix du modèle mémorisé, liste fermée, utilisé pour les requêtes', async (t) => {
+  const { assistant, calls } = fake();
+  const { origin, post, lines, directory } = await fixture(t, assistant);
+  const info = await (await fetch(origin + '/api/assistant')).json();
+  assert.equal(info.model, 'claude-opus-5-5');
+  assert.deepEqual(
+    info.models.map((m: { id: string }) => m.id),
+    ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'],
+  );
+  assert.equal(
+    (await post('assistant/model', { model: 'claude-3-opus' })).status,
+    400,
+  );
+  const saved = await (
+    await post('assistant/model', { model: 'claude-haiku-5-5' })
+  ).json();
+  assert.equal(saved.model, 'claude-haiku-5-5');
+  await lines(await post('assistant', { message: 'Bonjour' }));
+  assert.equal(calls[0].model, 'claude-haiku-5-5');
+  const file = JSON.parse(
+    await readFile(path.join(directory, 'assistant.json'), 'utf8'),
+  );
+  assert.equal(file.model, 'claude-haiku-5-5');
+  assert.equal(file.messages.length, 2);
+  const again = await (await fetch(origin + '/api/assistant')).json();
+  assert.equal(again.model, 'claude-haiku-5-5');
+});
+
+test('assistant : repli serveur envoyé seulement aux modèles qui l’acceptent', async () => {
+  const params: Record<string, unknown>[] = [];
+  const client = {
+    beta: {
+      messages: {
+        stream(p: Record<string, unknown>) {
+          params.push(p);
+          return {
+            async *[Symbol.asyncIterator]() {},
+            async finalMessage() {
+              return {
+                stop_reason: 'end_turn',
+                usage: { input_tokens: 1, output_tokens: 1 },
+              };
+            },
+          };
+        },
+      },
+    },
+  } as unknown as ConstructorParameters<typeof ClaudeAssistant>[1];
+  const claude = new ClaudeAssistant(root, client);
+  for (const model of ['claude-opus-5-5', 'claude-haiku-5-5'] as const)
+    for await (const _ of claude.stream(
+      's',
+      [{ role: 'user', text: 'x' }],
+      new AbortController().signal,
+      model,
+    ));
+  assert.equal(params[0].model, 'claude-opus-5-5');
+  assert.equal(params[0].fallbacks, 'default');
+  assert.equal(params[1].model, 'claude-haiku-5-5');
+  assert.equal('fallbacks' in params[1], false);
+  assert.equal('betas' in params[1], false);
 });

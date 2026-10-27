@@ -6,6 +6,11 @@ import { briefAsText, briefSources } from '../shared/brief.js';
 import type { Tokens } from '../shared/model.js';
 import type { Project } from '../shared/project.js';
 import type { TaskState } from '../shared/tasks.js';
+import {
+  DEFAULT_MODEL,
+  claudeModelIds,
+  type ClaudeModel,
+} from '../../connectors/agents/claude.js';
 
 // Historique privé du chat, hors Git. Seul le serveur l'écrit.
 export const chatMessageSchema = z
@@ -22,8 +27,12 @@ export const chatMessageSchema = z
   .strict();
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 const chatSchema = z
-  .object({ messages: z.array(chatMessageSchema).max(200).default([]) })
+  .object({
+    messages: z.array(chatMessageSchema).max(200).default([]),
+    model: z.enum(claudeModelIds).optional(),
+  })
   .strict();
+type Chat = z.infer<typeof chatSchema>;
 
 export class ChatStore {
   private queue: Promise<unknown> = Promise.resolve();
@@ -32,29 +41,41 @@ export class ChatStore {
     this.file = path.join(directory, 'assistant.json');
   }
   async read(): Promise<ChatMessage[]> {
+    return (await this.load()).messages;
+  }
+  async model(): Promise<ClaudeModel> {
+    return (await this.load()).model ?? DEFAULT_MODEL;
+  }
+  private async load(): Promise<Chat> {
     try {
       return chatSchema.parse(
         JSON.parse(await readPrivate(this.file, 2_000_000)),
-      ).messages;
+      );
     } catch (e) {
-      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT')
+        return { messages: [] };
       throw new StudioError(
         'Historique du chat invalide ou inaccessible. Original préservé.',
         500,
       );
     }
   }
-  private write(change: (messages: ChatMessage[]) => ChatMessage[]) {
+  private save(change: (chat: Chat) => Chat) {
     const work = this.queue.then(async () => {
-      const messages = change(await this.read()).slice(-200);
-      await atomicWrite(
-        this.file,
-        JSON.stringify({ messages }, null, 2) + '\n',
-      );
-      return messages;
+      const next = change(await this.load());
+      next.messages = next.messages.slice(-200);
+      await atomicWrite(this.file, JSON.stringify(next, null, 2) + '\n');
+      return next;
     });
     this.queue = work.catch(() => {});
     return work;
+  }
+  private async write(change: (messages: ChatMessage[]) => ChatMessage[]) {
+    return (await this.save((c) => ({ ...c, messages: change(c.messages) })))
+      .messages;
+  }
+  async setModel(model: ClaudeModel) {
+    return (await this.save((c) => ({ ...c, model }))).model!;
   }
   append(...added: ChatMessage[]) {
     return this.write((messages) => [...messages, ...added]);

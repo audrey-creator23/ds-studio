@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { postStream, request } from './api.js';
 import Markdown from './Markdown.js';
-import { Card } from './Card.js';
+import { Card, CollapsibleCard } from './Card.js';
 import type { ChatMessage, ContextSource } from '../server/assistant.js';
 
 interface AssistantInfo {
   status: { available: boolean; detail: string };
   model: string;
+  models: { id: string; label: string }[];
   limits: {
     maxOutputTokens: number;
     historyMessages: number;
@@ -103,6 +104,16 @@ export default function AssistantPage({
       controller.current = null;
     }
   }
+  async function chooseModel(model: string) {
+    try {
+      const saved = await request<{ model: string }>('assistant/model', {
+        model,
+      });
+      setInfo((i) => i && { ...i, model: saved.model });
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
   async function clear() {
     if (!window.confirm('Effacer tout l’historique de la conversation ?'))
       return;
@@ -125,20 +136,23 @@ export default function AssistantPage({
             Contexte & Assistant
           </h2>
           <p>
-            Claude consulte votre projet en lecture seule. Rien n’est modifié
-            sans votre validation dans DS-Studio.
+            Claude lit votre projet, sans rien modifier. Vous validez toujours.
           </p>
         </div>
-        <dl className="page-kpis">
-          <div>
-            <dt>Modèle</dt>
-            <dd>{info?.model ?? '…'}</dd>
-          </div>
-          <div>
-            <dt>Statut</dt>
-            <dd>{info ? (available ? 'Connecté' : 'Clé absente') : '…'}</dd>
-          </div>
-        </dl>
+        <label className="field model-picker">
+          Modèle
+          <select
+            value={info?.model ?? ''}
+            disabled={!info || busy}
+            onChange={(e) => void chooseModel(e.target.value)}
+          >
+            {info?.models.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
       <div className="assistant-grid">
         <Card emoji="💬" title="Conversation" className="assistant-chat">
@@ -241,37 +255,45 @@ export default function AssistantPage({
           </form>
         </Card>
         <div className="assistant-side">
-          <div className="card assistant-brief">{brief}</div>
-          <Card emoji="🤖" title="Codex · propositions de tokens">
-            <div className="assistant-codex">{codex}</div>
-          </Card>
-          <Card emoji="📚" title="Contexte consulté">
+          <CollapsibleCard
+            emoji="📚"
+            title="Contexte"
+            meta={`${info?.sources.filter((x) => x.available).length ?? '…'} sources`}
+          >
             <ul className="assistant-sources">
-              {info?.sources.map((s) => (
-                <li key={s.id} className={s.available ? '' : 'is-missing'}>
-                  <span aria-hidden="true">{s.available ? '✓' : '–'}</span>{' '}
-                  {s.url ? (
-                    <a href={s.url} target="_blank" rel="noreferrer">
-                      {s.label}
+              {info?.sources.map((src) => (
+                <li key={src.id} className={src.available ? '' : 'is-missing'}>
+                  <span aria-hidden="true">{src.available ? '✓' : '–'}</span>{' '}
+                  {src.url ? (
+                    <a href={src.url} target="_blank" rel="noreferrer">
+                      {src.label}
                     </a>
                   ) : (
-                    s.label
+                    src.label
                   )}
-                  {!s.available && <small> · vide</small>}
+                  {!src.available && <small> · vide</small>}
                 </li>
               ))}
             </ul>
             <p className="card-summary">
               Lecture seule. Envoyé à Anthropic à chaque question.
             </p>
-          </Card>
-          <Card emoji="🔐" title="Connexion">
+          </CollapsibleCard>
+          <CollapsibleCard
+            emoji="🔐"
+            title="Connexion"
+            meta={info ? (available ? 'Connecté' : 'Clé absente') : '…'}
+          >
             <p className="card-summary">{info?.status.detail ?? '…'}</p>
             <p className="chat-note">
               Clé conservée côté serveur, jamais envoyée au navigateur.
             </p>
-          </Card>
-          <Card emoji="📏" title="Limites">
+          </CollapsibleCard>
+          <CollapsibleCard
+            emoji="📏"
+            title="Limites"
+            meta={`${info?.limits.maxOutputTokens ?? '…'} tokens`}
+          >
             <ul className="card-list">
               <li>
                 {info?.limits.maxOutputTokens ?? '…'} tokens max par réponse
@@ -291,7 +313,15 @@ export default function AssistantPage({
             >
               Effacer l’historique ({messages.length})
             </button>
-          </Card>
+          </CollapsibleCard>
+          <div className="card assistant-brief">{brief}</div>
+          <CollapsibleCard
+            emoji="🤖"
+            title="Codex"
+            meta="Propositions de tokens"
+          >
+            <div className="assistant-codex">{codex}</div>
+          </CollapsibleCard>
         </div>
       </div>
     </section>
