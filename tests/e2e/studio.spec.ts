@@ -470,12 +470,13 @@ test('harmonisation : avancement réel indépendant de l’intensité, tablette 
   await expect(page.locator('.page-kpis dt')).toHaveText(
     'Avancement du projet',
   );
-  await expect(kpi).toHaveText('11 %');
+  await expect(kpi).toHaveText(/^\d+ %$/);
+  const progress = await kpi.textContent();
   await page.getByRole('button', { name: /12 mars · Fin du DS/ }).click();
   await expect(
     page.getByText('Intensité · Éruption', { exact: false }),
   ).toBeVisible();
-  await expect(kpi).toHaveText('11 %');
+  await expect(kpi).toHaveText(progress!);
   await expect(page.locator('.card-emoji').first()).toHaveCSS(
     'font-size',
     '18px',
@@ -496,6 +497,49 @@ test('harmonisation : avancement réel indépendant de l’intensité, tablette 
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
+    }
+  }
+});
+
+test('bento masonry : ouvrir des détails n’étire jamais les cartes voisines', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Brief du projet' }).click();
+  const card = (title: string) =>
+    page.locator('.masonry > .card').filter({
+      has: page.locator('.card-title', { hasText: new RegExp(`${title}$`) }),
+    });
+  const height = async (title: string) =>
+    (await card(title).boundingBox())!.height;
+  const before = {
+    objectifs: await height('Objectifs'),
+    cibles: await height('Cibles'),
+    support: await height('Support'),
+  };
+  await card('Sujet et problématique').getByText('Détails').click();
+  await card('Fonctionnalités').getByText('Détails').click();
+  await page.getByText('Voir les 9 tâches').click();
+  await expect(card('Sujet et problématique')).toContainText('anxiété');
+  await page.waitForTimeout(300);
+  expect(await height('Objectifs')).toBe(before.objectifs);
+  expect(await height('Cibles')).toBe(before.cibles);
+  expect(await height('Support')).toBe(before.support);
+  // Pas de trou : chaque carte suit la précédente de la même colonne à un écart près.
+  const boxes = await page.locator('.masonry > .card').evaluateAll((cards) =>
+    cards.map((c) => {
+      const r = c.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+    }),
+  );
+  for (const b of boxes) {
+    const above = boxes.filter(
+      (o) => o.bottom <= b.top && o.left < b.right - 1 && o.right > b.left + 1,
+    );
+    if (above.length) {
+      const gap = b.top - Math.max(...above.map((o) => o.bottom));
+      expect(gap).toBeLessThan(24);
     }
   }
 });

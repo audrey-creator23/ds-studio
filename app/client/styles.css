@@ -1368,24 +1368,38 @@ select.status-tag {
   height: 14px;
 }
 
-/* Brief : grille Bento, tailles selon l'importance du contenu. */
-.brief-grid {
-  --cols: 6;
-  flex: 1;
+/* Grille Bento commune (composant Masonry) : 12 colonnes, rangées de 4 px.
+   La largeur vient de la classe de taille, la hauteur du contenu seul :
+   aucune carte n'est étirée, aucune hauteur fixe. */
+.masonry {
   display: grid;
-  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-  grid-auto-flow: dense;
-  gap: var(--card-gap);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: 4px;
+  grid-auto-flow: row dense;
+  column-gap: var(--card-gap);
+  row-gap: 0;
+  align-items: start;
 }
-.brief-planning {
-  grid-column: 1 / -1;
+.masonry > * {
+  grid-column: span var(--span, 12);
 }
-.brief-tasks {
-  grid-column: span 2;
-  grid-row: span 2;
+.size-s {
+  --span: 2;
 }
-.brief-wide {
-  grid-column: span 2;
+.size-q {
+  --span: 3;
+}
+.size-m {
+  --span: 4;
+}
+.size-l {
+  --span: 6;
+}
+.size-half {
+  --span: 6;
+}
+.size-full {
+  --span: 12;
 }
 .brief-source {
   color: var(--ui-fg-support);
@@ -1443,13 +1457,7 @@ select.status-tag {
   font-size: 14px;
 }
 .volcano-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto auto 1fr;
-  gap: var(--card-gap);
-}
-.volcano-wide {
-  grid-column: 1 / -1;
+  align-self: start;
 }
 .volcano-page .card-figure {
   color: #c2410c;
@@ -1707,19 +1715,22 @@ select.status-tag {
   }
 }
 
-/* Contexte & Assistant : conversation à gauche, contexte et limites à droite. */
+/* Contexte & Assistant : conversation à gauche, pile de cartes à droite. */
 .assistant-grid {
   flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-  grid-template-rows: repeat(3, auto) 1fr;
+  gap: var(--card-gap);
+  align-items: start;
+}
+.assistant-side {
+  display: flex;
+  flex-direction: column;
   gap: var(--card-gap);
 }
 .assistant-chat {
-  grid-row: 1 / -1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 .chat-thread {
   flex: 1;
@@ -1824,8 +1835,11 @@ select.status-tag {
 
 /* Tablette puis mobile : colonnes réduites, aucun débordement. */
 @media (max-width: 1300px) {
-  .brief-grid {
-    --cols: 4;
+  .size-s {
+    --span: 3;
+  }
+  .size-m {
+    --span: 6;
   }
 }
 @media (max-width: 1100px) {
@@ -1845,16 +1859,18 @@ select.status-tag {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
   }
-  .assistant-chat {
-    grid-row: auto;
-  }
   .chat-thread {
     max-height: 60vh;
   }
 }
 @media (max-width: 900px) {
-  .brief-grid {
-    --cols: 2;
+  .size-s,
+  .size-q {
+    --span: 6;
+  }
+  .size-m,
+  .size-l {
+    --span: 12;
   }
 }
 @media (max-width: 740px) {
@@ -1865,19 +1881,11 @@ select.status-tag {
     flex-direction: column;
     align-items: stretch;
   }
-  .brief-grid {
-    --cols: 1;
-  }
-  .brief-tasks,
-  .brief-wide {
-    grid-column: auto;
-    grid-row: auto;
+  .masonry > * {
+    --span: 12;
   }
   .brief-columns {
     columns: 1;
-  }
-  .volcano-cards {
-    grid-template-columns: minmax(0, 1fr);
   }
   .chat-bubble {
     max-width: 100%;

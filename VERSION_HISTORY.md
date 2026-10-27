@@ -5,6 +5,17 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.9.0 — 2026-10-27
+
+- **Type** : minor (mise en page, données inchangées)
+- **Fichiers** : `app/client/Masonry.tsx`, `app/client/ProjectContent.tsx`,
+  `app/client/VolcanoDashboard.tsx`, `app/client/AssistantPage.tsx`,
+  `app/client/styles.css`, `tests/e2e/studio.spec.ts`
+- **Résumé** : grille Bento « masonry » commune à toutes les pages (12 colonnes,
+  classes de taille `size-s/q/m/l/half/full`). Chaque carte prend la hauteur de
+  son contenu ; ouvrir un détail n’étire plus les voisines et la grille se
+  recompacte seule. Test e2e avec plusieurs détails ouverts simultanément.
+
 ## 2.8.0 — 2026-10-27
 
 - **Type** : minor (interface, données et API inchangées)

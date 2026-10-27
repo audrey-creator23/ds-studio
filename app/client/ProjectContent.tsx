@@ -1,5 +1,6 @@
 import { Card, Toggle } from './Card.js';
 import { useTasks } from './useTasks.js';
+import Masonry from './Masonry.js';
 import {
   briefCards,
   briefSources,
@@ -107,8 +108,8 @@ export default function ProjectContent() {
           {error}
         </p>
       )}
-      <div className="brief-grid">
-        <Card emoji="📅" title="Planning" className="brief-planning">
+      <Masonry className="brief-grid">
+        <Card emoji="📅" title="Planning" className="size-full">
           <Timeline state={state} />
           <Toggle label="Détail des échéances">
             <ul>
@@ -120,7 +121,7 @@ export default function ProjectContent() {
             </ul>
           </Toggle>
         </Card>
-        <Card emoji="✅" title="Checklist" className="brief-tasks">
+        <Card emoji="✅" title="Checklist" className="size-m brief-tasks">
           <div
             className="progress"
             role="progressbar"
@@ -177,7 +178,7 @@ export default function ProjectContent() {
             key={c.id}
             emoji={c.emoji}
             title={c.title}
-            className={`brief-${c.size}`}
+            className={c.size === 'wide' ? 'size-m' : 'size-s'}
           >
             <p className="card-summary">{c.summary}</p>
             <Toggle label="Détails">
@@ -194,7 +195,7 @@ export default function ProjectContent() {
             </Toggle>
           </Card>
         ))}
-      </div>
+      </Masonry>
     </section>
   );
 }

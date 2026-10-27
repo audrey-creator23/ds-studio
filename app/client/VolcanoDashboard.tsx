@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTasks } from './useTasks.js';
 import { Card } from './Card.js';
+import Masonry from './Masonry.js';
 import Volcano, { levelOf } from './Volcano.js';
 import type { Page } from './Sidebar.js';
 import {
@@ -115,8 +116,8 @@ export default function VolcanoDashboard({
             </p>
           )}
         </article>
-        <div className="volcano-cards">
-          <Card emoji="✅" title="Tâches" className="volcano-wide">
+        <Masonry className="volcano-cards">
+          <Card emoji="✅" title="Tâches" className="size-full">
             <p className="card-figure">{state ? `${done} %` : '…'}</p>
             <div
               className="progress"
@@ -152,7 +153,7 @@ export default function VolcanoDashboard({
               </>
             )}
           </Card>
-          <Card emoji="🎯" title="Prochaine échéance">
+          <Card emoji="🎯" title="Prochaine échéance" className="size-half">
             {next >= 0 ? (
               <>
                 <p className="card-figure">
@@ -167,7 +168,7 @@ export default function VolcanoDashboard({
               <p className="card-figure">Terminé</p>
             )}
           </Card>
-          <Card emoji="⏳" title="Période">
+          <Card emoji="⏳" title="Période" className="size-half">
             <p className="card-figure">
               {elapsed}/{total} j
             </p>
@@ -176,7 +177,7 @@ export default function VolcanoDashboard({
               · {Math.max(0, total - elapsed)} jours restants
             </p>
           </Card>
-          <Card emoji="📊" title="Indicateurs clés">
+          <Card emoji="📊" title="Indicateurs clés" className="size-half">
             <ul className="card-list">
               <li>
                 <strong>
@@ -198,7 +199,7 @@ export default function VolcanoDashboard({
               </li>
             </ul>
           </Card>
-          <Card emoji="🧭" title="Accès aux pages">
+          <Card emoji="🧭" title="Accès aux pages" className="size-half">
             <ul className="card-list card-links">
               {(
                 [
@@ -213,7 +214,7 @@ export default function VolcanoDashboard({
               ))}
             </ul>
           </Card>
-        </div>
+        </Masonry>
       </div>
     </section>
   );

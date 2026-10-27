@@ -234,53 +234,55 @@ export default function AssistantPage() {
             </div>
           </form>
         </Card>
-        <Card emoji="📚" title="Contexte consulté">
-          <ul className="assistant-sources">
-            {info?.sources.map((s) => (
-              <li key={s.id} className={s.available ? '' : 'is-missing'}>
-                <span aria-hidden="true">{s.available ? '✓' : '–'}</span>{' '}
-                {s.url ? (
-                  <a href={s.url} target="_blank" rel="noreferrer">
-                    {s.label}
-                  </a>
-                ) : (
-                  s.label
-                )}
-                {!s.available && <small> · vide</small>}
-              </li>
-            ))}
-          </ul>
-          <p className="card-summary">
-            Lecture seule. Envoyé à Anthropic à chaque question.
-          </p>
-        </Card>
-        <Card emoji="🔐" title="Connexion">
-          <p className="card-summary">{info?.status.detail ?? '…'}</p>
-          <p className="chat-note">
-            Clé conservée côté serveur, jamais envoyée au navigateur.
-          </p>
-        </Card>
-        <Card emoji="📏" title="Limites">
-          <ul className="card-list">
-            <li>
-              {info?.limits.maxOutputTokens ?? '…'} tokens max par réponse
-            </li>
-            <li>{info?.limits.historyMessages ?? '…'} messages de mémoire</li>
-            {lastUsage && (
+        <div className="assistant-side">
+          <Card emoji="📚" title="Contexte consulté">
+            <ul className="assistant-sources">
+              {info?.sources.map((s) => (
+                <li key={s.id} className={s.available ? '' : 'is-missing'}>
+                  <span aria-hidden="true">{s.available ? '✓' : '–'}</span>{' '}
+                  {s.url ? (
+                    <a href={s.url} target="_blank" rel="noreferrer">
+                      {s.label}
+                    </a>
+                  ) : (
+                    s.label
+                  )}
+                  {!s.available && <small> · vide</small>}
+                </li>
+              ))}
+            </ul>
+            <p className="card-summary">
+              Lecture seule. Envoyé à Anthropic à chaque question.
+            </p>
+          </Card>
+          <Card emoji="🔐" title="Connexion">
+            <p className="card-summary">{info?.status.detail ?? '…'}</p>
+            <p className="chat-note">
+              Clé conservée côté serveur, jamais envoyée au navigateur.
+            </p>
+          </Card>
+          <Card emoji="📏" title="Limites">
+            <ul className="card-list">
               <li>
-                Dernière réponse : {lastUsage.input} entrée · {lastUsage.output}{' '}
-                sortie
+                {info?.limits.maxOutputTokens ?? '…'} tokens max par réponse
               </li>
-            )}
-          </ul>
-          <button
-            type="button"
-            onClick={() => void clear()}
-            disabled={busy || !messages.length}
-          >
-            Effacer l’historique ({messages.length})
-          </button>
-        </Card>
+              <li>{info?.limits.historyMessages ?? '…'} messages de mémoire</li>
+              {lastUsage && (
+                <li>
+                  Dernière réponse : {lastUsage.input} entrée ·{' '}
+                  {lastUsage.output} sortie
+                </li>
+              )}
+            </ul>
+            <button
+              type="button"
+              onClick={() => void clear()}
+              disabled={busy || !messages.length}
+            >
+              Effacer l’historique ({messages.length})
+            </button>
+          </Card>
+        </div>
       </div>
     </section>
   );
