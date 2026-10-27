@@ -216,7 +216,7 @@ export default function ChatBubble({
         <Indicator
           processing
           disabled={!chat.busy}
-          color="sunflower"
+          color="blue"
           size={12}
           offset={6}
           className="bubble-indicator"
@@ -228,7 +228,7 @@ export default function ChatBubble({
             size={SIZE}
             radius="xl"
             variant="filled"
-            color="mahogany"
+            color="neutral"
             aria-label={
               open ? 'Fermer le chat Claude' : 'Ouvrir le chat Claude'
             }

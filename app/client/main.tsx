@@ -11,7 +11,7 @@ createRoot(document.getElementById('root')!).render(
   <MantineProvider
     theme={theme}
     cssVariablesResolver={resolver}
-    forceColorScheme="light"
+    forceColorScheme={preview ? 'light' : 'dark'}
   >
     {preview ? <Preview /> : <App />}
   </MantineProvider>,

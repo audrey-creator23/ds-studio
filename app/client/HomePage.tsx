@@ -150,7 +150,7 @@ export default function HomePage({ onPage }: { onPage: (p: Page) => void }) {
           <TaskProgress
             value={Math.round(timeProgress(now) * 100)}
             label="Période écoulée"
-            tone="gray"
+            tone="neutral.4"
           />
           <p className="card-summary">
             Du {milestones[0].label} au{' '}

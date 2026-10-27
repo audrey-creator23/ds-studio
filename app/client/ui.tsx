@@ -12,15 +12,15 @@ import {
 // Les couleurs viennent du thème (app/client/theme.ts), jamais d'ici.
 
 export const statusColors: Record<TaskStatus, string> = {
-  todo: 'gray',
-  done: 'ember',
+  todo: 'neutral',
+  done: 'blue',
   validated: 'green',
 };
 
 export function TaskProgress({
   value,
   label = 'Tâches faites ou validées',
-  tone = 'green',
+  tone = 'blue.5',
 }: {
   value: number;
   label?: string;

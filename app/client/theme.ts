@@ -8,101 +8,45 @@ import {
   type VariantColorsResolver,
 } from '@mantine/core';
 
-// Thème unique du chrome DS-Studio (Mantine). Il ne touche jamais les tokens
-// éditables du DS Lisière : seule l'interface de l'atelier en dépend.
-// Échelles dérivées de la palette : 0-4 éclaircies vers le blanc, 5 = teinte
-// de référence, 6-9 assombries vers Rich Mahogany. Contrastes WCAG mesurés
-// sur blanc (b) ou sur Mahogany (m), vérifiés dans tests/theme.test.ts.
-export const palette = {
-  sunflower: '#FABC3C', // Sunflower Gold
-  sandy: '#F19143', // Sandy Brown
-  tangerine: '#FF773D', // Atomic Tangerine
-  tomato: '#F55536', // Tomato
-  ember: '#EA300B', // Pure Red
-  mahogany: '#4B1207', // Rich Mahogany
+// Identité DS-Studio = thème shadcn/create collé (ui.shadcn.com/create),
+// bloc `.dark`, converti d'oklch en hexadécimal ; kit Figma shadcn/ui
+// (sitsiilia) pour la géométrie. Interface sombre uniquement. Ce thème ne
+// touche jamais les tokens éditables du DS Lisière.
+export const shadcnDark = {
+  background: '#0A0A0A', // oklch(0.145 0 0)
+  foreground: '#FAFAFA', // oklch(0.985 0 0)
+  card: '#171717', // oklch(0.205 0 0) — card, popover, sidebar
+  primary: '#E5E5E5', // oklch(0.922 0 0)
+  primaryForeground: '#171717', // oklch(0.205 0 0)
+  secondary: '#262626', // oklch(0.269 0 0) — secondary, muted, accent
+  mutedForeground: '#A1A1A1', // oklch(0.708 0 0)
+  destructive: '#FF6467', // oklch(0.704 0.191 22.216)
+  border: 'rgb(255 255 255 / 0.10)', // oklch(1 0 0 / 10%)
+  input: 'rgb(255 255 255 / 0.15)', // oklch(1 0 0 / 15%)
+  ring: '#737373', // oklch(0.556 0 0)
+  sidebarPrimary: '#1447E6', // oklch(0.488 0.243 264.376)
+  // --chart-1 → 5 : rampe bleue (Radix/Tailwind blue).
+  chart: ['#8EC5FF', '#2B7FFF', '#155DFC', '#1447E6', '#193CB8'],
 } as const;
 
-const scales = {
-  sunflower: [
-    '#FFFAEF',
-    '#FEF3DC',
-    '#FDE8BD',
-    '#FCDC9A',
-    '#FBCD6F',
-    '#FABC3C',
-    '#D79A31',
-    '#BB7F29',
-    '#9F6420',
-    '#834818',
-  ],
-  sandy: [
-    '#FEF6F0',
-    '#FCEBDD',
-    '#FADABF',
-    '#F8C69D',
-    '#F5AE74',
-    '#F19143',
-    '#D07837',
-    '#B5632D',
-    '#9B4F24',
-    '#803B1A',
-  ],
-  tangerine: [
-    '#FFF4EF',
-    '#FFE7DC',
-    '#FFD1BD',
-    '#FFB89A',
-    '#FF9A6F',
-    '#FF773D',
-    '#DB6332',
-    '#BE532A',
-    '#A14221',
-    '#853218',
-  ],
-  tomato: [
-    '#FEF1EF',
-    '#FDE0DB',
-    '#FCC5BB',
-    '#FAA796',
-    '#F8816A',
-    '#F55536',
-    '#D3482D',
-    '#B83D25',
-    '#9D321E',
-    '#812716',
-  ],
-  ember: [
-    '#FDEEEB',
-    '#FBDAD3',
-    '#F8B9AC',
-    '#F49380',
-    '#EF664A',
-    '#EA300B',
-    '#CA2A0A',
-    '#B1250A',
-    '#972009',
-    '#7E1C08',
-  ],
-  mahogany: [
-    '#F4F1F0',
-    '#E6DEDC',
-    '#D0C1BF',
-    '#B7A09C',
-    '#9C7D77',
-    '#815951',
-    '#66362C',
-    '#4B1207',
-    '#380E05',
-    '#290A04',
-  ],
-} satisfies Record<keyof typeof palette, MantineColorsTuple>;
+// Bloc `:root` (clair) : utilisé seulement par l'aperçu des pages du DS.
+export const shadcnLight = {
+  background: '#FFFFFF',
+  foreground: '#0A0A0A',
+  card: '#FFFFFF',
+  primary: '#171717',
+  primaryForeground: '#FAFAFA',
+  secondary: '#F5F5F5',
+  mutedForeground: '#737373',
+  destructive: '#E7000B',
+  border: '#E5E5E5',
+  input: '#E5E5E5',
+  ring: '#A1A1A1',
+  sidebar: '#FAFAFA',
+} as const;
 
-// Kit Figma « shadcn/ui components » (sitsiilia), lu via le MCP Figma et les
-// données du skill figma-shadcn-by-sitsiilia : neutres (Tailwind neutral),
-// rayons, typographie Inter, ombres noires à 10 % et focus en halo de 3 px.
-// La palette ci-dessus garde les rôles de couleur (primary, accent…).
-// Rayon de base du thème shadcn/create (--radius: 0.875rem) ; chaque palier
-// en dérive par décalage, comme dans le kit : xs = base − 6 … 4xl = base + 16.
+// Rayon de base du thème (--radius: 0.875rem) ; chaque palier en dérive par
+// décalage, comme dans le kit : xs = base − 6 … 4xl = base + 16.
 export const radiusBase = 14;
 export const radii = {
   xs: radiusBase - 6,
@@ -115,85 +59,140 @@ export const radii = {
   '4xl': radiusBase + 16,
 } as const;
 
-// Neutres identiques au thème shadcn/create collé (oklch converti) :
-// foreground 0.145 → #0A0A0A, muted 0.97 → #F5F5F5, muted-foreground
-// 0.556 → #737373, border/input 0.922 → #E5E5E5, ring 0.708 → #A1A1A1.
-export const kit = {
-  foreground: '#0A0A0A',
-  muted: '#F5F5F5', // secondary, muted, accent du kit
-  mutedForeground: '#737373', // 4,7:1 sur blanc
-  border: '#E5E5E5',
-  ring: '#737373', // bordure au focus
-  ringSubtle: '#A1A1A180', // halo de 3 px
-  ringDestructive: '#DC262633',
-  sidebar: '#FAFAFA',
-  shadowXs: '0 1px 2px 0 rgb(0 0 0 / 0.10)',
-  shadowMd:
-    '0 2px 4px -2px rgb(0 0 0 / 0.10), 0 4px 6px -1px rgb(0 0 0 / 0.10)',
-  shadowLg:
-    '0 4px 6px -4px rgb(0 0 0 / 0.10), 0 10px 15px -3px rgb(0 0 0 / 0.10)',
-} as const;
+const shadows = {
+  xs: '0 1px 2px 0 rgb(0 0 0 / 0.30)',
+  md: '0 2px 4px -2px rgb(0 0 0 / 0.40), 0 4px 6px -1px rgb(0 0 0 / 0.40)',
+  lg: '0 4px 6px -4px rgb(0 0 0 / 0.50), 0 10px 15px -3px rgb(0 0 0 / 0.50)',
+};
 
-// Rôles : chaque usage pointe vers une teinte dont le contraste est suffisant.
+// Échelles Mantine (10 teintes). `dark` porte les surfaces du mode sombre :
+// 0 texte, 2 texte atténué, 4 bordures, 5 survol, 6 cartes, 7 page.
+const scales = {
+  dark: [
+    '#FAFAFA',
+    '#E5E5E5',
+    '#A1A1A1',
+    '#737373',
+    '#2E2E2E',
+    '#262626',
+    '#171717',
+    '#0A0A0A',
+    '#050505',
+    '#000000',
+  ],
+  neutral: [
+    '#FAFAFA',
+    '#F5F5F5',
+    '#E5E5E5',
+    '#D4D4D4',
+    '#A1A1A1',
+    '#737373',
+    '#525252',
+    '#404040',
+    '#262626',
+    '#171717',
+  ],
+  blue: [
+    '#EFF6FF',
+    '#DBEAFE',
+    '#BEDBFF',
+    '#8EC5FF',
+    '#51A2FF',
+    '#2B7FFF',
+    '#155DFC',
+    '#1447E6',
+    '#193CB8',
+    '#1C398E',
+  ],
+  red: [
+    '#FEF2F2',
+    '#FFE2E2',
+    '#FFC9C9',
+    '#FFA2A2',
+    '#FF6467',
+    '#FB2C36',
+    '#E7000B',
+    '#C10007',
+    '#9F0712',
+    '#82181A',
+  ],
+  green: [
+    '#F0FDF4',
+    '#DCFCE7',
+    '#B9F8CF',
+    '#7BF1A8',
+    '#05DF72',
+    '#00C950',
+    '#00A63E',
+    '#008236',
+    '#016630',
+    '#0D542B',
+  ],
+} satisfies Record<string, MantineColorsTuple>;
+
+// Rôles : contrastes mesurés sur la carte #171717, vérifiés par test.
 export const roles = {
-  primary: scales.ember[6], // boutons pleins, liens, sélection : 5,5:1 (b)
-  primaryHover: scales.ember[7], // 6,7:1 (b)
-  primarySoft: scales.ember[0], // fond de sélection, texte primary dessus
-  focus: palette.ember, // anneau de focus : 4,3:1 (b), ≥ 3:1 requis
-  accent: palette.tangerine, // pastilles, bulle : texte Mahogany 5,7:1
-  accentSoft: scales.tangerine[0],
-  warning: palette.sunflower, // texte Mahogany 8,9:1
-  warningSoft: scales.sunflower[0],
-  warningText: scales.sunflower[9], // 7,2:1 (b)
-  danger: scales.tomato[7], // bouton destructif : 5,6:1 (b)
-  dangerSoft: scales.tomato[0],
-  dangerText: scales.tomato[8], // 7,2:1 (b)
-  onAccent: palette.mahogany,
-  surface: '#FFFFFF',
-  surfaceWarm: scales.sandy[0], // barre latérale, zones calmes
-  surfaceDark: palette.mahogany, // panneaux sombres, bulle, volcan : blanc 15:1
+  page: shadcnDark.background,
+  surface: shadcnDark.card,
+  raised: shadcnDark.secondary, // tuiles internes, survol, rail d'onglets
+  text: shadcnDark.foreground,
+  textMuted: shadcnDark.mutedForeground,
+  primary: shadcnDark.primary, // bouton plein clair
+  primaryHover: '#D4D4D4',
+  onPrimary: shadcnDark.primaryForeground,
+  accent: shadcnDark.chart[1], // bleu des graphiques
+  accentSoft: 'rgb(43 127 255 / 0.16)',
+  danger: shadcnDark.destructive,
+  dangerSoft: 'rgb(255 100 103 / 0.12)',
+  success: '#05DF72',
+  successSoft: 'rgb(5 223 114 / 0.12)',
+  warning: '#FDC700',
+  focus: shadcnDark.ring,
+  ringSubtle: 'rgb(115 115 115 / 0.50)',
+  ringDestructive: 'rgb(255 100 103 / 0.30)',
 } as const;
 
-// Variantes du kit sur Button et Badge : default (Mantine filled), outline,
-// secondary, ghost, destructive (teinte douce), link.
+// Variantes du kit sur Button, Badge et Alert : default (Mantine filled),
+// outline, secondary, ghost, destructive (teinte douce), link.
 const kitVariants: VariantColorsResolver = (input) => {
-  const danger = {
-    background: roles.dangerSoft,
-    hover: scales.tomato[1],
-    color: roles.dangerText,
+  const plain = {
+    hover: 'var(--ui-muted)',
+    color: 'var(--ui-fg)',
     border: '1px solid transparent',
   };
   switch (input.variant) {
+    case 'filled':
+      if (input.color && input.color !== 'neutral')
+        return defaultVariantColorsResolver(input);
+      return {
+        background: 'var(--ui-brand)',
+        hover: 'var(--ui-brand-hover)',
+        color: 'var(--ui-on-brand)',
+        border: '1px solid transparent',
+      };
     case 'outline':
       return {
-        background: '#FFFFFF',
-        hover: kit.muted,
-        color: kit.foreground,
-        border: `1px solid ${kit.border}`,
+        ...plain,
+        background: 'var(--ui-input-bg)',
+        border: '1px solid var(--ui-input)',
       };
     case 'secondary':
       return {
-        background: kit.muted,
-        hover: '#EBEBEB',
-        color: kit.foreground,
-        border: '1px solid transparent',
+        ...plain,
+        background: 'var(--ui-muted)',
+        hover: 'var(--ui-muted-hover)',
       };
     case 'ghost':
-      return {
-        background: 'transparent',
-        hover: kit.muted,
-        color: kit.foreground,
-        border: '1px solid transparent',
-      };
+      return { ...plain, background: 'transparent' };
     case 'destructive':
-      return danger;
-    case 'link':
       return {
-        background: 'transparent',
-        hover: 'transparent',
-        color: kit.foreground,
+        background: 'var(--ui-danger-soft)',
+        hover: 'var(--ui-danger-soft-hover)',
+        color: 'var(--ui-danger)',
         border: '1px solid transparent',
       };
+    case 'link':
+      return { ...plain, background: 'transparent', hover: 'transparent' };
     default:
       return defaultVariantColorsResolver(input);
   }
@@ -209,12 +208,13 @@ const buttonSizes = {
 
 export const theme = createTheme({
   colors: scales,
-  primaryColor: 'ember',
-  primaryShade: { light: 6, dark: 7 },
+  primaryColor: 'neutral',
+  primaryShade: { light: 9, dark: 2 },
   autoContrast: true,
-  luminanceThreshold: 0.35,
+  luminanceThreshold: 0.45,
   variantColorResolver: kitVariants,
-  black: kit.foreground,
+  white: '#FFFFFF',
+  black: shadcnDark.background,
   fontFamily:
     "'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
   fontSizes: { xs: '12px', sm: '14px', md: '16px', lg: '18px', xl: '20px' },
@@ -228,12 +228,7 @@ export const theme = createTheme({
     lg: `${radii.lg}px`,
     xl: `${radii.xl}px`,
   },
-  shadows: {
-    xs: kit.shadowXs,
-    sm: kit.shadowXs,
-    md: kit.shadowMd,
-    lg: kit.shadowLg,
-  },
+  shadows: { xs: shadows.xs, sm: shadows.xs, md: shadows.md, lg: shadows.lg },
   focusRing: 'never',
   respectReducedMotion: true,
   cursorType: 'pointer',
@@ -273,45 +268,71 @@ export const theme = createTheme({
   other: { roles },
 });
 
-// Variables --ui-* du chrome générées depuis le thème : une seule source.
-export const resolver: CSSVariablesResolver = () => ({
-  variables: {
-    '--ui-page': roles.surface,
-    '--ui-sidebar': roles.surfaceWarm,
-    '--ui-fg': kit.foreground,
-    '--ui-fg-secondary': '#404040',
-    '--ui-fg-support': kit.mutedForeground,
-    '--ui-fg-weak': kit.mutedForeground,
-    '--ui-brand': roles.primary,
-    '--ui-brand-hover': roles.primaryHover,
-    '--ui-brand-soft': roles.primarySoft,
-    '--ui-focus': kit.ring,
-    '--ui-ring-subtle': kit.ringSubtle,
-    '--ui-ring-destructive': kit.ringDestructive,
-    '--ui-muted': kit.muted,
-    '--ui-shadow-xs': kit.shadowXs,
-    '--ui-shadow-md': kit.shadowMd,
-    '--ui-shadow-lg': kit.shadowLg,
+// Variables --ui-* : mêmes noms dans les deux modes, valeurs du thème collé.
+function uiVariables(mode: 'light' | 'dark'): Record<string, string> {
+  const dark = mode === 'dark';
+  const t = dark ? shadcnDark : shadcnLight;
+  return {
+    '--mantine-color-body': t.background,
+    '--mantine-color-text': t.foreground,
+    '--mantine-color-dimmed': t.mutedForeground,
+    '--mantine-color-default-border': t.border,
+    '--mantine-color-placeholder': t.mutedForeground,
+    '--ui-page': t.background,
+    '--ui-card': t.card,
+    '--ui-sidebar': dark ? shadcnDark.card : shadcnLight.sidebar,
+    '--ui-fg': t.foreground,
+    '--ui-fg-secondary': dark ? '#D4D4D4' : '#404040',
+    '--ui-fg-support': t.mutedForeground,
+    '--ui-fg-weak': t.mutedForeground,
+    '--ui-brand': t.primary,
+    '--ui-brand-hover': dark ? roles.primaryHover : '#262626',
+    '--ui-brand-soft': t.secondary,
+    '--ui-on-brand': t.primaryForeground,
+    '--ui-muted': t.secondary,
+    '--ui-muted-hover': dark ? '#2E2E2E' : '#EBEBEB',
+    '--ui-input': t.input,
+    '--ui-input-bg': dark ? 'rgb(255 255 255 / 0.045)' : '#FFFFFF',
+    '--ui-focus': dark ? shadcnDark.ring : '#737373',
+    '--ui-ring-subtle': dark ? roles.ringSubtle : 'rgb(161 161 161 / 0.50)',
+    '--ui-ring-destructive': roles.ringDestructive,
     '--ui-accent': roles.accent,
+    '--ui-accent-strong': shadcnDark.sidebarPrimary,
     '--ui-accent-soft': roles.accentSoft,
-    '--ui-warning': roles.warning,
-    '--ui-warning-soft': roles.warningSoft,
-    '--ui-warning-text': roles.warningText,
-    '--ui-danger': roles.danger,
-    '--ui-danger-soft': roles.dangerSoft,
-    '--ui-danger-text': roles.dangerText,
-    '--ui-on-accent': roles.onAccent,
-    '--ui-surface-dark': roles.surfaceDark,
-    '--ui-border': kit.border,
-    '--ui-border-strong': kit.border,
-    '--ui-hover': kit.muted,
-    '--ui-tabs': kit.muted,
+    '--ui-warning': dark ? roles.warning : '#A65F00',
+    '--ui-warning-soft': 'rgb(253 199 0 / 0.12)',
+    '--ui-warning-text': dark ? roles.warning : '#A65F00',
+    '--ui-danger': t.destructive,
+    '--ui-danger-soft': dark ? roles.dangerSoft : 'rgb(231 0 11 / 0.10)',
+    '--ui-danger-soft-hover': dark
+      ? 'rgb(255 100 103 / 0.2)'
+      : 'rgb(231 0 11 / 0.16)',
+    '--ui-danger-text': t.destructive,
+    '--ui-success': dark ? roles.success : '#008236',
+    '--ui-success-soft': roles.successSoft,
+    '--ui-on-accent': '#FFFFFF',
+    '--ui-surface-dark': shadcnDark.card,
+    '--ui-shadow-xs': shadows.xs,
+    '--ui-shadow-md': shadows.md,
+    '--ui-shadow-lg': shadows.lg,
+    '--ui-border': t.border,
+    '--ui-border-strong': t.input,
+    '--ui-hover': t.secondary,
+    '--ui-tabs': t.secondary,
     '--ui-radius': `${radii.lg}px`,
     '--ui-radius-box': `${radii.xl}px`,
     '--ui-radius-md': `${radii.md}px`,
     '--ui-radius-bubble': `${radii['3xl']}px`,
-    '--ui-box-shadow': `0 0 0 1px ${kit.border}, ${kit.shadowXs}`,
-  },
-  light: {},
-  dark: {},
+    '--ui-box-shadow': `0 0 0 1px ${t.border}, ${shadows.xs}`,
+    ...Object.fromEntries(
+      shadcnDark.chart.map((c, i) => [`--ui-chart-${i + 1}`, c]),
+    ),
+  };
+}
+
+// Interface sombre ; l'aperçu des pages du DS reste clair.
+export const resolver: CSSVariablesResolver = () => ({
+  variables: {},
+  light: uiVariables('light'),
+  dark: uiVariables('dark'),
 });

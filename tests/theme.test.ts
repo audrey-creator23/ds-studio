@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  palette,
   radii,
   radiusBase,
   roles,
+  shadcnDark,
   theme,
 } from '../app/client/theme.js';
 import {
@@ -25,36 +25,30 @@ const contrast = (a: string, b: string) => {
   return (x + 0.05) / (y + 0.05);
 };
 
-test('thème : palette fournie, échelles de 10 teintes, rôles accessibles', () => {
-  for (const [name, hex] of Object.entries(palette)) {
-    const scale = theme.colors![name]!;
-    assert.equal(scale.length, 10);
-    assert.ok(scale.includes(hex), `${name} contient ${hex}`);
-  }
-  assert.equal(theme.primaryColor, 'ember');
-  const white = '#FFFFFF';
-  // Texte normal : 4,5:1 minimum (WCAG AA).
-  for (const role of [
-    'primary',
-    'primaryHover',
-    'danger',
-    'dangerText',
-  ] as const)
-    assert.ok(contrast(roles[role], white) >= 4.5, role);
-  for (const role of ['accent', 'warning'] as const)
-    assert.ok(contrast(roles[role], roles.onAccent) >= 4.5, role);
-  assert.ok(contrast(roles.primary, roles.primarySoft) >= 4.5);
-  assert.ok(contrast(roles.warningText, roles.warningSoft) >= 4.5);
-  assert.ok(contrast(white, roles.surfaceDark) >= 7);
-  // Rayons : thème shadcn/create (--radius: 0.875rem), paliers par décalage.
+test('thème : shadcn/create sombre, rôles accessibles', () => {
+  // Valeurs du bloc .dark collé, converties d'oklch.
+  assert.equal(shadcnDark.background, '#0A0A0A');
+  assert.equal(shadcnDark.card, '#171717');
+  assert.equal(shadcnDark.primary, '#E5E5E5');
+  assert.equal(shadcnDark.mutedForeground, '#A1A1A1');
+  assert.equal(theme.primaryColor, 'neutral');
+  for (const scale of Object.values(theme.colors!))
+    assert.equal(scale!.length, 10);
+  // Texte normal : 4,5:1 minimum, sur la page et sur les cartes.
+  for (const bg of [roles.page, roles.surface, roles.raised])
+    for (const fg of [roles.text, roles.textMuted, roles.danger, roles.success])
+      assert.ok(contrast(fg, bg) >= 4.5, `${fg} sur ${bg}`);
+  assert.ok(contrast(roles.onPrimary, roles.primary) >= 4.5);
+  assert.ok(contrast(roles.accent, roles.surface) >= 4.5);
+  // Bordure de focus : 3:1 minimum.
+  assert.ok(contrast(roles.focus, roles.page) >= 3);
+  // Rayons : --radius: 0.875rem, paliers par décalage.
   assert.equal(radiusBase, 14);
   assert.equal(theme.radius!.lg, '14px');
   assert.deepEqual(
     [radii.sm, radii.md, radii.xl, radii['3xl']],
     [10, 12, 18, 26],
   );
-  // Anneau de focus : 3:1 minimum sur fond clair.
-  assert.ok(contrast(roles.focus, white) >= 3);
 });
 
 test('bibliothèque : composants du kit (Mantine) exposés et validés', () => {

@@ -22,7 +22,7 @@ textarea {
 .file-button {
   min-height: 32px;
   border: 1px solid var(--ui-border);
-  background: white;
+  background: var(--ui-input-bg);
   border-radius: var(--ui-radius);
   padding: 4px 10px;
   color: var(--ui-fg);
@@ -46,7 +46,7 @@ textarea {
   padding: 4px 10px;
   min-width: 0;
   color: inherit;
-  background: white;
+  background: var(--ui-input-bg);
   box-shadow: var(--ui-shadow-xs);
   font-size: 14px;
 }
@@ -74,8 +74,8 @@ small,
   color: var(--ui-fg-support);
 }
 .local-badge {
-  color: #256344;
-  background: #eaf4ed;
+  color: var(--ui-success);
+  background: var(--ui-success-soft);
   border-radius: var(--ui-radius);
   padding: 2px 8px;
   font-size: 14px;
@@ -110,8 +110,8 @@ small,
   overflow-wrap: anywhere;
 }
 .notice {
-  background: #e7f3eb;
-  color: #256344;
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
 }
 .field {
   font-size: 13px;
@@ -153,14 +153,14 @@ small,
 }
 .agent-empty ol {
   padding-left: 20px;
-  color: #54617a;
+  color: var(--ui-fg-support);
 }
 .privacy-note {
   font-size: 13px !important;
   line-height: 1.65 !important;
-  color: #647189;
+  color: var(--ui-fg-support);
   padding: 12px;
-  background: #f5f7fa;
+  background: var(--ui-muted);
   border-radius: 8px;
   margin: 16px 0;
 }
@@ -171,7 +171,7 @@ small,
 .history {
   margin: 0 28px 20px;
   padding: 20px;
-  background: #fff;
+  background: var(--ui-card);
   box-shadow: var(--ui-box-shadow);
   border-radius: var(--ui-radius-box);
 }
@@ -191,7 +191,7 @@ small,
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  border-top: 1px solid #e5e9ee;
+  border-top: 1px solid var(--ui-border);
   padding: 12px 0;
   font-size: 14px;
 }
@@ -205,13 +205,13 @@ small,
 .chat-message {
   padding: 12px;
   border-radius: 8px;
-  background: #f4f6fa;
+  background: var(--ui-muted);
   font-size: 14px;
   margin: 10px 0;
   overflow-wrap: anywhere;
 }
 .chat-message.user {
-  background: #eef2fc;
+  background: var(--ui-accent-soft);
 }
 .chat-message strong {
   font-size: 12px;
@@ -230,14 +230,14 @@ small,
   white-space: nowrap;
 }
 dialog {
-  border: 1px solid #c1cadb;
+  border: 1px solid var(--ui-border);
   border-radius: 12px;
   padding: 24px;
   max-width: min(650px, 95vw);
-  box-shadow: 0 20px 80px #15264730;
+  box-shadow: var(--ui-shadow-lg);
 }
 dialog::backdrop {
-  background: #17223e66;
+  background: rgb(0 0 0 / 0.6);
 }
 dialog h2 {
   font-size: 23px;
@@ -254,16 +254,16 @@ table {
 td,
 th {
   padding: 10px;
-  border-bottom: 1px solid #e2e7ef;
+  border-bottom: 1px solid var(--ui-border);
   text-align: left;
 }
 th {
   font-weight: 600;
 }
 ins {
-  color: #256344;
+  color: var(--ui-success);
   text-decoration: none;
-  background: #e8f3ed;
+  background: var(--ui-success-soft);
   padding: 3px;
 }
 del {
@@ -653,14 +653,14 @@ del {
   left: 12px;
   z-index: 5;
   padding: 12px;
-  background: white;
-  color: #243c78;
+  background: var(--ui-card);
+  color: var(--ui-fg);
 }
 .skip-link:focus {
   top: 12px;
 }
 .project-brief {
-  border: 1px solid #dbe0e8;
+  border: 1px solid var(--ui-border);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 18px;
@@ -1127,16 +1127,16 @@ select.status-tag {
   cursor: pointer;
 }
 .status-todo {
-  background: #f1f1ef;
-  color: #5f5e5b;
+  background: var(--ui-muted);
+  color: var(--ui-fg-secondary);
 }
 .status-done {
   background: var(--ui-brand-soft);
   color: var(--ui-brand-hover);
 }
 .status-validated {
-  background: #edf3ec;
-  color: #2f6b3f;
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
 }
 .task-list {
   list-style: none;
@@ -1158,16 +1158,16 @@ select.status-tag {
 
 /* Frise : statuts réels des tâches (validé, terminé, en cours, retard, à venir). */
 .is-validated {
-  --tl-color: #2f6b3f;
-  --tl-dot: #2f6b3f;
-  --tl-line: #448361;
-  --tl-text: #2f6b3f;
+  --tl-color: var(--ui-success);
+  --tl-dot: var(--ui-success);
+  --tl-line: var(--ui-success);
+  --tl-text: var(--ui-success);
 }
 .is-done {
-  --tl-color: #448361;
-  --tl-dot: #a8d1b1;
-  --tl-line: #a8d1b1;
-  --tl-text: #2f6b3f;
+  --tl-color: var(--ui-chart-2);
+  --tl-dot: var(--ui-chart-1);
+  --tl-line: var(--ui-chart-1);
+  --tl-text: var(--ui-chart-1);
 }
 .is-current {
   --tl-color: var(--ui-brand);
@@ -1177,7 +1177,7 @@ select.status-tag {
 }
 .is-late {
   --tl-color: var(--ui-danger);
-  --tl-dot: #f4d3c9;
+  --tl-dot: var(--ui-danger-soft);
   --tl-text: var(--ui-danger-text);
 }
 .is-past {
@@ -1190,7 +1190,7 @@ select.status-tag {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--tl-dot, white);
+  background: var(--tl-dot, var(--ui-card));
   border: 3px solid var(--tl-color, var(--ui-fg-support));
 }
 .timeline {
@@ -1227,7 +1227,7 @@ select.status-tag {
   overflow-wrap: anywhere;
 }
 .timeline li.is-current .timeline-dot {
-  box-shadow: 0 0 0 4px rgba(35, 131, 226, 0.18);
+  box-shadow: 0 0 0 4px var(--ui-accent-soft);
 }
 .timeline li.is-current time {
   font-weight: 600;
@@ -1344,12 +1344,6 @@ select.status-tag {
 }
 .volcano-cards {
   align-self: start;
-}
-.volcano-page .card-figure {
-  color: #c2410c;
-}
-.volcano-page .progress span {
-  background: linear-gradient(90deg, var(--lava-300), var(--lava-500));
 }
 .vl-glow {
   mix-blend-mode: screen;
@@ -1660,7 +1654,7 @@ select.status-tag {
   margin-inline-start: auto;
   border-radius: var(--ui-radius-bubble);
   border-end-end-radius: 6px;
-  background: var(--ui-brand);
+  background: var(--ui-accent-strong);
 }
 .kit-bubble.is-primary,
 .chat-bubble.user > strong,
@@ -1875,7 +1869,7 @@ select.status-tag {
   padding: 9px 16px;
   border: 1px solid var(--ui-border-strong);
   border-radius: var(--ui-radius);
-  background: white;
+  background: var(--ui-input-bg);
   color: var(--ui-fg);
   font-weight: 500;
   text-decoration: none;
@@ -1886,7 +1880,7 @@ select.status-tag {
 .cta-primary {
   border-color: var(--ui-brand);
   background: var(--ui-brand);
-  color: white;
+  color: var(--ui-on-brand);
 }
 .cta-primary:hover {
   background: var(--ui-brand-hover);
@@ -1939,11 +1933,9 @@ select.status-tag {
   color: var(--ui-fg-secondary);
 }
 .nav-card:hover {
-  background: white;
+  background: var(--ui-muted);
   transform: translateY(-1px);
-  box-shadow:
-    rgba(0, 0, 0, 0.06) 0 12px 28px,
-    rgba(0, 0, 0, 0.08) 0 0 0 1px;
+  box-shadow: var(--ui-box-shadow);
 }
 @media (max-width: 740px) {
   .home-cta .cta {
@@ -2047,7 +2039,7 @@ select.status-tag {
   padding: 0 7px;
   border-radius: 10px;
   background: var(--ui-brand);
-  color: white;
+  color: var(--ui-on-brand);
   font-size: 12px;
   font-weight: 600;
 }
@@ -2164,8 +2156,8 @@ select.status-tag {
   border-radius: 0;
 }
 .sim-version button[aria-pressed='true'] {
-  background: var(--ui-fg);
-  color: white;
+  background: var(--ui-brand);
+  color: var(--ui-on-brand);
 }
 .sim-toolbar {
   display: flex;
@@ -2210,7 +2202,7 @@ select.status-tag {
   padding: 12px;
   overflow: auto;
   border-radius: var(--ui-radius-box);
-  background: repeating-conic-gradient(#f1f1ef 0 25%, #f8f8f7 0 50%) 0 0 / 16px
+  background: repeating-conic-gradient(#141414 0 25%, #1b1b1b 0 50%) 0 0 / 16px
     16px;
 }
 .sim-frame {
@@ -2362,8 +2354,8 @@ select.status-tag {
   border-radius: 0;
 }
 .design-modes button[aria-pressed='true'] {
-  background: var(--ui-fg);
-  color: white;
+  background: var(--ui-brand);
+  color: var(--ui-on-brand);
 }
 .design-io[hidden] {
   display: none;
@@ -2810,15 +2802,15 @@ select.status-tag {
 .bubble {
   touch-action: none;
   box-shadow:
-    rgba(75, 18, 7, 0.28) 0 8px 22px,
-    rgba(0, 0, 0, 0.1) 0 0 0 1px;
+    rgb(0 0 0 / 0.5) 0 8px 22px,
+    var(--ui-border) 0 0 0 1px;
   cursor: grab;
 }
 .bubble.is-dragging {
   cursor: grabbing;
 }
 .bubble-glyph {
-  color: var(--ui-warning);
+  color: var(--ui-on-brand);
   font-size: 24px;
   line-height: 1;
 }
@@ -2849,7 +2841,7 @@ select.status-tag {
 }
 .bubble-head small {
   display: block;
-  color: var(--ui-warning-soft);
+  color: var(--ui-fg-support);
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2945,6 +2937,11 @@ select.status-tag {
   color: var(--ui-fg);
   letter-spacing: normal;
 }
+/* Icônes SVG du menu dessinées en sombre : inversées pour le fond sombre. */
+.sidebar img {
+  filter: invert(1);
+  opacity: 0.85;
+}
 .sidebar-link:hover {
   background: var(--ui-muted);
 }
@@ -2968,7 +2965,8 @@ select.status-tag {
   font-weight: 500;
 }
 .kit-tabs .mantine-Tabs-tab[data-active] {
-  background: white;
+  border-color: var(--ui-input);
+  background: var(--ui-input-bg);
   color: var(--ui-fg);
   box-shadow: var(--ui-shadow-xs);
 }

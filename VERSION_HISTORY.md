@@ -5,6 +5,26 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.17.0 — 2026-10-27
+
+- **Type** : minor (refonte visuelle du chrome ; aucune API, donnée ni token
+  Lisière modifié)
+- **Fichiers** : `app/client/theme.ts`, `app/client/main.tsx`,
+  `app/client/styles.css`, `app/client/ui.tsx`, `app/client/HomePage.tsx`,
+  `app/client/ChatBubble.tsx`, `app/client/design/MantineBlocks.tsx`,
+  `tests/theme.test.ts`, `docs/FIGMA_KIT.md`
+- **Résumé** : nouvelle identité DS-Studio = thème ui.shadcn.com/create
+  collé, appliqué en entier. Interface en mode sombre (bloc `.dark`, oklch
+  converti : fond `#0A0A0A`, cartes `#171717`, tuiles `#262626`, texte
+  `#FAFAFA` / `#A1A1A1`, bordures blanches à 10 %, boutons principaux clairs
+  `#E5E5E5`, destructive `#FF6467`, bleu `--chart-*` en accent et pour les
+  bulles envoyées). L’aperçu des pages du DS garde le bloc clair `:root`.
+  Palette Sunflower → Mahogany retirée du chrome (le volcan garde ses
+  couleurs). Variantes du kit résolues par variables CSS (valables dans les
+  deux modes), couleurs codées en dur remplacées par les variables du thème,
+  icônes du menu inversées. Contrastes ≥ 4,5:1 vérifiés par test sur la page,
+  les cartes et les tuiles.
+
 ## 2.16.1 — 2026-10-27
 
 - **Type** : patch (valeurs de thème ; aucune API ni donnée modifiée)

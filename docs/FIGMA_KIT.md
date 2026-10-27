@@ -8,8 +8,9 @@ source n’est jamais modifié).
 Le kit est écrit pour Tailwind v4 + Radix. DS-Studio ne l’installe pas : ses
 **tokens et ses variantes sont reproduits dans le thème Mantine**
 ([`app/client/theme.ts`](../app/client/theme.ts)), sans dépendance ni
-composant en double. La palette Sunflower → Mahogany garde les rôles de
-couleur (primary, accent, warning, danger, surfaces).
+composant en double. Les couleurs viennent du thème ui.shadcn.com/create
+collé : interface **sombre** (bloc `.dark`), aperçu des pages du DS en clair
+(bloc `:root`), bleu `--chart-*` en accent.
 
 ## Skill Claude Code associé
 
@@ -30,21 +31,20 @@ l’équivalent Mantine ci-dessous.
 
 ## Tokens importés
 
-| Kit                | Valeur                                                                                    | DS-Studio                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Police             | Inter                                                                                     | `@fontsource-variable/inter` (local, hors ligne)                              |
-| Tailles            | 12/16 · 14/20 · 16/24 · 18/28 · 20/28                                                     | `fontSizes`, `lineHeights`                                                    |
-| Rayons             | base **14** (`--radius: 0.875rem`, thème shadcn/create) : 8 · 10 · 12 · 14 · 18 · 22 · 26 | `radiusBase` et `radii` (theme.ts), défaut `lg`                               |
-| Ombres             | xs, md, lg, noir 10 %                                                                     | `shadows`, `--ui-shadow-*`                                                    |
-| Focus              | bordure `#737373` + halo 3 px `#A1A1A180`                                                 | `--ui-focus`, `--ui-ring-subtle`                                              |
-| Neutres            | `#0A0A0A`, `#737373`, `#E5E5E5`, `#F5F5F5`                                                | `--ui-fg`, `--ui-fg-support`, `--ui-border`, `--ui-muted`                     |
-| Ring (focus)       | `#A1A1A1` dans le thème collé                                                             | conservé `#737373` pour la bordure de focus (3:1 minimum ; `#A1A1A1` = 2,6:1) |
-| Couleurs de marque | neutres du kit                                                                            | **palette du studio** (choix validé)                                          |
+| Kit          | Valeur                                                                                    | DS-Studio                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Police       | Inter                                                                                     | `@fontsource-variable/inter` (local, hors ligne)                              |
+| Tailles      | 12/16 · 14/20 · 16/24 · 18/28 · 20/28                                                     | `fontSizes`, `lineHeights`                                                    |
+| Rayons       | base **14** (`--radius: 0.875rem`, thème shadcn/create) : 8 · 10 · 12 · 14 · 18 · 22 · 26 | `radiusBase` et `radii` (theme.ts), défaut `lg`                               |
+| Ombres       | xs, md, lg, noir 10 %                                                                     | `shadows`, `--ui-shadow-*`                                                    |
+| Focus        | bordure `#737373` + halo 3 px `#A1A1A180`                                                 | `--ui-focus`, `--ui-ring-subtle`                                              |
+| Neutres      | `#0A0A0A`, `#737373`, `#E5E5E5`, `#F5F5F5`                                                | `--ui-fg`, `--ui-fg-support`, `--ui-border`, `--ui-muted`                     |
+| Ring (focus) | `#A1A1A1` dans le thème collé                                                             | conservé `#737373` pour la bordure de focus (3:1 minimum ; `#A1A1A1` = 2,6:1) |
+| Couleurs     | `.dark` : fond `#0A0A0A`, cartes `#171717`, primaire `#E5E5E5`                            | `shadcnDark`, `roles`, `--ui-*` (identité DS-Studio)                          |
 
 Pour appliquer un autre thème de ui.shadcn.com/create : « Get Code » →
-onglet Theme → « Copy Theme », puis coller le CSS à Claude. Seuls les neutres
-et `--radius` sont repris ; le mode sombre n’est pas utilisé (interface
-claire) et les couleurs `--chart-*` attendent un premier graphique.
+onglet Theme → « Copy Theme », puis coller le CSS à Claude. Les blocs `:root` et
+`.dark` remplacent `shadcnLight` et `shadcnDark` dans `theme.ts`.
 
 ## Composants disponibles
 
