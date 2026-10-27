@@ -151,7 +151,8 @@ Inspirez-vous des deux skills fournis, sans copier vos identifiants ou vos conve
 | Catalogue et viewport responsive, formulaire et navigation          | **TESTED**, Chromium sous Linux                                                                    |
 | Import/export JSON local                                            | **TESTED**, API + navigateur                                                                       |
 | Chat Codex, JSON proposé avant acceptation                          | **TESTED**, CLI 0.164.0, compte enseignant disponible pendant la qualification ; quota non garanti |
-| Claude Code / Gemini dans l’application                             | **NOT IMPLEMENTED**, adaptateurs indisponibles et contrat documenté                                |
+| Assistant Claude (page Contexte & Assistant)                        | **PARTIAL** : lecture seule, flux et historique testés avec un assistant simulé ; API non testée   |
+| Claude Code / Gemini dans le panneau de tokens                      | **NOT IMPLEMENTED**, adaptateurs indisponibles et contrat documenté                                |
 | Figma MCP et synchronisation                                        | **PARTIAL** : comparaison, import et plan d’écriture testés sur fixtures ; aucun Figma réel testé  |
 | Skills et harness personnalisable                                   | **IMPLEMENTED**, structure et liens vérifiés ; pas une validation des choix d’un étudiant          |
 | Qualification automatisée Windows / macOS                           | **TESTED en CI** pour API, navigateur et contrôleur ; **PARTIAL** pour Finder/WSH natifs           |

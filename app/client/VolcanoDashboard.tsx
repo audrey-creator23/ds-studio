@@ -246,6 +246,7 @@ export default function VolcanoDashboard({
             {(
               [
                 ['workshop', 'Atelier Design System'],
+                ['assistant', 'Contexte & Assistant'],
                 ['brief', 'Brief du projet'],
               ] as const
             ).map(([id, label]) => (

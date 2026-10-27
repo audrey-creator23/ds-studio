@@ -8,13 +8,15 @@ import help from './icons/help.svg';
 import Logo from './Logo.js';
 
 // Pages secondaires : elles remplacent l'atelier sans le démonter.
-export type Page = 'workshop' | 'brief' | 'volcano';
+export type Page = 'workshop' | 'assistant' | 'brief' | 'volcano';
 export const pageTitles: Record<Page, string> = {
   workshop: 'Lisière',
+  assistant: 'Contexte & Assistant',
   brief: 'Brief du projet',
   volcano: 'Dashboard Volcan',
 };
 export const pageHeadings: Record<Exclude<Page, 'workshop'>, string> = {
+  assistant: 'assistant-title',
   brief: 'projet-title',
   volcano: 'volcan-title',
 };
@@ -27,7 +29,6 @@ const projectPages = [
 // Il n'utilise pas les tokens éditables : seul le DS change avec eux.
 const sections = [
   { id: 'accueil', label: 'Accueil', icon: home },
-  { id: 'agent-title', label: 'Contexte et assistant', icon: page },
   { id: 'ds-title', label: 'Tokens et composants', icon: table },
   { id: 'mobile-title', label: 'Aperçu responsive', icon: compass },
 ];
@@ -95,6 +96,19 @@ export default function Sidebar({
               </a>
             </li>
           ))}
+          <li>
+            <button
+              aria-current={current === 'assistant' ? 'page' : undefined}
+              onClick={() =>
+                onPage(current === 'assistant' ? 'workshop' : 'assistant')
+              }
+            >
+              <span className="sidebar-emoji" aria-hidden="true">
+                💬
+              </span>
+              Contexte & Assistant
+            </button>
+          </li>
         </ul>
         <p className="sidebar-eyebrow">Projet</p>
         <ul className="sidebar-menu">

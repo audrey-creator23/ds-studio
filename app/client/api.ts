@@ -70,3 +70,46 @@ export function downloadText(
   a.click();
   URL.revokeObjectURL(url);
 }
+// Flux NDJSON (une ligne JSON par événement) pour les réponses de l'assistant.
+export async function* postStream<T>(
+  url: string,
+  body: unknown,
+  signal?: AbortSignal,
+  retrySession = true,
+): AsyncGenerator<T> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/${url}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-DS-Studio': csrf },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (e) {
+    if (signal?.aborted) throw e;
+    throw new Error('Serveur local inaccessible. Relancez DS-Studio.');
+  }
+  if (!response.ok || !response.body) {
+    const result = await response.json().catch(() => ({}));
+    if (
+      response.status === 403 &&
+      retrySession &&
+      result.error?.startsWith('Validation de session manquante')
+    ) {
+      await bootstrap();
+      yield* postStream<T>(url, body, signal, false);
+      return;
+    }
+    throw new Error(result.error ?? 'Le serveur ne répond pas.');
+  }
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += value;
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) if (line.trim()) yield JSON.parse(line) as T;
+  }
+}

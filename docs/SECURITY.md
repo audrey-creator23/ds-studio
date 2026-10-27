@@ -76,3 +76,15 @@ lors d’un envoi explicite au chat Codex, conformément à la notice du formula
 Les exports Markdown peuvent contenir vos informations : relisez avant de partager.
 La récupération conserve l’original dans le même dossier privé. Aucune copie de
 secours, archive ou journal d’exécution n’est publiée avec le code.
+
+## Assistant Claude (Contexte & Assistant)
+
+La clé `ANTHROPIC_API_KEY` est lue côté serveur (variable d’environnement ou
+`.env` ignoré par Git), jamais renvoyée au navigateur ni écrite dans les logs.
+Chaque question envoie à Anthropic : synthèse du brief, planning et statuts,
+`workspace/PFE.md`, `DESIGN_RULES.md`, `DECISIONS.md`, tokens et brief privé.
+L’assistant n’a aucun outil : il ne peut rien modifier ; les documents lui sont
+présentés comme des données. L’historique reste dans `.ds-studio/assistant.json`.
+Limites : 8 000 tokens par réponse, 20 messages de mémoire, 8 000 caractères par
+question, une réponse à la fois. Modèle `claude-opus-5-5`, repli serveur activé
+si une demande est déclinée.

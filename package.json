@@ -1,6 +1,6 @@
 {
   "name": "ds-studio",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "private": true,
   "type": "module",
   "description": "Starter pédagogique local pour explorer et faire évoluer un Design System.",
@@ -27,6 +27,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.133.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "zod": "4.6.7"

@@ -438,3 +438,24 @@ test('dashboard volcan : page secondaire, activité datée, frise et accès', as
     ),
   ).toBe(true);
 });
+
+test('contexte & assistant : page Bento, sources en lecture seule, saisie multiligne', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Contexte & Assistant' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Contexte & Assistant' }),
+  ).toBeFocused();
+  await expect(page.locator('.workshop')).toBeHidden();
+  await expect(page.locator('.assistant-sources li')).toHaveCount(6);
+  await expect(page.getByText('Brief, planning et checklist')).toBeVisible();
+  await expect(page.getByLabel('Votre message')).toBeVisible();
+  await expect(page.getByText(/Clé conservée côté serveur/)).toBeVisible();
+  await page.setViewportSize({ width: 375, height: 812 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

@@ -3,6 +3,7 @@ import { Catalogue, Scenario } from './DesignSystem.js';
 import ProjectBrief from './ProjectBrief.js';
 import Sidebar, { pageHeadings, pageTitles, type Page } from './Sidebar.js';
 import VolcanoDashboard from './VolcanoDashboard.js';
+import AssistantPage from './AssistantPage.js';
 import Logo from './Logo.js';
 import ProjectContent from './ProjectContent.js';
 import { useTokenDraft } from './useTokenDraft.js';
@@ -257,6 +258,7 @@ export default function App() {
             <span aria-hidden="true">/</span>
             <strong>{pageTitles[page]}</strong>
           </header>
+          {page === 'assistant' && <AssistantPage />}
           {page === 'brief' && <ProjectContent />}
           {page === 'volcano' && (
             <VolcanoDashboard tokens={state.tokens} onPage={setPage} />

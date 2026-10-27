@@ -5,6 +5,24 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.7.0 — 2026-10-27
+
+- **Type** : minor (nouvelle page et API locale `/api/assistant`, dépendance
+  `@anthropic-ai/sdk` 0.133.0 épinglée)
+- **Fichiers** : `connectors/agents/claude.ts`, `app/server/assistant.ts`,
+  `app/server/http.ts`, `app/client/AssistantPage.tsx`, `app/client/Markdown.tsx`,
+  `app/client/api.ts`, `app/client/Sidebar.tsx`, `app/client/App.tsx`,
+  `app/client/VolcanoDashboard.tsx`, `app/client/styles.css`,
+  `tests/assistant.test.ts`, `tests/e2e/studio.spec.ts`, `.env.example`,
+  `README.md`, `CLAUDE.md`, `docs/SECURITY.md`, `package.json`,
+  `package-lock.json`
+- **Résumé** : onglet « Contexte & Assistant » avec chat Claude (claude-opus-5-5)
+  via le serveur : streaming, Markdown sûr, saisie multiligne, historique
+  persistant dans `.ds-studio/assistant.json`, sources citées, limites et
+  erreurs gérées. Lecture seule du brief, planning, tâches, documents et tokens ;
+  aucun outil d’écriture. Clé lue côté serveur uniquement. Testé avec un
+  assistant simulé, pas contre l’API réelle.
+
 ## 2.6.0 — 2026-10-27
 
 - **Type** : minor (nouvelle page, aucune page existante modifiée)

@@ -1,0 +1,119 @@
+import Anthropic from '@anthropic-ai/sdk';
+import path from 'node:path';
+import { parseEnv } from 'node:util';
+import { readPrivate } from '../../app/server/files.js';
+
+// Assistant Claude en lecture seule : aucun outil, aucune écriture. La clé reste
+// côté serveur (variable d'environnement ou .env ignoré par Git), jamais renvoyée.
+export const CLAUDE_MODEL = 'claude-opus-5-5';
+export const assistantLimits = {
+  maxOutputTokens: 8000,
+  historyMessages: 20,
+  messageChars: 8000,
+} as const;
+
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  text: string;
+}
+export type AssistantEvent =
+  | { type: 'text'; text: string }
+  | {
+      type: 'done';
+      stopReason: string | null;
+      usage: { input: number; output: number };
+    };
+export interface Assistant {
+  status(): Promise<{ available: boolean; detail: string }>;
+  stream(
+    system: string,
+    turns: ChatTurn[],
+    signal: AbortSignal,
+  ): AsyncGenerator<AssistantEvent>;
+}
+
+export async function readApiKey(root: string) {
+  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
+  try {
+    return parseEnv(await readPrivate(path.join(root, '.env'), 16000))
+      .ANTHROPIC_API_KEY;
+  } catch {
+    return undefined;
+  }
+}
+
+export class ClaudeAssistant implements Assistant {
+  constructor(
+    private root: string,
+    private client?: Anthropic,
+  ) {}
+  async status() {
+    return this.client || (await readApiKey(this.root))
+      ? {
+          available: true,
+          detail: `Claude (${CLAUDE_MODEL}) via l’API Anthropic`,
+        }
+      : {
+          available: false,
+          detail:
+            'Clé API absente : ajoutez ANTHROPIC_API_KEY dans .env (ignoré par Git) puis rechargez la page.',
+        };
+  }
+  async *stream(system: string, turns: ChatTurn[], signal: AbortSignal) {
+    const client =
+      this.client ??
+      new Anthropic({ apiKey: await readApiKey(this.root), maxRetries: 1 });
+    const stream = client.beta.messages.stream(
+      {
+        model: CLAUDE_MODEL,
+        max_tokens: assistantLimits.maxOutputTokens,
+        output_config: { effort: 'medium' },
+        // Repli serveur si le modèle décline une demande.
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        system: [
+          { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
+        ],
+        messages: turns.map((t) => ({ role: t.role, content: t.text })),
+      },
+      { signal },
+    );
+    for await (const event of stream)
+      if (
+        event.type === 'content_block_delta' &&
+        event.delta.type === 'text_delta'
+      )
+        yield { type: 'text', text: event.delta.text } as const;
+    const final = await stream.finalMessage();
+    yield {
+      type: 'done',
+      stopReason: final.stop_reason,
+      usage: {
+        input:
+          final.usage.input_tokens +
+          (final.usage.cache_read_input_tokens ?? 0) +
+          (final.usage.cache_creation_input_tokens ?? 0),
+        output: final.usage.output_tokens,
+      },
+    } as const;
+  }
+}
+
+// Messages d'erreur lisibles, sans détail technique ni secret.
+export function describeAssistantError(error: unknown) {
+  if (error instanceof Anthropic.APIUserAbortError)
+    return 'Réponse interrompue.';
+  if (error instanceof Anthropic.AuthenticationError)
+    return 'Clé API refusée par Anthropic. Vérifiez ANTHROPIC_API_KEY dans .env.';
+  if (error instanceof Anthropic.PermissionDeniedError)
+    return 'Accès refusé pour ce modèle avec cette clé.';
+  if (error instanceof Anthropic.RateLimitError)
+    return 'Limite d’utilisation atteinte. Réessayez dans un moment.';
+  if (error instanceof Anthropic.BadRequestError)
+    return 'Requête refusée (conversation trop longue ?). Effacez l’historique puis réessayez.';
+  if (error instanceof Anthropic.APIConnectionError)
+    return 'Connexion à l’API Anthropic impossible. Vérifiez Internet.';
+  if (error instanceof Anthropic.APIError)
+    return `Service Anthropic indisponible (${error.status ?? 'erreur'}). Réessayez plus tard.`;
+  return 'Erreur inattendue de l’assistant.';
+}

@@ -13,12 +13,21 @@ import { CodexAdapter } from '../../connectors/agents/codex.js';
 import { unvalidatedAdapter } from '../../connectors/agents/unvalidated.js';
 import type { AgentAdapter } from '../../connectors/agents/types.js';
 import { figmaStatus } from '../../connectors/figma/contract.js';
+import {
+  ClaudeAssistant,
+  CLAUDE_MODEL,
+  assistantLimits,
+  describeAssistantError,
+  type Assistant,
+} from '../../connectors/agents/claude.js';
+import { ChatStore, buildContext } from './assistant.js';
 import type { RecordInfo } from '../../scripts/runtime.mjs';
 
 export async function createStudioServer(options: {
   root: string;
   store: Store;
   agent?: AgentAdapter;
+  assistant?: Assistant;
   dev?: boolean;
   control?: { record: RecordInfo; stop: () => void };
 }) {
@@ -30,6 +39,9 @@ export async function createStudioServer(options: {
   };
   const project = new ProjectStore(store.directory);
   const tasks = new TaskStore(store.directory);
+  const chat = new ChatStore(store.directory);
+  const assistant = options.assistant ?? new ClaudeAssistant(root);
+  let chatBusy = false;
   const csrf = randomBytes(32).toString('hex');
   let busy = false;
   const active = new Set<AbortController>();
@@ -112,6 +124,21 @@ export async function createStudioServer(options: {
             return send(200, await project.read());
           if (url.pathname === '/api/tasks')
             return send(200, await tasks.read());
+          if (url.pathname === '/api/assistant') {
+            const { sources } = await buildContext({
+              root,
+              tokens: store.snapshot().tokens,
+              tasks: await tasks.read(),
+              project: (await project.read()).project,
+            });
+            return send(200, {
+              status: await assistant.status(),
+              model: CLAUDE_MODEL,
+              limits: assistantLimits,
+              sources,
+              messages: await chat.read(),
+            });
+          }
           if (url.pathname === '/api/state') return send(200, store.snapshot());
           if (url.pathname === '/api/export')
             return send(200, store.snapshot().tokens);
@@ -243,6 +270,101 @@ export async function createStudioServer(options: {
             active.delete(controller);
             res.off('close', cancel);
           }
+        }
+        if (url.pathname === '/api/assistant/clear') {
+          z.object({}).strict().parse(body);
+          if (chatBusy) throw new StudioError('Une réponse est en cours.', 429);
+          return send(200, { messages: await chat.clear() });
+        }
+        if (url.pathname === '/api/assistant') {
+          const b = z
+            .object({
+              message: z
+                .string()
+                .trim()
+                .min(1)
+                .max(assistantLimits.messageChars),
+            })
+            .strict()
+            .parse(body);
+          if (!(await assistant.status()).available)
+            throw new StudioError(
+              'Assistant indisponible : clé API Anthropic non configurée.',
+              503,
+            );
+          if (chatBusy)
+            throw new StudioError('Une réponse est déjà en cours.', 429);
+          chatBusy = true;
+          const controller = new AbortController();
+          active.add(controller);
+          const cancel = () => controller.abort();
+          res.once('close', cancel);
+          const asked = { role: 'user', text: b.message } as const;
+          let text = '';
+          try {
+            const history = (await chat.read())
+              .filter((m) => m.text)
+              .slice(-assistantLimits.historyMessages)
+              .map(({ role, text }) => ({ role, text }));
+            while (history[0]?.role === 'assistant') history.shift();
+            const { system, sources } = await buildContext({
+              root,
+              tokens: store.snapshot().tokens,
+              tasks: await tasks.read(),
+              project: (await project.read()).project,
+            });
+            res.writeHead(200, {
+              'Content-Type': 'application/x-ndjson; charset=utf-8',
+            });
+            const line = (value: unknown) =>
+              res.write(JSON.stringify(value) + '\n');
+            line({ type: 'start', sources });
+            let usage: { input: number; output: number } | undefined;
+            let stopReason: string | null = null;
+            for await (const event of assistant.stream(
+              system,
+              [...history, asked],
+              controller.signal,
+            )) {
+              if (event.type === 'text') {
+                text += event.text;
+                line(event);
+              } else {
+                usage = event.usage;
+                stopReason = event.stopReason;
+              }
+            }
+            const notice =
+              stopReason === 'max_tokens'
+                ? `Réponse tronquée : limite de ${assistantLimits.maxOutputTokens} tokens atteinte.`
+                : stopReason === 'refusal'
+                  ? 'Claude a décliné cette demande.'
+                  : undefined;
+            const date = new Date().toISOString();
+            const messages = await chat.append(
+              { ...asked, date },
+              { role: 'assistant', text, date, usage, error: notice },
+            );
+            line({ type: 'done', usage, notice, messages });
+          } catch (e) {
+            const error = describeAssistantError(e);
+            if (text) {
+              const date = new Date().toISOString();
+              await chat.append(
+                { ...asked, date },
+                { role: 'assistant', text, date, error },
+              );
+            }
+            if (res.headersSent)
+              res.write(JSON.stringify({ type: 'error', error }) + '\n');
+            else throw new StudioError(error, 502);
+          } finally {
+            chatBusy = false;
+            active.delete(controller);
+            res.off('close', cancel);
+            if (res.headersSent) res.end();
+          }
+          return;
         }
         throw new StudioError('Route inconnue.', 404);
       }

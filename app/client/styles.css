@@ -1727,3 +1727,143 @@ select.status-tag {
     transition: none !important;
   }
 }
+
+/* Contexte & Assistant : chat Bento, réutilise .bento et .bento-card. */
+.assistant-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 44px);
+  padding: 0 28px 12px;
+}
+.assistant-page .bento-card {
+  --banner: #e7f3f8;
+}
+.assistant-chat {
+  grid-column: span 4;
+  grid-row: span 3;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.assistant-bento > .bento-card:nth-child(n + 2) {
+  grid-column: span 2;
+}
+.chat-thread {
+  flex: 1;
+  min-height: 240px;
+  max-height: calc(100vh - 330px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 8px;
+}
+.chat-empty {
+  margin: auto 0;
+  text-align: center;
+  font-size: 15px;
+}
+.chat-bubble {
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: var(--ui-radius-box);
+  background: var(--ui-sidebar);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.chat-bubble.user {
+  align-self: flex-end;
+  background: #e7f3f8;
+}
+.chat-bubble > strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ui-fg-support);
+}
+.chat-bubble p {
+  margin: 4px 0 0;
+  color: var(--ui-fg);
+  white-space: pre-wrap;
+}
+.chat-note {
+  font-size: 13px !important;
+  color: var(--ui-fg-support) !important;
+}
+.chat-loading {
+  animation: brief-open 1s ease-in-out infinite alternate;
+}
+.markdown p,
+.markdown li {
+  white-space: normal;
+  font-size: 15px;
+  color: var(--ui-fg);
+}
+.markdown ul,
+.markdown ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+.markdown .md-heading {
+  font-weight: 600;
+  margin-top: 8px;
+}
+.markdown code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--ui-tabs);
+  font-size: 0.9em;
+}
+.markdown pre {
+  overflow-x: auto;
+  padding: 8px;
+  border-radius: var(--ui-radius);
+  background: var(--ui-tabs);
+}
+.markdown pre code {
+  padding: 0;
+  background: none;
+}
+.markdown a {
+  color: var(--ui-brand);
+}
+.chat-form textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+  max-height: 240px;
+}
+.chat-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+.assistant-sources {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  font-size: 15px;
+}
+.assistant-sources .is-missing {
+  color: var(--ui-fg-support);
+}
+.assistant-sources a {
+  color: var(--ui-brand);
+}
+@media (max-width: 1300px) {
+  .assistant-chat {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}
+@media (max-width: 740px) {
+  .assistant-page {
+    padding: 0 14px 20px;
+  }
+  .assistant-bento > .bento-card:nth-child(n + 2) {
+    grid-column: auto;
+  }
+  .chat-bubble {
+    max-width: 100%;
+  }
+}
