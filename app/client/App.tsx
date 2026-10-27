@@ -114,6 +114,13 @@ export function Preview() {
         e.data?.type !== 'ds-preview'
       )
         return;
+      // Thème de l'aperçu (studio v3) : fond et composants Mantine.
+      const dark = e.data.scheme === 'dark';
+      document.documentElement.setAttribute(
+        'data-mantine-color-scheme',
+        dark ? 'dark' : 'light',
+      );
+      document.body.classList.toggle('preview-dark', dark);
       const tokens = tokensSchema.safeParse(e.data.tokens);
       if (tokens.success)
         setLive({

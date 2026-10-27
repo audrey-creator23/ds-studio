@@ -570,6 +570,10 @@ del {
 .preview-body {
   background: white;
 }
+.preview-body.preview-dark {
+  background: #0a0a0a;
+  color-scheme: dark;
+}
 .scenario {
   min-height: 100vh;
   background: var(--color-canvas);

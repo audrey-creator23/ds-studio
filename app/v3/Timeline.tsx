@@ -1,23 +1,10 @@
 import type { CSSProperties } from 'react';
-import {
-  daysBetween,
-  milestoneLabels,
-  milestones,
-  timeProgress,
-  type MilestoneStatus,
-} from '../shared/brief.js';
-import { Badge, type BadgeVariant } from './ui.js';
+import { daysBetween, milestones, timeProgress } from '../shared/brief.js';
+import { Badge } from './ui.js';
 
-// Frise des jalons partagée (Dashboard, Brief) : pas réguliers, rail rempli
-// jusqu'à la date affichée. Avec `onSelect`, chaque jalon prévisualise sa date.
-const statusBadge: Record<MilestoneStatus, BadgeVariant> = {
-  validated: 'default',
-  done: 'secondary',
-  current: 'outline',
-  late: 'destructive',
-  past: 'outline',
-  upcoming: 'outline',
-};
+// Frise des jalons : pas réguliers, rail rempli jusqu'à la date affichée.
+// États temporels seulement (Passé / À venir) : une date passée ne vaut pas
+// validation. Avec `onSelect`, chaque jalon prévisualise sa date.
 // Rampe --chart-1 → 5 : plus l'activité monte, plus la teinte est soutenue.
 export const chartOf = (a: number) =>
   `var(--chart-${Math.min(5, 1 + Math.floor(a * 5))})`;
@@ -41,16 +28,14 @@ function railFill(day: string) {
 
 export default function Timeline({
   day,
-  statuses,
+  today,
   selected,
   onSelect,
-  details = false,
 }: {
   day: string;
-  statuses: MilestoneStatus[];
+  today: string;
   selected?: string;
   onSelect?: (date: string) => void;
-  details?: boolean;
 }) {
   return (
     <div className="timeline">
@@ -58,21 +43,21 @@ export default function Timeline({
         <span style={{ width: `${railFill(day)}%` }} />
       </div>
       <ol>
-        {milestones.map((m, i) => {
+        {milestones.map((m) => {
+          const past = m.date < today;
+          const label = past ? 'Passé' : 'À venir';
           const body = (
             <>
               <span className="dot" aria-hidden="true" />
               <time dateTime={m.date}>{short(m.date)}</time>
               <strong>{m.title}</strong>
-              <Badge variant={statusBadge[statuses[i]]}>
-                {milestoneLabels[statuses[i]]}
-              </Badge>
-              {details && <small className="timeline-detail">{m.detail}</small>}
+              <Badge variant={past ? 'outline' : 'default'}>{label}</Badge>
             </>
           );
           return (
             <li
               key={m.date}
+              data-time={past ? 'past' : 'upcoming'}
               style={
                 { '--tone': chartOf(timeProgress(m.date)) } as CSSProperties
               }
@@ -82,7 +67,7 @@ export default function Timeline({
                   type="button"
                   className="timeline-item"
                   aria-pressed={selected === m.date}
-                  aria-label={`${m.title}, ${short(m.date)}, ${milestoneLabels[statuses[i]]} : prévisualiser l’activité`}
+                  aria-label={`${m.title}, ${short(m.date)}, ${label} : prévisualiser l’activité`}
                   onClick={() => onSelect(m.date)}
                 >
                   {body}

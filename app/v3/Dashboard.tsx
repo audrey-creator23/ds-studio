@@ -143,25 +143,17 @@ export default function Dashboard() {
         </p>
       )}
 
-      <Card className="timeline-card" aria-labelledby="echeances">
-        <CardHeader>
-          <CardTitle id="echeances">Échéances à venir</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Timeline
-            day={day}
-            statuses={statuses}
-            selected={day}
-            onSelect={(d) => setDay(day === d ? now : d)}
-          />
-        </CardContent>
-      </Card>
-
       <div className="kpis">
         <Card>
           <CardHeader>
-            <CardDescription>Tâches réalisées</CardDescription>
-            <CardTitle className="stat">{state ? `${done} %` : '…'}</CardTitle>
+            <CardDescription>Tâches à réaliser</CardDescription>
+            <CardTitle className="stat">
+              {state ? counts[0].n : '…'}
+              <small>
+                {' '}
+                / {tasks.length} · {done} % faites
+              </small>
+            </CardTitle>
             <CardAction>
               <TaskList state={state} />
             </CardAction>
@@ -187,7 +179,7 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Période écoulée</CardDescription>
+            <CardDescription>Délai écoulé</CardDescription>
             <CardTitle className="stat">
               {elapsed}
               <small> / {total} j</small>
@@ -199,7 +191,7 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Jalons</CardDescription>
+            <CardDescription>Jalon</CardDescription>
             <CardTitle className="stat">
               {finished}
               <small> / {milestones.length} finis</small>
@@ -214,6 +206,20 @@ export default function Dashboard() {
           </CardFooter>
         </Card>
       </div>
+
+      <Card className="timeline-card" aria-labelledby="echeances">
+        <CardHeader>
+          <CardTitle id="echeances">Échéances à venir</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Timeline
+            day={day}
+            today={now}
+            selected={day}
+            onSelect={(d) => setDay(day === d ? now : d)}
+          />
+        </CardContent>
+      </Card>
 
       <div className="main-grid">
         <Card className="activity">

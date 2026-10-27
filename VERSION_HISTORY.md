@@ -5,6 +5,36 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.20.0 — 2026-10-27
+
+- **Type** : minor (branche `v3-dashboard` ; dépendance `lucide-react` 1.55.0 ;
+  champ facultatif `scheme` dans les messages d’aperçu ; aucune API ni donnée
+  serveur modifiée ; version actuelle `/` inchangée)
+- **Fichiers** : `app/v3/Studio.tsx`, `app/v3/studio/*` (StudioChat,
+  LibraryPanel, LayersPanel, Device, exportReact), `app/v3/Bubble.tsx`,
+  `app/v3/App.tsx`, `app/v3/Brief.tsx`, `app/v3/Dashboard.tsx`,
+  `app/v3/Timeline.tsx`, `app/v3/v3.css`,
+  `app/client/design/useComposeChat.ts` (logique extraite),
+  `app/client/design/ComposeChat.tsx`, `app/client/design/useComposition.ts`
+  (`restore`), `app/client/App.tsx` (aperçu clair/sombre),
+  `app/client/styles.css`, `package.json`, `tests/e2e/studio.spec.ts`
+- **Résumé** : studio Design v3 : chat Claude (35 %, séparateur
+  redimensionnable, modèle, contexte écran + sélection ciblée) et
+  glisser-déposer sur un état unique (`useComposition`, partagé avec
+  l’atelier actuel) ; bibliothèque des composants réels (recherche,
+  catégories, aperçu réel des variantes, manquants signalés) ; calques
+  (glisser, réordonner, changer de section, dupliquer, supprimer) et
+  propriétés contextuelles ; simulateur iPhone, Android, iPad, MacBook ou
+  libre (dimensions, poignée, rotation, zoom, points de rupture, plein écran,
+  clair/sombre, sélection ou interaction) ; proposition → aperçu → validation,
+  annuler/rétablir, écrans multiples, versions locales restaurables, export
+  React/TS. Fiche PFE : liens « Brief du professeur » et « Mon Notion »,
+  checklist en premier, 10 étapes numérotées avec emoji, résumé, détail et
+  statut manuel persistant, frise verticale remplie au défilement.
+  Navigation : pictos Lucide, « Contexte & Assistant » retiré du menu, bulle
+  Claude globale (même historique). Dashboard : KPI sous le titre puis frise
+  Passé / À venir (date ≠ validation), espacements ≥ 10 px.
+
 ## 2.19.0 — 2026-10-27
 
 - **Type** : minor (branche `v3-dashboard` ; nouvelle page `/v3?vue=brief` ;

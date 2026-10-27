@@ -864,7 +864,7 @@ test('bulle Claude : toutes les pages, contexte, clavier, glisser, position mém
   ).toBeVisible();
 });
 
-test('v3 : dashboard compact, frise, liste des tâches, thème, fiche PFE', async ({
+test('v3 : dashboard, frise temporelle, liste des tâches, thème', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -873,11 +873,21 @@ test('v3 : dashboard compact, frise, liste des tâches, thème, fiche PFE', asyn
     page.getByRole('heading', { name: 'Récapitulatif des échéances PFE' }),
   ).toBeVisible();
   await expect(page.locator('html')).toHaveClass(/dark/);
-  // Page desktop sans défilement.
   expect(
     await page.evaluate(() => document.documentElement.scrollHeight),
   ).toBeLessThanOrEqual(900);
-  // Frise : un jalon prévisualise sa date, un second clic revient à aujourd'hui.
+  // KPI avant la frise ; la frise n'affiche que Passé / À venir.
+  const kpi = await page.getByText('Tâches à réaliser').boundingBox();
+  const frise = await page.getByText('Échéances à venir').boundingBox();
+  expect(kpi!.y).toBeLessThan(frise!.y);
+  await expect(page.locator('.timeline .badge')).toHaveText([
+    'Passé',
+    'À venir',
+    'À venir',
+    'À venir',
+    'À venir',
+    'À venir',
+  ]);
   const fin = page.getByRole('button', { name: /^Fin du DS/ });
   await fin.click();
   await expect(
@@ -885,35 +895,118 @@ test('v3 : dashboard compact, frise, liste des tâches, thème, fiche PFE', asyn
   ).toBeVisible();
   await fin.click();
   await expect(fin).toHaveAttribute('aria-pressed', 'false');
-  // Liste réelle des tâches depuis la carte.
   await page.getByRole('button', { name: 'Voir la liste des tâches' }).click();
   await expect(page.getByRole('region', { name: 'Tâches' })).toContainText(
     'Recherche utilisateurs',
   );
   await page.keyboard.press('Escape');
   await expect(page.getByRole('region', { name: 'Tâches' })).toHaveCount(0);
-  // Thème clair mémorisé.
+  // Menu : pictos, pas de « Contexte & Assistant » ; bulle Claude partout.
+  await expect(page.locator('.sidebar')).not.toContainText('Contexte');
+  await expect(page.locator('.sidebar nav svg')).toHaveCount(4);
+  await page.getByRole('button', { name: 'Ouvrir le chat Claude' }).click();
+  await expect(page.getByRole('dialog', { name: 'Chat Claude' })).toContainText(
+    'Contexte : Dashboard',
+  );
+  await page
+    .getByRole('button', { name: 'Fermer le chat', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Clair' }).click();
   await page.reload();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
-  // Fiche PFE : résumé visible, détail à la demande, checklist modifiable.
-  await page.locator('.sidebar a', { hasText: 'Brief projet' }).click();
-  await expect(page.getByRole('heading', { name: 'Fiche PFE' })).toBeFocused();
-  const objectifs = page.locator('.sheet-section', { hasText: 'Objectifs' });
-  await objectifs.getByRole('button', { name: 'Voir le détail' }).click();
-  await expect(objectifs).toContainText('Préparation progressive');
-  await expect(
-    page.getByRole('combobox', { name: /^Statut : Recherche utilisateurs/ }),
-  ).toHaveCount(0);
-  const checklist = page.locator('.sheet-section', { hasText: 'Checklist' });
-  await checklist.getByRole('button', { name: 'Voir le détail' }).click();
-  await expect(checklist.getByRole('combobox')).toHaveCount(9);
-  // Autres pages annoncées mais désactivées ; la version actuelle reste là.
-  await expect(
-    page.locator('.sidebar a', { hasText: 'Accueil' }),
-  ).toHaveAttribute('aria-disabled', 'true');
   await page.getByRole('link', { name: 'Version actuelle' }).click();
   await expect(
     page.getByRole('heading', { name: 'Tableau de bord' }),
   ).toBeVisible();
+});
+
+test('v3 : fiche PFE, checklist d’abord, statuts d’étape persistants', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/v3?vue=brief');
+  await expect(page.getByRole('heading', { name: 'Fiche PFE' })).toBeVisible();
+  for (const name of ['Brief du professeur', 'Mon Notion'])
+    await expect(page.getByRole('link', { name })).toHaveAttribute(
+      'target',
+      '_blank',
+    );
+  const checklist = await page
+    .getByRole('heading', { name: 'Checklist' })
+    .boundingBox();
+  const first = await page
+    .getByRole('heading', { name: /Présentation/ })
+    .boundingBox();
+  expect(checklist!.y).toBeLessThan(first!.y);
+  await expect(page.locator('.steps > li')).toHaveCount(10);
+  const status = page.getByRole('combobox', { name: 'Statut : Objectifs' });
+  await status.selectOption('doing');
+  await page.reload();
+  await expect(status).toHaveValue('doing');
+  const objectifs = page.locator('.step', { hasText: 'Objectifs' });
+  await objectifs.getByRole('button', { name: 'Voir le détail' }).click();
+  await expect(objectifs).toContainText('Préparation progressive');
+});
+
+test('v3 : studio Design, glisser-déposer, appareils, export', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/v3?vue=design');
+  await expect(page.getByRole('heading', { name: 'Claude' })).toBeVisible();
+  const frame = page.frameLocator('iframe[title="Aperçu de l’écran"]');
+  await expect(frame.locator('.cmp-page')).toBeVisible();
+  const items = await frame.locator('.cmp-item').count();
+  // Bibliothèque → glisser un badge sur la section « Ateliers » des calques.
+  await page.getByRole('button', { name: 'Bibliothèque' }).click();
+  const badge = page.locator('.library-list li', { hasText: 'Badge' }).first();
+  await page.getByRole('button', { name: 'Calques et propriétés' }).click();
+  await page.getByRole('button', { name: 'Bibliothèque' }).click();
+  await expect(badge).toBeVisible();
+  // Ajout au clavier, équivalent du glisser-déposer.
+  await page
+    .getByRole('button', { name: 'Ajouter Badge', exact: true })
+    .click();
+  await expect(frame.locator('.cmp-item')).toHaveCount(items + 1);
+  await page.getByRole('button', { name: 'Annuler' }).click();
+  await expect(frame.locator('.cmp-item')).toHaveCount(items);
+  // Calques : glisser un bloc d'une section à l'autre.
+  await page.getByRole('button', { name: 'Calques et propriétés' }).click();
+  const tree = page.locator('.tree');
+  const nav = tree.locator('.tree-row', { hasText: 'Navigation' });
+  const ateliers = tree.locator('.tree-section').nth(1);
+  await nav.dragTo(ateliers);
+  await expect(ateliers).toContainText('Navigation');
+  await page.getByRole('button', { name: 'Annuler' }).click();
+  // Sélection dans l'aperçu → propriétés et ciblage du chat.
+  await frame.locator('.cmp-item').first().click();
+  await expect(page.getByRole('region', { name: 'Propriétés' })).toBeVisible();
+  await expect(page.getByText(/^Cibler :/)).toBeVisible();
+  // Appareils : écran conservé, rotation.
+  await page.getByRole('combobox', { name: 'Appareil' }).selectOption('tablet');
+  await expect(page.getByRole('spinbutton', { name: 'Largeur' })).toHaveValue(
+    '820',
+  );
+  await page.getByRole('button', { name: 'Pivoter' }).click();
+  await expect(page.getByRole('spinbutton', { name: 'Largeur' })).toHaveValue(
+    '1180',
+  );
+  await expect(frame.locator('.cmp-item')).toHaveCount(items);
+  // IA → aperçu → validation → calques (composeur simulé côté serveur).
+  await page
+    .getByRole('textbox', { name: 'Message à Claude' })
+    .fill('Place une grande card à gauche, trois petites à droite');
+  await page.getByRole('button', { name: 'Envoyer' }).click();
+  await expect(page.getByRole('region', { name: 'Proposition' })).toBeVisible();
+  await expect(page.getByText('Proposition', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Appliquer' }).click();
+  await expect(page.getByRole('region', { name: 'Proposition' })).toHaveCount(
+    0,
+  );
+  await expect(tree).toContainText('Carte atelier');
+  // Export React/TS avec les composants du DS.
+  await page.getByRole('button', { name: 'Exporter en React' }).click();
+  await expect(page.getByRole('dialog')).toContainText(
+    "from './DesignSystem.js'",
+  );
 });

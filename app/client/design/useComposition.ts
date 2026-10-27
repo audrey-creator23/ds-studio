@@ -262,6 +262,14 @@ export function useComposition() {
         return c;
       });
     },
+    // Restaure une version enregistrée dans le brouillon (annulable).
+    restore(version: Composition) {
+      const next = normalizeComposition(version);
+      if (!next) return;
+      update(() => next);
+      setSelected(undefined);
+      setNotice('Version restaurée dans le brouillon. Annulable.');
+    },
     rename(name: string) {
       update((c) => ({ ...c, name }));
     },
