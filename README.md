@@ -152,7 +152,7 @@ Inspirez-vous des deux skills fournis, sans copier vos identifiants ou vos conve
 | Import/export JSON local                                            | **TESTED**, API + navigateur                                                                       |
 | Chat Codex, JSON proposé avant acceptation                          | **TESTED**, CLI 0.164.0, compte enseignant disponible pendant la qualification ; quota non garanti |
 | Claude Code / Gemini dans l’application                             | **NOT IMPLEMENTED**, adaptateurs indisponibles et contrat documenté                                |
-| Figma MCP et synchronisation                                        | **NOT IMPLEMENTED**, statut non connecté, contrat et procédure future documentés                   |
+| Figma MCP et synchronisation                                        | **PARTIAL** : comparaison, import et plan d’écriture testés sur fixtures ; aucun Figma réel testé  |
 | Skills et harness personnalisable                                   | **IMPLEMENTED**, structure et liens vérifiés ; pas une validation des choix d’un étudiant          |
 | Qualification automatisée Windows / macOS                           | **TESTED en CI** pour API, navigateur et contrôleur ; **PARTIAL** pour Finder/WSH natifs           |
 | Application desktop installable                                     | **NOT IMPLEMENTED**, application web locale uniquement                                             |
@@ -179,8 +179,9 @@ Détails et limites : [SECURITY](docs/SECURITY.md), [AGENTS](docs/AGENT_ADAPTERS
 
 Figma reste la source de vérité du DS réel de votre PFE. Lisière est un exemple local,
 pas une copie de votre fichier. Aucun fichier personnel autorisé n’a été fourni ;
-aucun accès Figma n’a été tenté. Les clients tiers MCP doivent être autorisés par Figma.
-Pas de contournement ni réutilisation de session : [contrat d’intégration](docs/FIGMA.md).
+Les clients tiers MCP doivent être autorisés par Figma : l’application reste non connectée.
+Votre agent externe (client autorisé) peut lire et comparer via le skill `figma-sync`
+et `npm run figma` ; écriture seulement après validation liée à un hash. [FIGMA](docs/FIGMA.md).
 
 ## Vérifier et développer
 

@@ -14,8 +14,9 @@ Les couleurs sont `#RRGGBB` ; les dimensions sont des nombres de 0 à 128, conve
 en pixels CSS ; les familles sont `system-ui`, `Arial`, `Georgia` ou `Verdana`.
 Pas d’alias, de thèmes, d’alpha ou d’unités composées dans ce format. Ce format reprend les noms
 `$type/$value` mais ne prétend pas implémenter toute la spécification DTCG (notamment
-la représentation normative de couleur et dimension). Aucun convertisseur Figma
-n’est fourni. Un export de plugin tiers doit être converti explicitement.
+la représentation normative de couleur et dimension). Le convertisseur Figma
+(`npm run figma -- pull`, voir [FIGMA](FIGMA.md)) suit un mapping explicite et refuse
+alpha et valeurs hors format. Un export de plugin tiers doit être converti explicitement.
 
 ## Importer une palette
 

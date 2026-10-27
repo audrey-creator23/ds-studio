@@ -1,9 +1,9 @@
 # Figma : source de vérité réelle, pas intégration simulée
 
-**V2 : NOT IMPLEMENTED / non connecté.** Aucune authentification, lecture ou écriture
-Figma n’a été réalisée. Aucun fichier explicitement autorisé n’a été fourni. Les
-outils Figma présents dans une session de développement ne sont pas distribués
-avec ce starter et ne constituent pas une connexion de l’application.
+**2.1 : PARTIAL.** L’application reste **non connectée** à Figma (`figmaStatus`
+inchangé). La comparaison, le convertisseur, le plan d’écriture et ses vérifications
+sont implémentés et **testés sur fixtures** (`tests/figma.test.ts`). Aucune lecture
+ni écriture sur un vrai fichier Figma n’a encore été réalisée.
 
 La [documentation Figma officielle du serveur distant](https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/)
 indique que seuls les clients du catalogue autorisé peuvent se connecter. Un
@@ -11,20 +11,35 @@ nouveau client doit passer par la procédure d’admission. DS-Studio n’est pa
 client autorisé. Ne jamais usurper un client, extraire un jeton, réutiliser une session
 Codex ou recopier des cookies pour contourner cette restriction.
 
-## Parcours réaliste aujourd’hui
+## Parcours 2.1 : agent externe autorisé + contrôleur local
 
-1. Garder votre DS réel dans Figma et identifier son périmètre de travail.
-2. Exporter volontairement des données non sensibles par un moyen autorisé dont
-   vous contrôlez les droits. Ne pas confondre un export de composants avec leur
-   comportement responsive dans du code.
-3. Convertir explicitement les tokens vers le [format local](TOKENS.md), puis importer
-   le fichier dans DS-Studio et accepter le diff. V2 ne fournit pas ce convertisseur.
-4. Tester vos décisions localement. Exporter les tokens courants pour documenter un
-   rapprochement manuel avec Figma. L’export ne modifie pas votre fichier Figma.
+```
+Figma ──MCP officiel (OAuth de l’étudiant)──▶ agent externe ──snapshot.json──▶ npm run figma
+                                                                                │
+   Figma ◀── écriture bornée (après hash validé + verify before) ◀── push-plan.json
+   DS-Studio ◀── Importer un JSON → diff → validation ◀── figma-import.tokens.json
+```
 
-Le JSON local constitue le mode autonome démontré, pas une synchronisation bidirectionnelle.
-Les plans, limites et droits d’édition réels devront être contrôlés pour chaque étudiant.
-Pas de polling automatique Figma prévu et aucune gratuité permanente promise.
+1. **Authentification** : l’étudiant connecte le serveur MCP Figma officiel dans son
+   client (Claude Code, Codex…) avec son propre compte. DS-Studio ne voit aucun jeton.
+2. **Cible** : copier `workspace/figma.config.example.json` vers
+   `workspace/private/figma/config.json` (ignoré par Git), renseigner `fileKey`, `nodeId`
+   et le mapping explicite variables → tokens, composants Figma → composants locaux.
+3. **Lecture** : l’agent écrit `snapshot.json` à partir de `get_variable_defs` et
+   `get_metadata`. `npm run figma -- compare` refuse toute autre cible et classe chaque
+   token : `same`, `different`, `missing`, `invalid` (alpha, unité, police hors liste).
+4. **Figma → DS-Studio** : `npm run figma -- pull` produit un fichier complet à importer
+   par l’interface. Le diff et la validation restent ceux du mode manuel.
+5. **DS-Studio → Figma** : `npm run figma -- plan` crée un plan haché (cible, lecture,
+   valeurs `from → to`). L’étudiant valide en citant le hash. `verify before` sur une
+   lecture fraîche refuse un changement concurrent ; l’agent écrit seulement ces
+   variables ; `verify after` relit. `audit.jsonl` garde la trace, sans secret.
+
+Procédure complète : `.agents/skills/figma-sync/SKILL.md`. Les composants sont
+**comparés par nom** seulement ; aucune écriture de composant n’est prévue.
+Limite : la validation par hash est une procédure de l’agent, pas une barrière
+technique. Les permissions d’écriture réelles restent celles du client MCP.
+Travailler d’abord sur une copie de test du fichier.
 
 ## Intégration future : contrat, pas code opérationnel
 

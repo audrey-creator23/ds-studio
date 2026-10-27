@@ -1,0 +1,30 @@
+{
+  "fileKey": "REMPLACERparVOTREfileKey",
+  "nodeId": "0:1",
+  "variables": {
+    "color/brand": "color.brand",
+    "color/brand-hover": "color.brandHover",
+    "color/on-brand": "color.onBrand",
+    "color/surface": "color.surface",
+    "color/canvas": "color.canvas",
+    "color/text": "color.text",
+    "color/muted": "color.muted",
+    "color/border": "color.border",
+    "color/danger": "color.danger",
+    "color/success": "color.success",
+    "color/focus": "color.focus",
+    "font/family": "font.family",
+    "font/body": "font.body",
+    "font/heading": "font.heading",
+    "space/sm": "space.sm",
+    "space/md": "space.md",
+    "space/lg": "space.lg",
+    "radius/control": "radius.control"
+  },
+  "components": {
+    "Button": "Button",
+    "Booking card": "BookingCard",
+    "Form": "ExampleForm",
+    "Navigation": "Navigation"
+  }
+}

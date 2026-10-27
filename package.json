@@ -1,6 +1,6 @@
 {
   "name": "ds-studio",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "description": "Starter pédagogique local pour explorer et faire évoluer un Design System.",
@@ -19,6 +19,7 @@
     "test:e2e": "playwright test",
     "test:live": "tsx scripts/check-codex.ts",
     "scan": "node scripts/scan-public.mjs",
+    "figma": "tsx scripts/figma-sync.ts",
     "doctor": "node scripts/doctor.mjs",
     "qualify": "node scripts/qualify-local.mjs",
     "qualify:live": "node scripts/qualify-local.mjs --with-codex",

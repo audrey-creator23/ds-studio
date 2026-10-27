@@ -5,6 +5,18 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.1.0 — 2026-10-27
+
+- **Type** : minor (fonctionnalité compatible, schéma de tokens inchangé)
+- **Fichiers** : `connectors/figma/sync.ts`, `scripts/figma-sync.ts`,
+  `tests/figma.test.ts`, `.agents/skills/figma-sync/SKILL.md`,
+  `workspace/figma.config.example.json`, `docs/FIGMA.md`, `docs/TOKENS.md`,
+  `README.md`, `AGENTS.md`, `package.json`, `package-lock.json`
+- **Résumé** : synchronisation Figma via le MCP officiel de l’agent externe :
+  comparaison tokens/composants sur cible autorisée, import par le diff local,
+  plan d’écriture haché vérifié avant/après, skill `figma-sync`. Testé sur
+  fixtures ; aucun fichier Figma réel testé.
+
 ## 2.0.0 — 2026-10-27
 
 - **Type** : version de départ
