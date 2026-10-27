@@ -1,6 +1,7 @@
-import { memo, type CSSProperties } from 'react';
+import { memo, useState, type CSSProperties } from 'react';
+import VolcanoGL, { webglAvailable } from './VolcanoGL.js';
 
-// Volcan en deux calques SVG. Le calque statique (relief, texture, lumière)
+// Version légère : volcan en deux calques SVG. Le calque statique (relief, texture, lumière)
 // n'est jamais animé : le navigateur ne le redessine pas. Le calque vivant
 // n'anime que transform, opacity et stroke-dashoffset, peu coûteux.
 // `activity` (0 → 1) suit les dates du projet, pas l'avancement des tâches.
@@ -420,15 +421,35 @@ export const levels = [
 ] as const;
 export const levelOf = (a: number) => levels.find(([min]) => a >= min)![1];
 
-export default function Volcano({ activity }: { activity: number }) {
+export type VolcanoQuality = 'realistic' | 'light';
+
+// Rendu réaliste (WebGL) par défaut ; version SVG légère au choix ou si
+// WebGL est indisponible.
+export default function Volcano({
+  activity,
+  quality = 'realistic',
+}: {
+  activity: number;
+  quality?: VolcanoQuality;
+}) {
+  const [failed, setFailed] = useState(() => !webglAvailable());
+  const [onFail] = useState(() => () => setFailed(true));
+  const realistic = quality === 'realistic' && !failed;
   return (
     <div
-      className="volcano-stage"
+      className={`volcano-stage${realistic ? ' is-realistic' : ''}`}
       role="img"
       aria-label={`Volcan, intensité ${Math.round(activity * 100)} % : ${levelOf(activity)}`}
+      data-render={realistic ? 'webgl' : 'svg'}
     >
-      <VolcanoStatic activity={activity} />
-      <VolcanoLive activity={activity} />
+      {realistic ? (
+        <VolcanoGL activity={activity} onFail={onFail} />
+      ) : (
+        <>
+          <VolcanoStatic activity={activity} />
+          <VolcanoLive activity={activity} />
+        </>
+      )}
     </div>
   );
 }

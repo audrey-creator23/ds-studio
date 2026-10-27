@@ -1,4 +1,6 @@
-import { Card, Toggle } from './Card.js';
+import { Card, Surface, Toggle } from './Card.js';
+import { StatusSummary, TaskProgress } from './ui.js';
+import { statusOf, tasks } from '../shared/tasks.js';
 import Masonry from './Masonry.js';
 import { useTasks } from './useTasks.js';
 import type { Page } from './Sidebar.js';
@@ -13,12 +15,6 @@ import {
   timeProgress,
   today,
 } from '../shared/brief.js';
-import {
-  statusLabels,
-  statusOf,
-  taskStatuses,
-  tasks,
-} from '../shared/tasks.js';
 
 // Accueil : chaque indicateur n'apparaît qu'une fois, à l'endroit le plus utile.
 const destinations: {
@@ -104,26 +100,8 @@ export default function HomePage({ onPage }: { onPage: (p: Page) => void }) {
       <Masonry className="home-grid">
         <Card emoji="✅" title="Avancement" className="size-m">
           <p className="card-figure">{state ? `${done} %` : '…'}</p>
-          <div
-            className="progress"
-            role="progressbar"
-            aria-label="Tâches faites ou validées"
-            aria-valuenow={done}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span style={{ width: `${done}%` }} />
-          </div>
-          <p className="status-summary">
-            {taskStatuses.map((s) => (
-              <span key={s} className={`status-tag status-${s}`}>
-                {statusLabels[s]} ·{' '}
-                {state
-                  ? tasks.filter((t) => statusOf(state, t.id) === s).length
-                  : 0}
-              </span>
-            ))}
-          </p>
+          <TaskProgress value={done} />
+          <StatusSummary state={state} />
           <Toggle label={`Voir les ${milestones.length} jalons`}>
             <ul className="card-list">
               {milestones.map((m, i) => (
@@ -169,16 +147,11 @@ export default function HomePage({ onPage }: { onPage: (p: Page) => void }) {
         </Card>
         <Card emoji="⏳" title="Temps restant" className="size-m">
           <p className="card-figure">{remaining} jours</p>
-          <div
-            className="progress progress-time"
-            role="progressbar"
-            aria-label="Période écoulée"
-            aria-valuenow={Math.round(timeProgress(now) * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span style={{ width: `${timeProgress(now) * 100}%` }} />
-          </div>
+          <TaskProgress
+            value={Math.round(timeProgress(now) * 100)}
+            label="Période écoulée"
+            tone="gray"
+          />
           <p className="card-summary">
             Du {milestones[0].label} au{' '}
             {milestones[milestones.length - 1].label}
@@ -199,10 +172,11 @@ export default function HomePage({ onPage }: { onPage: (p: Page) => void }) {
       </Masonry>
       <nav className="home-nav" aria-label="Pages de DS-Studio">
         {destinations.map((d) => (
-          <button
+          <Surface
             key={d.page}
+            component="button"
             type="button"
-            className="card nav-card"
+            className="nav-card"
             onClick={() => onPage(d.page)}
           >
             <span className="card-emoji" aria-hidden="true">
@@ -210,7 +184,7 @@ export default function HomePage({ onPage }: { onPage: (p: Page) => void }) {
             </span>
             <strong>{d.title}</strong>
             <span>{d.description}</span>
-          </button>
+          </Surface>
         ))}
       </nav>
     </section>

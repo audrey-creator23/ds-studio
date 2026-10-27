@@ -1,4 +1,6 @@
+import { Button } from '@mantine/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocalStorage } from '@mantine/hooks';
 import { ComponentSheet, Scenario } from './DesignSystem.js';
 import { CompositionView } from './design/CompositionView.js';
 import { useComposition } from './design/useComposition.js';
@@ -17,6 +19,8 @@ import Sidebar, {
 import HomePage from './HomePage.js';
 import VolcanoDashboard from './VolcanoDashboard.js';
 import AssistantPage from './AssistantPage.js';
+import ChatBubble from './ChatBubble.js';
+import { AssistantProvider } from './useAssistantChat.js';
 import Logo from './Logo.js';
 import ProjectContent from './ProjectContent.js';
 import { useDesignDraft } from './design/useDesignDraft.js';
@@ -198,6 +202,11 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [collapsed, setCollapsed] = useLocalStorage({
+    key: 'ds-studio-sidebar-collapsed',
+    defaultValue: false,
+    getInitialValueInEffect: false,
+  });
   // Accueil par défaut ; ?vue=… garde la page affichée au rechargement.
   const [page, setPage] = useState<Page>(() => {
     const raw = new URLSearchParams(location.search).get('vue');
@@ -394,14 +403,14 @@ export default function App() {
                 disabled={thinking}
               />
             </label>
-            <button
-              className="studio-primary"
+            <Button
+              type="submit"
               disabled={
                 thinking || !message.trim() || !selectedAgent?.available
               }
             >
               {thinking ? 'Réflexion en cours…' : 'Envoyer à Codex'}
-            </button>
+            </Button>
             {thinking && (
               <button type="button" onClick={() => controller.current?.abort()}>
                 Arrêter
@@ -413,7 +422,7 @@ export default function App() {
     </>
   );
   return (
-    <>
+    <AssistantProvider page={page}>
       <a
         className="skip-link"
         href="#ds-title"
@@ -437,6 +446,8 @@ export default function App() {
           current={page}
           onPage={setPage}
           figmaLabel={boot?.figma.label ?? 'Figma non connecté'}
+          collapsed={collapsed}
+          onCollapse={setCollapsed}
         />
         <div className="shell-main">
           <header className="topbar">
@@ -652,15 +663,16 @@ export default function App() {
           >
             Ne pas appliquer
           </button>
-          <button
-            className="studio-primary"
+          <Button
+            type="submit"
             onClick={() => void accept()}
             disabled={saving || staleProposal}
           >
             {saving ? 'Enregistrement…' : 'Valider et enregistrer'}
-          </button>
+          </Button>
         </div>
       </dialog>
-    </>
+      <ChatBubble page={page} onPage={setPage} />
+    </AssistantProvider>
   );
 }

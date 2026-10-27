@@ -5,6 +5,43 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.15.0 — 2026-10-27
+
+- **Type** : minor (dépendances `@mantine/core` et `@mantine/hooks` 9.6.3 ;
+  champ facultatif `page` sur `/api/assistant` ; six nouveaux blocs de
+  composition ; tokens Lisière, historique et données existantes inchangés)
+- **Fichiers** : `package.json`, `package-lock.json`, `vite.config.ts`,
+  `app/client/theme.ts`, `app/client/ui.tsx`, `app/client/main.tsx`,
+  `app/client/Card.tsx`, `app/client/Sidebar.tsx`, `app/client/App.tsx`,
+  `app/client/HomePage.tsx`, `app/client/ProjectBrief.tsx`,
+  `app/client/ProjectContent.tsx`, `app/client/VolcanoDashboard.tsx`,
+  `app/client/Volcano.tsx`, `app/client/VolcanoGL.tsx`,
+  `app/client/AssistantPage.tsx`, `app/client/ChatConversation.tsx`,
+  `app/client/ChatBubble.tsx`, `app/client/useAssistantChat.tsx`,
+  `app/client/design/*` (ComposeWorkspace, ComposeChat, CompositionView,
+  MantineBlocks, Simulator, TokenEditor), `app/client/styles.css`,
+  `app/shared/composition.ts`, `app/server/http.ts`, `tests/theme.test.ts`,
+  `tests/assistant.test.ts`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Mantine UI intégré avec un thème unique (`theme.ts`) : palette
+  Sunflower Gold → Rich Mahogany déclinée en échelles de 10 teintes, rôles
+  primary (Pure Red assombri, 5,5:1), accent (Atomic Tangerine), warning
+  (Sunflower Gold), danger (Tomato), surfaces chaudes ; contrastes WCAG
+  vérifiés par test. Variables `--ui-*` générées par le thème (plus de
+  doublons dans le CSS). Migration ciblée : cartes (Card), boutons
+  principaux (Button), barre latérale (NavLink, désormais rétractable et
+  mémorisée), onglets Bibliothèque/Structure (Tabs), progression (Progress),
+  statuts (Badge), rendu Volcan (SegmentedControl). Composants Mantine
+  personnalisés exposés dans la bibliothèque Design (Bouton, Badge, Alerte,
+  Progression, Champ, Onglets). Volcan réaliste en WebGL (shader écrit pour
+  le projet, sans dépendance) : relief éclairé, lave qui s’écoule, fumée,
+  braises et fontaine selon les dates du projet ; 30 i/s max, résolution
+  réduite, pause hors écran ; image fixe si `prefers-reduced-motion` ; version
+  légère SVG au choix ou si WebGL manque. Bulle Claude flottante sur toutes
+  les pages : panneau compact non modal, même historique que la page
+  Assistant, page affichée transmise à Claude (non enregistrée), déplaçable
+  à la souris, au doigt et aux flèches, position mémorisée et bornée à
+  l’écran, fermeture par Échap ou ✕. Clé API toujours côté serveur.
+
 ## 2.14.0 — 2026-10-27
 
 - **Type** : minor (nouvelles routes locales `/api/compositions`,

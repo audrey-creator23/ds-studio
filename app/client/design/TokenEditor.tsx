@@ -1,3 +1,5 @@
+import { Surface } from '../Card.js';
+import { Button } from '@mantine/core';
 import { useState } from 'react';
 import {
   contrast,
@@ -261,7 +263,11 @@ export default function TokenEditor({
     preview['color.onBrand'].$value,
   );
   return (
-    <section className="design-editor card" aria-labelledby="ds-title">
+    <Surface
+      component="section"
+      className="design-editor"
+      aria-labelledby="ds-title"
+    >
       <div className="editor-head">
         <h2 id="ds-title" tabIndex={-1}>
           Tokens
@@ -287,14 +293,13 @@ export default function TokenEditor({
           >
             Réinitialiser
           </button>
-          <button
+          <Button
             type="button"
-            className="studio-primary"
             disabled={!draft.changes.length || invalid > 0 || saving}
             onClick={onSave}
           >
             Enregistrer{count ? ` (${count})` : ''}
-          </button>
+          </Button>
         </div>
       </div>
       <p className="editor-status" role="status">
@@ -344,6 +349,6 @@ export default function TokenEditor({
           </details>
         )}
       </div>
-    </section>
+    </Surface>
   );
 }

@@ -1,4 +1,31 @@
 import { useId, useState, type ReactNode } from 'react';
+import { Card as MantineCard } from '@mantine/core';
+
+// Surface commune : la Card Mantine du thème (rayon md, ombre md, marge
+// --card-pad). Une seule définition pour toutes les cartes du chrome.
+export function Surface({
+  component = 'article',
+  className = '',
+  children,
+  ...rest
+}: {
+  component?: 'article' | 'details' | 'div' | 'button' | 'section';
+  className?: string;
+  children: ReactNode;
+} & Record<string, unknown>) {
+  return (
+    <MantineCard
+      component={component as 'article'}
+      className={`card ${className}`}
+      withBorder={false}
+      shadow="md"
+      padding="var(--card-pad)"
+      {...rest}
+    >
+      {children}
+    </MantineCard>
+  );
+}
 
 // Carte unique des pages Brief, Volcan et Assistant : mêmes marges, bordures,
 // rayon, titres et emoji à taille de titre. La taille suit le contenu.
@@ -14,7 +41,7 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <article className={`card ${className}`}>
+    <Surface className={className}>
       <h3 className="card-title">
         {emoji && (
           <span className="card-emoji" aria-hidden="true">
@@ -24,7 +51,7 @@ export function Card({
         {title}
       </h3>
       {children}
-    </article>
+    </Surface>
   );
 }
 
@@ -96,8 +123,9 @@ export function CollapsibleCard({
   children: ReactNode;
 }) {
   return (
-    <details
-      className={`card card-collapsible ${className}`}
+    <Surface
+      component="details"
+      className={`card-collapsible ${className}`}
       open={defaultOpen}
     >
       <summary className="card-title">
@@ -110,6 +138,6 @@ export function CollapsibleCard({
         {meta && <span className="card-meta">{meta}</span>}
       </summary>
       <div className="card-collapsible-body">{children}</div>
-    </details>
+    </Surface>
   );
 }

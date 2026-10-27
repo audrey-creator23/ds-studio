@@ -1,3 +1,5 @@
+import { Surface } from '../Card.js';
+import { Button } from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
 import { request } from '../api.js';
 import type { Composition } from '../../shared/composition.js';
@@ -70,7 +72,11 @@ export default function ComposeChat({ c }: { c: CompositionState }) {
     }
   }
   return (
-    <section className="compose-chat card" aria-labelledby="compose-title">
+    <Surface
+      component="section"
+      className="compose-chat"
+      aria-labelledby="compose-title"
+    >
       <div className="editor-head">
         <h2 id="compose-title">Claude</h2>
         <small className="compose-model">
@@ -131,13 +137,9 @@ export default function ComposeChat({ c }: { c: CompositionState }) {
               ))}
             </ul>
             <div className="inspector-row">
-              <button
-                type="button"
-                className="studio-primary"
-                onClick={c.applyProposal}
-              >
+              <Button type="button" onClick={c.applyProposal}>
                 Appliquer au brouillon
-              </button>
+              </Button>
               <button type="button" onClick={() => c.setProposal(undefined)}>
                 Refuser
               </button>
@@ -181,15 +183,12 @@ export default function ComposeChat({ c }: { c: CompositionState }) {
               Arrêter
             </button>
           ) : (
-            <button
-              className="studio-primary"
-              disabled={!available || !draft.trim()}
-            >
+            <Button type="submit" disabled={!available || !draft.trim()}>
               Composer
-            </button>
+            </Button>
           )}
         </div>
       </form>
-    </section>
+    </Surface>
   );
 }

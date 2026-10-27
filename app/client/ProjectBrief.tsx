@@ -1,3 +1,4 @@
+import { Button } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import type { ProjectSnapshot } from '../shared/project.js';
 import { downloadText, request } from './api.js';
@@ -86,9 +87,9 @@ export default function ProjectBrief() {
               )}
             </label>
           ))}
-          <button className="studio-primary" disabled={busy}>
+          <Button type="submit" disabled={busy}>
             {busy ? 'Enregistrement…' : 'Enregistrer le brief'}
-          </button>
+          </Button>
         </form>
       )}
       <button type="button" disabled={busy} onClick={() => void load()}>

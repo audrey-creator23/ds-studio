@@ -1,3 +1,5 @@
+import { Surface } from '../Card.js';
+import { Button, Tabs } from '@mantine/core';
 import type { Tokens } from '../../shared/model.js';
 import { blockSpecs } from '../../shared/composition.js';
 import type { ComponentConfig } from './componentSpecs.js';
@@ -33,8 +35,9 @@ export default function ComposeWorkspace({
   const count = c.draft.sections.reduce((n, s) => n + s.items.length, 0);
   return (
     <>
-      <div
-        className="compose-bar card"
+      <Surface
+        component="div"
+        className="compose-bar"
         role="toolbar"
         aria-label="Page composée"
       >
@@ -105,9 +108,8 @@ export default function ComposeWorkspace({
               Supprimer
             </button>
           )}
-          <button
+          <Button
             type="button"
-            className="studio-primary"
             disabled={!c.dirty || c.busy || !!c.proposal}
             title={
               c.proposal
@@ -117,9 +119,9 @@ export default function ComposeWorkspace({
             onClick={() => void c.save()}
           >
             {c.busy ? 'Enregistrement…' : 'Enregistrer la page'}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Surface>
       <div className="feedback" aria-live="polite">
         {c.error && (
           <p className="error" role="alert">
@@ -133,41 +135,36 @@ export default function ComposeWorkspace({
         )}
       </div>
       <div className="compose-layout">
-        <section
-          className="compose-panel card"
+        <Surface
+          component="section"
+          className="compose-panel"
           aria-label="Bibliothèque et structure"
         >
-          <div
-            className="sim-version compose-tabs"
-            role="group"
-            aria-label="Panneau"
+          <Tabs
+            className="compose-tabs"
+            value={panel}
+            onChange={(v) => v && onPanel(v as 'library' | 'structure')}
+            keepMounted={false}
           >
-            <button
-              type="button"
-              aria-pressed={panel === 'library'}
-              onClick={() => onPanel('library')}
-            >
-              Bibliothèque
-            </button>
-            <button
-              type="button"
-              aria-pressed={panel === 'structure'}
-              onClick={() => onPanel('structure')}
-            >
-              Structure
-            </button>
-          </div>
-          {panel === 'library' ? (
-            <Library
-              tokens={tokens}
-              target={target?.name}
-              onAdd={(kind, variant) => c.addItem(kind, variant)}
-              onAddSection={(layout, columns) => c.addSection(layout, columns)}
-            />
-          ) : (
-            <Structure c={c} tokens={tokens} />
-          )}
-        </section>
+            <Tabs.List grow aria-label="Panneau">
+              <Tabs.Tab value="library">Bibliothèque</Tabs.Tab>
+              <Tabs.Tab value="structure">Structure</Tabs.Tab>
+            </Tabs.List>
+            <Tabs.Panel value="library" pt="sm">
+              <Library
+                tokens={tokens}
+                target={target?.name}
+                onAdd={(kind, variant) => c.addItem(kind, variant)}
+                onAddSection={(layout, columns) =>
+                  c.addSection(layout, columns)
+                }
+              />
+            </Tabs.Panel>
+            <Tabs.Panel value="structure" pt="sm">
+              <Structure c={c} tokens={tokens} />
+            </Tabs.Panel>
+          </Tabs>
+        </Surface>
         <ComposeChat c={c} />
         <Simulator
           draftTokens={tokens}

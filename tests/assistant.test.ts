@@ -115,6 +115,22 @@ test('assistant : flux, contexte en lecture seule, historique persistant', async
   assert.equal(saved.messages.length, 4);
   assert.equal(saved.messages[1].text, 'Bonjour, **Audrey**.\nSources : Brief');
 
+  // Bulle : page affichée transmise à Claude, historique sans préfixe.
+  await lines(
+    await post('assistant', { message: 'Où en est-on ?', page: 'volcano' }),
+  );
+  assert.match(
+    calls[2].turns.at(-1)!.text,
+    /^\[Page affichée dans DS-Studio : Dashboard Volcan\]\n\nOù en est-on \?$/,
+  );
+  const after = JSON.parse(
+    await readFile(path.join(directory, 'assistant.json'), 'utf8'),
+  );
+  assert.equal(after.messages.at(-2).text, 'Où en est-on ?');
+  assert.equal(
+    (await post('assistant', { message: 'x', page: 'admin' })).status,
+    400,
+  );
   assert.equal((await post('assistant', { message: ' ' })).status, 400);
   assert.equal(
     (await post('assistant', { message: 'x'.repeat(9000) })).status,

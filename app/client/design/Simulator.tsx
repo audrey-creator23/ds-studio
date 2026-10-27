@@ -1,3 +1,4 @@
+import { Surface } from '../Card.js';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Tokens } from '../../shared/model.js';
 import type { ComponentConfig } from './componentSpecs.js';
@@ -171,7 +172,11 @@ export default function Simulator({
     }));
   };
   return (
-    <section className="design-sim card" aria-labelledby="mobile-title">
+    <Surface
+      component="section"
+      className="design-sim"
+      aria-labelledby="mobile-title"
+    >
       <div className="sim-head">
         <h2 id="mobile-title" tabIndex={-1}>
           Aperçu
@@ -358,6 +363,6 @@ export default function Simulator({
           />
         </div>
       </div>
-    </section>
+    </Surface>
   );
 }

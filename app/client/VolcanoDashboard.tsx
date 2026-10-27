@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { SegmentedControl } from '@mantine/core';
+import { useLocalStorage } from '@mantine/hooks';
+import { StatusSummary, TaskProgress } from './ui.js';
 import { useTasks } from './useTasks.js';
 import { Card } from './Card.js';
 import Masonry from './Masonry.js';
-import Volcano, { levelOf } from './Volcano.js';
+import Volcano, { levelOf, type VolcanoQuality } from './Volcano.js';
 import type { Page } from './Sidebar.js';
 import {
   daysBetween,
@@ -14,12 +17,7 @@ import {
   timeProgress,
   today,
 } from '../shared/brief.js';
-import {
-  statusLabels,
-  statusOf,
-  taskStatuses,
-  tasks,
-} from '../shared/tasks.js';
+import { statusOf, tasks } from '../shared/tasks.js';
 import { tokenKeys, type Tokens } from '../shared/model.js';
 
 const start = milestones[0].date;
@@ -36,6 +34,11 @@ export default function VolcanoDashboard({
   const { state, error } = useTasks();
   const now = today();
   const [day, setDay] = useState(now);
+  const [quality, setQuality] = useLocalStorage<VolcanoQuality>({
+    key: 'ds-studio-volcano-quality',
+    defaultValue: 'realistic',
+    getInitialValueInEffect: false,
+  });
   // Intensité du volcan : dates du projet. Avancement : tâches réalisées.
   const intensity = timeProgress(day);
   const done = progress(state);
@@ -47,12 +50,6 @@ export default function VolcanoDashboard({
   const late = statuses.filter((s) => s === 'late').length;
   const elapsed = Math.max(0, days(start, now));
   const total = days(start, end);
-  const counts = Object.fromEntries(
-    taskStatuses.map((s) => [
-      s,
-      state ? tasks.filter((t) => statusOf(state, t.id) === s).length : 0,
-    ]),
-  );
   return (
     <section className="page volcano-page" aria-labelledby="volcan-title">
       <header className="page-head">
@@ -65,6 +62,16 @@ export default function VolcanoDashboard({
             {milestones[milestones.length - 1].label}.
           </p>
         </div>
+        <SegmentedControl
+          className="volcano-quality"
+          aria-label="Rendu du volcan"
+          value={quality}
+          onChange={(v) => setQuality(v as VolcanoQuality)}
+          data={[
+            { value: 'realistic', label: 'Réaliste' },
+            { value: 'light', label: 'Léger' },
+          ]}
+        />
         <dl className="page-kpis">
           <div>
             <dt>Avancement du projet</dt>
@@ -79,7 +86,7 @@ export default function VolcanoDashboard({
       )}
       <div className="volcano-layout">
         <article className="volcano-hero">
-          <Volcano activity={intensity} />
+          <Volcano activity={intensity} quality={quality} />
           <p className="volcano-level">
             Intensité · {levelOf(intensity)}
             {day !== now && ` · au ${day}`}
@@ -118,23 +125,8 @@ export default function VolcanoDashboard({
         <Masonry className="volcano-cards">
           <Card emoji="✅" title="Tâches" className="size-full">
             <p className="card-figure">{state ? `${done} %` : '…'}</p>
-            <div
-              className="progress"
-              role="progressbar"
-              aria-label="Tâches faites ou validées"
-              aria-valuenow={done}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <span style={{ width: `${done}%` }} />
-            </div>
-            <p className="status-summary">
-              {taskStatuses.map((s) => (
-                <span key={s} className={`status-tag status-${s}`}>
-                  {statusLabels[s]} · {counts[s]}
-                </span>
-              ))}
-            </p>
+            <TaskProgress value={done} />
+            <StatusSummary state={state} />
             {state && (
               <>
                 <p className="card-subtitle">À faire ensuite</p>

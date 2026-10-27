@@ -1,4 +1,5 @@
 import { Card, Expandable, Toggle } from './Card.js';
+import { StatusSummary, TaskProgress } from './ui.js';
 import { useTasks } from './useTasks.js';
 import Masonry from './Masonry.js';
 import {
@@ -61,12 +62,6 @@ export function TimelineLegend() {
 
 export default function ProjectContent() {
   const { state, error, update } = useTasks();
-  const counts = Object.fromEntries(
-    taskStatuses.map((s) => [
-      s,
-      state ? tasks.filter((t) => statusOf(state, t.id) === s).length : 0,
-    ]),
-  ) as Record<TaskStatus, number>;
   const done = progress(state);
   const next = nextMilestone();
   return (
@@ -112,23 +107,8 @@ export default function ProjectContent() {
           </Expandable>
         </Card>
         <Card emoji="✅" title="Checklist" className="size-m brief-tasks">
-          <div
-            className="progress"
-            role="progressbar"
-            aria-label="Tâches faites ou validées"
-            aria-valuenow={done}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span style={{ width: `${done}%` }} />
-          </div>
-          <p className="status-summary">
-            {taskStatuses.map((s) => (
-              <span key={s} className={`status-tag status-${s}`}>
-                {statusLabels[s]} · {counts[s]}
-              </span>
-            ))}
-          </p>
+          <TaskProgress value={done} />
+          <StatusSummary state={state} />
           <Toggle label={`Voir les ${tasks.length} tâches`}>
             <p className="task-note">
               Statuts enregistrés sur ce poste uniquement.

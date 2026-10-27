@@ -1,4 +1,5 @@
 import type { CSSProperties, MouseEvent } from 'react';
+import { StatusSummary, TaskProgress } from '../ui.js';
 import type { Tokens } from '../../shared/model.js';
 import type { Composition, Item } from '../../shared/composition.js';
 import {
@@ -11,15 +12,10 @@ import {
   Navigation,
 } from '../DesignSystem.js';
 import { Card } from '../Card.js';
+import { MantineBlock } from './MantineBlocks.js';
 import { Timeline } from '../ProjectContent.js';
 import { useTasks } from '../useTasks.js';
 import { progress } from '../../shared/brief.js';
-import {
-  statusLabels,
-  statusOf,
-  taskStatuses,
-  tasks,
-} from '../../shared/tasks.js';
 
 function PlanningBlock() {
   const { state } = useTasks();
@@ -34,26 +30,8 @@ function ChecklistBlock() {
   const done = progress(state);
   return (
     <Card emoji="✅" title="Tâches">
-      <div
-        className="progress"
-        role="progressbar"
-        aria-label="Tâches faites ou validées"
-        aria-valuenow={done}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <span style={{ width: `${done}%` }} />
-      </div>
-      <p className="status-summary">
-        {taskStatuses.map((s) => (
-          <span key={s} className={`status-tag status-${s}`}>
-            {statusLabels[s]} ·{' '}
-            {state
-              ? tasks.filter((t) => statusOf(state, t.id) === s).length
-              : 0}
-          </span>
-        ))}
-      </p>
+      <TaskProgress value={done} />
+      <StatusSummary state={state} />
     </Card>
   );
 }
@@ -97,6 +75,8 @@ export function Block({ item }: { item: Item }) {
       return <PlanningBlock />;
     case 'checklist':
       return <ChecklistBlock />;
+    default:
+      return <MantineBlock item={item} />;
   }
 }
 

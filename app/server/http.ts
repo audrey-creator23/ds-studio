@@ -33,6 +33,16 @@ import {
 } from '../shared/composition.js';
 import type { RecordInfo } from '../../scripts/runtime.mjs';
 
+// Pages de l'interface, pour situer une question posée depuis la bulle.
+const pageKeys = ['home', 'workshop', 'assistant', 'brief', 'volcano'] as const;
+const pageLabels: Record<(typeof pageKeys)[number], string> = {
+  home: 'Accueil (tableau de bord)',
+  workshop: 'Design (composition et tokens)',
+  assistant: 'Contexte & Assistant',
+  brief: 'Brief du projet',
+  volcano: 'Dashboard Volcan',
+};
+
 export async function createStudioServer(options: {
   root: string;
   store: Store;
@@ -411,6 +421,7 @@ export async function createStudioServer(options: {
                 .trim()
                 .min(1)
                 .max(assistantLimits.messageChars),
+              page: z.enum(pageKeys).optional(),
             })
             .strict()
             .parse(body);
@@ -450,7 +461,16 @@ export async function createStudioServer(options: {
             let stopReason: string | null = null;
             for await (const event of assistant.stream(
               system,
-              [...history, asked],
+              [
+                ...history,
+                // Page affichée : précisée à Claude, absente de l'historique.
+                b.page
+                  ? {
+                      ...asked,
+                      text: `[Page affichée dans DS-Studio : ${pageLabels[b.page]}]\n\n${asked.text}`,
+                    }
+                  : asked,
+              ],
               controller.signal,
               await chat.model(),
             )) {

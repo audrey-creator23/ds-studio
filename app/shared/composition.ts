@@ -16,6 +16,12 @@ export const blockKinds = [
   'panel',
   'planning',
   'checklist',
+  'mButton',
+  'mBadge',
+  'mAlert',
+  'mProgress',
+  'mInput',
+  'mTabs',
 ] as const;
 export type BlockKind = (typeof blockKinds)[number];
 export const layouts = ['stack', 'row', 'grid'] as const;
@@ -32,8 +38,9 @@ export interface BlockSpec {
     | 'Formulaires'
     | 'Cartes'
     | 'Navigation'
-    | 'Suivi';
-  family: 'Lisière' | 'Studio';
+    | 'Suivi'
+    | 'Interface Mantine';
+  family: 'Lisière' | 'Studio' | 'Mantine';
   description: string;
   variants: [string, string][];
   sizes?: boolean;
@@ -170,6 +177,89 @@ export const blockSpecs: Record<BlockKind, BlockSpec> = {
     description: 'Avancement et répartition des tâches du PFE (Checklist).',
     variants: [['standard', 'Synthèse']],
     span: 2,
+  },
+  // Composants Mantine personnalisés par le thème du studio (palette
+  // Sunflower → Mahogany). Ils suivent le thème, pas les tokens Lisière.
+  mButton: {
+    label: 'Bouton Mantine',
+    category: 'Interface Mantine',
+    family: 'Mantine',
+    description: 'Bouton du thème studio (Mantine Button).',
+    variants: [
+      ['filled', 'Principal'],
+      ['light', 'Doux'],
+      ['outline', 'Contour'],
+      ['accent', 'Accent'],
+      ['danger', 'Danger'],
+    ],
+    sizes: true,
+    text: 'Continuer',
+    span: 1,
+  },
+  mBadge: {
+    label: 'Badge Mantine',
+    category: 'Interface Mantine',
+    family: 'Mantine',
+    description: 'Étiquette de statut du thème (Mantine Badge).',
+    variants: [
+      ['primary', 'Principal'],
+      ['accent', 'Accent'],
+      ['warning', 'Attention'],
+      ['danger', 'Danger'],
+    ],
+    sizes: true,
+    text: 'Nouveau',
+    span: 1,
+  },
+  mAlert: {
+    label: 'Alerte Mantine',
+    category: 'Interface Mantine',
+    family: 'Mantine',
+    description: 'Message d’information ou d’alerte (Mantine Alert).',
+    variants: [
+      ['info', 'Information'],
+      ['warning', 'Attention'],
+      ['danger', 'Erreur'],
+    ],
+    text: 'Les inscriptions ferment vendredi.',
+    span: 4,
+  },
+  mProgress: {
+    label: 'Progression Mantine',
+    category: 'Interface Mantine',
+    family: 'Mantine',
+    description: 'Barre de progression avec libellé (Mantine Progress).',
+    variants: [
+      ['primary', 'Principal'],
+      ['accent', 'Accent'],
+      ['warning', 'Attention'],
+    ],
+    text: 'Places réservées',
+    span: 2,
+  },
+  mInput: {
+    label: 'Champ Mantine',
+    category: 'Interface Mantine',
+    family: 'Mantine',
+    description: 'Champ texte ou liste du thème (TextInput, NativeSelect).',
+    variants: [
+      ['text', 'Texte'],
+      ['select', 'Liste'],
+    ],
+    text: 'Votre atelier',
+    span: 2,
+  },
+  mTabs: {
+    label: 'Onglets Mantine',
+    category: 'Interface Mantine',
+    family: 'Mantine',
+    description: 'Onglets de navigation locale (Mantine Tabs).',
+    variants: [
+      ['default', 'Soulignés'],
+      ['pills', 'Pastilles'],
+    ],
+    text: 'Ateliers, Agenda, Lieux',
+    span: 4,
   },
 };
 export const layoutLabels: Record<Layout, string> = {

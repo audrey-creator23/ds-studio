@@ -462,7 +462,20 @@ test('dashboard volcan : page secondaire, activité datée, frise et accès', as
   await expect(
     page.getByRole('img', { name: 'Volcan, intensité 100 % : Éruption' }),
   ).toBeVisible();
+  // Rendu réaliste WebGL par défaut, version légère SVG au choix, mémorisée.
+  const stage = page.locator('.volcano-stage');
+  await expect(stage).toHaveAttribute('data-render', 'webgl');
+  await expect(stage.locator('canvas')).toHaveCount(1);
+  await page.getByText('Léger', { exact: true }).click();
+  await expect(stage).toHaveAttribute('data-render', 'svg');
   await expect(page.locator('.vl-fountain')).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator('.volcano-stage')).toHaveAttribute(
+    'data-render',
+    'svg',
+  );
+  await page.getByText('Réaliste', { exact: true }).click();
+  await page.getByRole('button', { name: /12 mars · Fin du DS/ }).click();
   await page.getByRole('button', { name: 'Revenir à aujourd’hui' }).click();
   await page
     .getByRole('button', { name: 'Brief du projet', exact: true })
@@ -665,10 +678,12 @@ test('composition : bibliothèque, sélection dans l’aperçu, inspecteur, ordr
     page.getByRole('button', { name: 'Ajouter Bouton' }),
   ).toHaveCount(0);
   await page
-    .getByRole('combobox', { name: 'Variante Badge' })
+    .getByRole('combobox', { name: 'Variante Badge', exact: true })
     .selectOption('success');
-  await page.getByRole('button', { name: 'Ajouter Badge' }).click();
-  await page.getByRole('button', { name: 'Structure', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Ajouter Badge', exact: true })
+    .click();
+  await page.getByRole('tab', { name: 'Structure', exact: true }).click();
   await page.getByLabel('Texte', { exact: true }).fill('Nouveau');
   const badge = frame.locator('.ds-badge.success', { hasText: 'Nouveau' });
   await expect(badge).toBeVisible();
@@ -795,4 +810,56 @@ test('composition : Claude propose, l’aperçu montre, l’utilisatrice valide'
   await expect(page.getByText('Quel est l’objectif principal')).toBeVisible();
   await expect(proposal).toHaveCount(0);
   expect(await revision()).toBe(before);
+});
+
+test('bulle Claude : toutes les pages, contexte, clavier, glisser, position mémorisée', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/?vue=volcan');
+  const bubble = page.getByRole('button', { name: 'Ouvrir le chat Claude' });
+  await expect(bubble).toBeVisible();
+  await bubble.click();
+  const panel = page.getByRole('dialog', { name: 'Chat Claude' });
+  await expect(panel).toContainText('Contexte : Dashboard Volcan');
+  // Le contexte suit la page ; la conversation reste la même.
+  await page
+    .getByRole('navigation')
+    .getByRole('button', { name: 'Brief du projet' })
+    .click();
+  await expect(panel).toContainText('Contexte : Brief du projet');
+  await panel.getByRole('button', { name: 'Fermer le chat Claude' }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(bubble).toBeFocused();
+  await bubble.press('Enter');
+  await expect(panel).toBeVisible();
+  await panel.getByRole('button', { name: 'Plein écran' }).focus();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+  await expect(bubble).toBeFocused();
+  // Clavier : déplacement borné à l'écran.
+  const before = await bubble.boundingBox();
+  for (let i = 0; i < 40; i++) await page.keyboard.press('Shift+ArrowLeft');
+  const left = (await bubble.boundingBox())!;
+  expect(left.x).toBeLessThan(before!.x);
+  expect(left.x).toBeGreaterThanOrEqual(12);
+  // Glisser ne l'ouvre pas.
+  await page.mouse.move(left.x + 20, left.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(left.x + 220, left.y - 200, { steps: 6 });
+  await page.mouse.up();
+  await expect(panel).toHaveCount(0);
+  const moved = (await bubble.boundingBox())!;
+  await page.reload();
+  const kept = (await page
+    .getByRole('button', { name: 'Ouvrir le chat Claude' })
+    .boundingBox())!;
+  expect(Math.abs(kept.x - moved.x)).toBeLessThan(2);
+  expect(Math.abs(kept.y - moved.y)).toBeLessThan(2);
+  // « Plein écran » ouvre la page Assistant.
+  await page.getByRole('button', { name: 'Ouvrir le chat Claude' }).click();
+  await panel.getByRole('button', { name: 'Plein écran' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Contexte & Assistant' }),
+  ).toBeVisible();
 });

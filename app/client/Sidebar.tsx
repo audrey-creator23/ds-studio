@@ -3,6 +3,7 @@ import page from './icons/page.svg';
 import table from './icons/table.svg';
 import calendar from './icons/calendar.svg';
 import help from './icons/help.svg';
+import { NavLink, Tooltip } from '@mantine/core';
 import Logo from './Logo.js';
 
 // Pages : l'atelier reste monté (caché) quand une autre page s'affiche.
@@ -38,8 +39,41 @@ const projectPages = [
   { id: 'volcano', label: 'Dashboard Volcan', emoji: '🌋' },
 ] as const;
 
+// Lien de menu : NavLink Mantine ; réduit, le libellé passe en infobulle et
+// reste le nom accessible du bouton.
+function MenuItem({
+  label,
+  icon,
+  collapsed,
+  ...props
+}: {
+  label: string;
+  icon: React.ReactNode;
+  collapsed: boolean;
+  active?: boolean;
+  onClick: () => void;
+  'aria-current'?: 'page';
+  'aria-expanded'?: boolean;
+}) {
+  return (
+    <li>
+      <Tooltip label={label} position="right" disabled={!collapsed}>
+        <NavLink
+          component="button"
+          type="button"
+          className="sidebar-link"
+          label={label}
+          leftSection={icon}
+          {...props}
+        />
+      </Tooltip>
+    </li>
+  );
+}
+
 // Menu vertical du chrome, d'après le DS Figma de référence. Il n'utilise pas
-// les tokens éditables : seul le DS change avec eux.
+// les tokens éditables : seul le DS change avec eux. Rétractable sur grand
+// écran ; sous 1000 px il devient une barre horizontale.
 export default function Sidebar({
   revision,
   historyOpen,
@@ -47,6 +81,8 @@ export default function Sidebar({
   current,
   onPage,
   figmaLabel,
+  collapsed,
+  onCollapse,
 }: {
   revision: number;
   historyOpen: boolean;
@@ -54,34 +90,49 @@ export default function Sidebar({
   current: Page;
   onPage: (page: Page) => void;
   figmaLabel: string;
+  collapsed: boolean;
+  onCollapse: (collapsed: boolean) => void;
 }) {
   const pageButton = (
     p: (typeof mainPages)[number] | (typeof projectPages)[number],
   ) => (
-    <li key={p.id}>
-      <button
-        aria-current={current === p.id ? 'page' : undefined}
-        onClick={() => onPage(p.id)}
-      >
-        {'icon' in p ? (
+    <MenuItem
+      key={p.id}
+      label={p.label}
+      collapsed={collapsed}
+      active={current === p.id}
+      aria-current={current === p.id ? 'page' : undefined}
+      onClick={() => onPage(p.id)}
+      icon={
+        'icon' in p ? (
           <img src={p.icon} alt="" width="18" height="18" />
         ) : (
           <span className="sidebar-emoji" aria-hidden="true">
             {p.emoji}
           </span>
-        )}
-        {p.label}
-      </button>
-    </li>
+        )
+      }
+    />
   );
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar-account">
         <Logo />
-        <span>
+        <span className="sidebar-brand">
           <strong>DS-Studio</strong>
           <small>Atelier de Design System</small>
         </span>
+        <Tooltip label={collapsed ? 'Déplier le menu' : 'Réduire le menu'}>
+          <button
+            type="button"
+            className="sidebar-collapse"
+            aria-label={collapsed ? 'Déplier le menu' : 'Réduire le menu'}
+            aria-expanded={!collapsed}
+            onClick={() => onCollapse(!collapsed)}
+          >
+            <span aria-hidden="true">{collapsed ? '»' : '«'}</span>
+          </button>
+        </Tooltip>
       </div>
       <nav aria-label="Panneaux de l’atelier">
         <ul className="sidebar-menu">{mainPages.map(pageButton)}</ul>
@@ -89,19 +140,21 @@ export default function Sidebar({
         <ul className="sidebar-menu">{projectPages.map(pageButton)}</ul>
         <p className="sidebar-eyebrow">Suivi</p>
         <ul className="sidebar-menu">
-          <li>
-            <button onClick={onToggleHistory} aria-expanded={historyOpen}>
-              <img src={calendar} alt="" width="18" height="18" />
-              Historique · {revision}
-            </button>
-          </li>
+          <MenuItem
+            label={`Historique · ${revision}`}
+            collapsed={collapsed}
+            active={historyOpen}
+            aria-expanded={historyOpen}
+            onClick={onToggleHistory}
+            icon={<img src={calendar} alt="" width="18" height="18" />}
+          />
         </ul>
       </nav>
       <div className="sidebar-footer">
         <span className="local-badge">● Local · V2</span>
-        <span className="sidebar-status">
+        <span className="sidebar-status" title={figmaLabel}>
           <img src={help} alt="" width="18" height="18" />
-          {figmaLabel}
+          <span className="sidebar-status-label">{figmaLabel}</span>
         </span>
       </div>
     </aside>
