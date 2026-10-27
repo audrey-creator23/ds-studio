@@ -30,8 +30,8 @@ const destinations: {
   {
     page: 'workshop',
     emoji: '🎨',
-    title: 'Atelier',
-    description: 'Modifier les tokens et les composants',
+    title: 'Design',
+    description: 'Tokens, composants et aperçu en direct',
   },
   {
     page: 'brief',

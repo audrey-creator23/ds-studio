@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { postStream, request } from './api.js';
 import Markdown from './Markdown.js';
 import { Card } from './Card.js';
@@ -25,7 +25,13 @@ type StreamEvent =
     }
   | { type: 'error'; error: string };
 
-export default function AssistantPage() {
+export default function AssistantPage({
+  codex,
+  brief,
+}: {
+  codex: ReactNode;
+  brief: ReactNode;
+}) {
   const [info, setInfo] = useState<AssistantInfo>();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -235,6 +241,10 @@ export default function AssistantPage() {
           </form>
         </Card>
         <div className="assistant-side">
+          <div className="card assistant-brief">{brief}</div>
+          <Card emoji="🤖" title="Codex · propositions de tokens">
+            <div className="assistant-codex">{codex}</div>
+          </Card>
           <Card emoji="📚" title="Contexte consulté">
             <ul className="assistant-sources">
               {info?.sources.map((s) => (

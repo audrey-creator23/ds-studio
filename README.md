@@ -84,14 +84,16 @@ contenant des espaces est accepté. N’utilisez ni `sudo` ni installation de se
 
 ## Votre première boucle, en deux minutes
 
-1. L’outil s’ouvre sur l’**Accueil** (tableau de bord). Ouvrez l’**Atelier** (carte ou menu
-   « Tokens et composants » ; adresse directe `?vue=atelier`). Dans **Design System**,
-   choisissez `color.brand`, remplacez la valeur par `#8A3B20`.
-2. Cliquez **Proposer**. Le diff montre l’ancienne et la nouvelle valeur, sans écriture.
-3. Cliquez **Valider et enregistrer**. Boutons, réservation et navigation changent dans les deux vues.
-4. Testez la réservation, puis les viewports 320, 375, 430 et 1024 px (défilement horizontal si nécessaire).
+1. L’outil s’ouvre sur l’**Accueil**. Ouvrez **Design** (menu ou `?vue=design`).
+2. Dans **Couleurs**, remplacez `color.brand` par `#8A3B20` : l’aperçu se met à jour
+   immédiatement, rien n’est écrit sur disque (brouillon, annuler / rétablir).
+3. Cliquez **Enregistrer** : le diff montre l’ancienne et la nouvelle valeur.
+   **Valider et enregistrer** écrit la révision ; « Enregistré » montre la version sur disque.
+4. Dans l’aperçu, testez la réservation, les appareils (iPhone, iPad, desktop, personnalisé),
+   la poignée de redimensionnement et l’écran **Composants** (variantes, tailles, états).
 5. Rechargez ou redémarrez : la valeur reste. Dans **Historique**, annulez la révision,
    examinez son diff et validez. Les changements des autres tokens sont conservés.
+   Le chat Codex et le brief privé sont sur la page **Contexte & Assistant**.
 
 La propagation inter-vues utilise les valeurs enregistrées sur disque (diffusion
 locale et relecture, au plus environ 1,2 seconde sans diffusion). Aucun rafraîchissement

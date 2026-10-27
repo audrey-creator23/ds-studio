@@ -1,5 +1,11 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { tokenCss, type Tokens } from '../shared/model.js';
+import {
+  componentSpecs,
+  type ComponentConfig,
+  type ComponentSize,
+  type ComponentState,
+} from './design/componentSpecs.js';
 
 export function DSProvider({
   tokens,
@@ -14,36 +20,81 @@ export function DSProvider({
     </div>
   );
 }
+// `state` force un état (survol, focus) pour la planche de l'éditeur Design.
 export function Button({
   variant = 'primary',
+  size = 'md',
+  state = 'default',
   children,
   disabled = false,
   onClick,
 }: {
   variant?: 'primary' | 'secondary' | 'danger';
+  size?: ComponentSize;
+  state?: ComponentState;
   children: ReactNode;
   disabled?: boolean;
   onClick?: () => void;
 }) {
   return (
     <button
-      className={`ds-button ${variant}`}
-      disabled={disabled}
+      className={`ds-button ${variant} ${size} is-${state}`}
+      disabled={disabled || state === 'disabled'}
       onClick={onClick}
     >
       {children}
     </button>
   );
 }
-export function BookingCard() {
+export function Badge({
+  variant = 'neutral',
+  children,
+}: {
+  variant?: string;
+  children: ReactNode;
+}) {
+  return <span className={`ds-badge ${variant}`}>{children}</span>;
+}
+export function Field({
+  label,
+  type = 'text',
+  state = 'default',
+}: {
+  label: string;
+  type?: string;
+  state?: ComponentState;
+}) {
+  return (
+    <label className="ds-field">
+      {label}
+      <input
+        type={type}
+        placeholder={type === 'email' ? 'camille@example.com' : 'Camille'}
+        className={`is-${state}`}
+        disabled={state === 'disabled'}
+        aria-invalid={state === 'error' || undefined}
+      />
+      {state === 'error' && (
+        <small className="ds-error">Ce champ est obligatoire.</small>
+      )}
+    </label>
+  );
+}
+export function BookingCard({
+  variant = 'standard',
+  state = 'default',
+}: {
+  variant?: string;
+  state?: ComponentState;
+}) {
   const [booked, setBooked] = useState(false);
   return (
-    <article className="ds-card">
+    <article className={`ds-card ${variant} is-${state}`}>
       <div className="card-kicker">ATELIER · 45 MIN</div>
       <h3>Faire moins, mais mieux.</h3>
       <p>Un atelier pour imaginer des services plus attentifs au quotidien.</p>
       <div className="card-meta">
-        <span className="ds-badge">6 places disponibles</span>
+        <Badge>6 places disponibles</Badge>
         <span>Gratuit</span>
       </div>
       <Button onClick={() => setBooked(!booked)}>
@@ -95,8 +146,8 @@ export function ExampleForm() {
     </form>
   );
 }
-export function Navigation() {
-  const [tab, setTab] = useState('Découvrir');
+export function Navigation({ initial = 'Découvrir' }: { initial?: string }) {
+  const [tab, setTab] = useState(initial);
   return (
     <nav aria-label="Navigation du scénario" className="ds-nav">
       {['Découvrir', 'Favoris', 'Profil'].map((t) => (
@@ -118,41 +169,6 @@ export function Navigation() {
     </nav>
   );
 }
-export function Catalogue({ tokens }: { tokens: Tokens }) {
-  return (
-    <DSProvider tokens={tokens}>
-      <div className="catalogue">
-        <section>
-          <div className="section-label">01 / ACTIONS</div>
-          <h3>Un langage commun.</h3>
-          <p>Les mêmes tokens, du composant à l’écran.</p>
-          <div className="button-row">
-            <Button>Action principale</Button>
-            <Button variant="secondary">Secondaire</Button>
-            <Button variant="danger">Supprimer</Button>
-            <Button disabled>Indisponible</Button>
-          </div>
-          <p className="ds-caption">
-            Survolez, utilisez Tab et activez les boutons. Focus et états natifs
-            inclus.
-          </p>
-        </section>
-        <section>
-          <div className="section-label">02 / CONTENUS</div>
-          <BookingCard />
-        </section>
-        <section>
-          <div className="section-label">03 / SAISIE</div>
-          <ExampleForm />
-        </section>
-        <section>
-          <div className="section-label">04 / NAVIGATION</div>
-          <Navigation />
-        </section>
-      </div>
-    </DSProvider>
-  );
-}
 export function Scenario({
   tokens,
   scenario,
@@ -167,7 +183,7 @@ export function Scenario({
           <strong>
             lisière<span>®</span>
           </strong>
-          <span className="ds-badge">Bordeaux</span>
+          <Badge>Bordeaux</Badge>
         </header>
         <Navigation />
         <main>
@@ -196,6 +212,65 @@ export function Scenario({
           )}
         </main>
         <footer>lisière · Design System d’exemple fictif</footer>
+      </div>
+    </DSProvider>
+  );
+}
+
+// Planche de l'éditeur Design : le composant configuré, dans chacun de ses états.
+export function ComponentSheet({
+  tokens,
+  config,
+}: {
+  tokens: Tokens;
+  config: ComponentConfig;
+}) {
+  const spec = componentSpecs[config.component];
+  const render = (state: ComponentState) => {
+    switch (config.component) {
+      case 'button':
+        return (
+          <Button
+            variant={config.variant as 'primary'}
+            size={config.size}
+            state={state}
+          >
+            {config.text || 'Bouton'}
+          </Button>
+        );
+      case 'field':
+        return (
+          <Field
+            label={config.text || 'Libellé'}
+            type={config.variant}
+            state={state}
+          />
+        );
+      case 'badge':
+        return <Badge variant={config.variant}>{config.text || 'Badge'}</Badge>;
+      case 'card':
+        return <BookingCard variant={config.variant} state={state} />;
+      case 'navigation':
+        return <Navigation key={config.variant} initial={config.variant} />;
+    }
+  };
+  return (
+    <DSProvider tokens={tokens}>
+      <div className="ds-sheet">
+        <div className="section-label">{spec.label.toUpperCase()}</div>
+        <h1>{spec.label}</h1>
+        <div className="ds-sheet-grid">
+          {spec.states.map(([state, label]) => (
+            <figure key={state}>
+              {render(state)}
+              <figcaption>{label}</figcaption>
+            </figure>
+          ))}
+        </div>
+        <p className="ds-caption">
+          Composant réel du projet, tokens du brouillon. Testez au clavier et à
+          la souris.
+        </p>
       </div>
     </DSProvider>
   );

@@ -5,6 +5,28 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.12.0 — 2026-10-27
+
+- **Type** : minor (page Design refaite ; API, schéma de tokens et données
+  inchangés)
+- **Fichiers** : `app/client/design/useDesignDraft.ts`,
+  `app/client/design/TokenEditor.tsx`, `app/client/design/Simulator.tsx`,
+  `app/client/design/componentSpecs.ts`, `app/client/DesignSystem.tsx`,
+  `app/client/App.tsx`, `app/client/AssistantPage.tsx`, `app/client/Sidebar.tsx`,
+  `app/client/HomePage.tsx`, `app/client/styles.css`, `tests/e2e/studio.spec.ts`,
+  `README.md` ; supprimé : `app/client/useTokenDraft.ts`
+- **Résumé** : l’atelier devient la page « Design » (`?vue=design`, ancienne
+  adresse conservée). Éditeur à gauche (40 %) : tokens par catégorie avec
+  contrôles visuels, recherche, brouillon multi-tokens persistant dans l’onglet,
+  annuler / rétablir / réinitialiser, Enregistrer → diff → validation.
+  Inspecteur de composants (bouton, champ, badge, carte, navigation : variantes,
+  tailles, textes, états par défaut / survol / focus / erreur / désactivé),
+  configuration mémorisée. Simulateur à droite (60 %) : vrais composants React
+  dans une iframe alimentée par le brouillon, iPhone / iPad / desktop /
+  personnalisé, poignées de redimensionnement (souris et clavier), zoom,
+  dimensions et points de rupture, bascule brouillon / enregistré. Le panneau
+  Assistant (Codex, brief privé) passe sur la page Contexte & Assistant.
+
 ## 2.11.0 — 2026-10-27
 
 - **Type** : minor (nouvelle page par défaut ; l’atelier reste accessible via

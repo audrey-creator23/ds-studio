@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
 import home from './icons/home.svg';
 import page from './icons/page.svg';
 import table from './icons/table.svg';
-import compass from './icons/compass.svg';
 import calendar from './icons/calendar.svg';
 import help from './icons/help.svg';
 import Logo from './Logo.js';
@@ -12,14 +10,14 @@ export type Page = 'home' | 'workshop' | 'assistant' | 'brief' | 'volcano';
 // Adresse lisible de chaque page (?vue=…), conservée au rechargement.
 export const pageSlugs: Record<Page, string> = {
   home: 'accueil',
-  workshop: 'atelier',
+  workshop: 'design',
   assistant: 'assistant',
   brief: 'brief',
   volcano: 'volcan',
 };
 export const pageTitles: Record<Page, string> = {
   home: 'Accueil',
-  workshop: 'Lisière',
+  workshop: 'Design',
   assistant: 'Contexte & Assistant',
   brief: 'Brief du projet',
   volcano: 'Dashboard Volcan',
@@ -32,6 +30,7 @@ export const pageHeadings: Record<Exclude<Page, 'workshop'>, string> = {
 };
 const mainPages = [
   { id: 'home', label: 'Accueil', icon: home },
+  { id: 'workshop', label: 'Design', icon: table },
   { id: 'assistant', label: 'Contexte & Assistant', emoji: '💬' },
 ] as const;
 const projectPages = [
@@ -39,13 +38,8 @@ const projectPages = [
   { id: 'volcano', label: 'Dashboard Volcan', emoji: '🌋' },
 ] as const;
 
-// Menu vertical du chrome de l'atelier, d'après le DS Figma de référence.
-// Il n'utilise pas les tokens éditables : seul le DS change avec eux.
-const sections = [
-  { id: 'ds-title', label: 'Tokens et composants', icon: table },
-  { id: 'mobile-title', label: 'Aperçu responsive', icon: compass },
-];
-
+// Menu vertical du chrome, d'après le DS Figma de référence. Il n'utilise pas
+// les tokens éditables : seul le DS change avec eux.
 export default function Sidebar({
   revision,
   historyOpen,
@@ -61,7 +55,6 @@ export default function Sidebar({
   onPage: (page: Page) => void;
   figmaLabel: string;
 }) {
-  const away = current !== 'workshop';
   const pageButton = (
     p: (typeof mainPages)[number] | (typeof projectPages)[number],
   ) => (
@@ -81,21 +74,6 @@ export default function Sidebar({
       </button>
     </li>
   );
-  const [active, setActive] = useState('ds-title');
-  useEffect(() => {
-    const targets = sections
-      .map((s) => document.getElementById(s.id))
-      .filter((t): t is HTMLElement => !!t);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.find((e) => e.isIntersecting);
-        if (visible) setActive(visible.target.id);
-      },
-      { rootMargin: '0px 0px -70% 0px' },
-    );
-    targets.forEach((t) => observer.observe(t));
-    return () => observer.disconnect();
-  }, []);
   return (
     <aside className="sidebar">
       <div className="sidebar-account">
@@ -107,30 +85,6 @@ export default function Sidebar({
       </div>
       <nav aria-label="Panneaux de l’atelier">
         <ul className="sidebar-menu">{mainPages.map(pageButton)}</ul>
-        <p className="sidebar-eyebrow">Atelier</p>
-        <ul className="sidebar-menu">
-          {sections.map((s) => (
-            <li key={s.id}>
-              <a
-                href={`#${s.id}`}
-                aria-current={!away && active === s.id ? 'location' : undefined}
-                onClick={(e) => {
-                  if (away) {
-                    e.preventDefault();
-                    onPage('workshop');
-                    requestAnimationFrame(() =>
-                      document.getElementById(s.id)?.scrollIntoView(),
-                    );
-                  }
-                  setActive(s.id);
-                }}
-              >
-                <img src={s.icon} alt="" width="18" height="18" />
-                {s.label}
-              </a>
-            </li>
-          ))}
-        </ul>
         <p className="sidebar-eyebrow">Projet</p>
         <ul className="sidebar-menu">{projectPages.map(pageButton)}</ul>
         <p className="sidebar-eyebrow">Suivi</p>
