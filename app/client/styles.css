@@ -7,9 +7,7 @@ body {
   margin: 0;
   background: var(--ui-page);
   color: var(--ui-fg);
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui,
-    sans-serif;
+  font-family: var(--mantine-font-family);
   font-size: 16px;
   line-height: 1.5;
 }
@@ -22,13 +20,16 @@ textarea {
 /* Éléments natifs restants ; les composants Mantine gardent leurs styles. */
 :where(button:not(.mantine-UnstyledButton-root)),
 .file-button {
-  border: 1px solid var(--ui-border-strong);
+  min-height: 32px;
+  border: 1px solid var(--ui-border);
   background: white;
   border-radius: var(--ui-radius);
-  padding: 6px 10px;
-  color: var(--ui-fg-secondary);
+  padding: 4px 10px;
+  color: var(--ui-fg);
   cursor: pointer;
+  font-size: 14px;
   font-weight: 500;
+  box-shadow: var(--ui-shadow-xs);
 }
 :where(button:not(.mantine-UnstyledButton-root)):hover,
 .file-button:hover {
@@ -38,21 +39,19 @@ textarea {
   cursor: not-allowed;
   opacity: 0.5;
 }
-:where(button, input, select, textarea):not(
-    .mantine-focus-auto,
-    .mantine-Input-input
-  ):focus-visible,
-.file-button:focus-within {
-  outline: 2px solid var(--ui-focus);
-  outline-offset: 3px;
-}
 :where(input, select, textarea):not(.mantine-Input-input) {
-  border: 1px solid var(--ui-border-strong);
+  min-height: 32px;
+  border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
-  padding: 9px 10px;
+  padding: 4px 10px;
   min-width: 0;
   color: inherit;
   background: white;
+  box-shadow: var(--ui-shadow-xs);
+  font-size: 14px;
+}
+:where(textarea):not(.mantine-Input-input) {
+  padding: 8px 10px;
 }
 h1,
 h2,
@@ -758,23 +757,16 @@ h2[id] {
   flex-direction: column;
   gap: 1px;
 }
-.sidebar-link {
-  min-height: 30px;
-  padding: 4px 8px;
-  border-radius: var(--ui-radius);
-  color: var(--ui-fg-secondary);
-  font-weight: 500;
-  letter-spacing: -0.04em;
-}
 .sidebar-link .mantine-NavLink-label {
-  font-size: 16px;
+  font-size: 14px;
 }
 .sidebar-link .mantine-NavLink-section[data-position='left'] {
   margin-inline-end: 8px;
 }
 .sidebar-link[data-active] {
-  background: var(--ui-brand-soft);
-  color: var(--ui-brand-hover);
+  background: var(--ui-muted);
+  color: var(--ui-fg);
+  font-weight: 500;
 }
 .sidebar-collapse {
   margin-left: auto;
@@ -1650,17 +1642,46 @@ select.status-tag {
   text-align: center;
   font-size: 15px;
 }
+/* Bubble du kit : rayon 22, px 12, py 10, angle d'ancrage 6 px. Partagée
+   par le chat et le bloc « Bulle de chat (kit) » de la bibliothèque. */
+.kit-bubble,
 .chat-bubble {
-  max-width: 88%;
-  padding: 8px 12px;
-  border-radius: var(--ui-radius-box);
-  background: var(--ui-sidebar);
-  font-size: 15px;
+  max-width: 80%;
+  padding: 10px 12px;
+  border-radius: 22px;
+  border-end-start-radius: 6px;
+  background: var(--ui-muted);
+  font-size: 14px;
   overflow-wrap: anywhere;
 }
+.kit-bubble[data-align='end'],
 .chat-bubble.user {
   align-self: flex-end;
-  background: var(--ui-brand-soft);
+  margin-inline-start: auto;
+  border-radius: 22px;
+  border-end-end-radius: 6px;
+  background: var(--ui-brand);
+}
+.kit-bubble.is-primary,
+.chat-bubble.user > strong,
+.chat-bubble.user p {
+  color: white;
+}
+.kit-bubble {
+  width: fit-content;
+  color: var(--ui-fg);
+}
+.kit-bubble.is-outline {
+  border: 1px solid var(--ui-border);
+  background: transparent;
+}
+.kit-bubble.is-destructive {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger-text);
+}
+.kit-card {
+  display: flex;
+  flex-direction: column;
 }
 .chat-bubble > strong {
   display: block;
@@ -1869,11 +1890,6 @@ select.status-tag {
 }
 .cta-primary:hover {
   background: var(--ui-brand-hover);
-}
-.cta:focus-visible,
-.nav-card:focus-visible {
-  outline: 2px solid var(--ui-focus);
-  outline-offset: 2px;
 }
 .card-action {
   margin-top: 10px;
@@ -2224,7 +2240,8 @@ select.status-tag {
   touch-action: none;
 }
 .sim-handle:focus-visible {
-  outline: 2px solid var(--ui-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ui-ring-subtle);
 }
 .sim-handle-x {
   top: 0;
@@ -2805,10 +2822,6 @@ select.status-tag {
   font-size: 24px;
   line-height: 1;
 }
-.bubble:focus-visible {
-  outline: 3px solid var(--ui-focus);
-  outline-offset: 3px;
-}
 .bubble-panel {
   position: fixed;
   z-index: 181;
@@ -2881,4 +2894,81 @@ select.status-tag {
     width: auto;
     height: min(70dvh, 520px);
   }
+}
+
+/* ——— Kit Figma shadcn/ui (sitsiilia) appliqué au chrome ———
+   Focus : bordure --ui-focus + halo 3 px ; champs h 32, rayon 10, ombre xs ;
+   cartes rayon 14, bordure, ombre xs ; menu h 32, rayon 8, actif neutre. */
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible,
+.mantine-focus-auto:focus-visible,
+.mantine-focus-never:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ui-ring-subtle);
+}
+.mantine-Input-input:focus,
+.mantine-Input-input:focus-visible,
+:where(input, select, textarea):not(.mantine-Input-input):focus-visible {
+  border-color: var(--ui-focus);
+  box-shadow: 0 0 0 3px var(--ui-ring-subtle);
+}
+[aria-invalid='true'] {
+  border-color: var(--ui-danger);
+}
+[aria-invalid='true']:focus-visible {
+  box-shadow: 0 0 0 3px var(--ui-ring-destructive);
+}
+:where(input, textarea)::placeholder {
+  color: var(--ui-fg-support);
+}
+.mantine-Input-input {
+  border-color: var(--ui-border);
+  box-shadow: var(--ui-shadow-xs);
+}
+.card {
+  border: 1px solid var(--ui-border);
+}
+.card-title {
+  font-weight: 500;
+}
+.mantine-Button-root[data-variant='link']:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.mantine-Button-root:disabled,
+.mantine-Button-root[data-disabled] {
+  opacity: 0.5;
+}
+.sidebar-link {
+  min-height: 32px;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--ui-fg);
+  letter-spacing: normal;
+}
+.sidebar-link:hover {
+  background: var(--ui-muted);
+}
+/* Onglets : variante par défaut du kit (pastille sur rail atténué). */
+.kit-tabs .mantine-Tabs-list {
+  gap: 0;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--ui-muted);
+}
+.kit-tabs .mantine-Tabs-list::before {
+  display: none;
+}
+.kit-tabs .mantine-Tabs-tab {
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ui-fg-support);
+  font-size: 14px;
+  font-weight: 500;
+}
+.kit-tabs .mantine-Tabs-tab[data-active] {
+  background: white;
+  color: var(--ui-fg);
+  box-shadow: var(--ui-shadow-xs);
 }

@@ -141,7 +141,7 @@ export default function ComposeWorkspace({
           aria-label="Bibliothèque et structure"
         >
           <Tabs
-            className="compose-tabs"
+            className="compose-tabs kit-tabs"
             value={panel}
             onChange={(v) => v && onPanel(v as 'library' | 'structure')}
             keepMounted={false}

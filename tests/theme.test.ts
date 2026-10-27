@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { palette, roles, theme } from '../app/client/theme.js';
-import { blockSpecs, normalizeComposition } from '../app/shared/composition.js';
+import {
+  blockKinds,
+  blockSpecs,
+  newItem,
+  normalizeComposition,
+} from '../app/shared/composition.js';
 
 const luminance = (hex: string) => {
   const [r, g, b] = [1, 3, 5]
@@ -39,25 +44,38 @@ test('thème : palette fournie, échelles de 10 teintes, rôles accessibles', ()
   assert.ok(contrast(roles.focus, white) >= 3);
 });
 
-test('bibliothèque : composants Mantine personnalisés exposés et validés', () => {
+test('bibliothèque : composants du kit (Mantine) exposés et validés', () => {
   const mantine = Object.entries(blockSpecs).filter(
     ([, s]) => s.family === 'Mantine',
   );
   assert.deepEqual(
     mantine.map(([k]) => k),
-    ['mButton', 'mBadge', 'mAlert', 'mProgress', 'mInput', 'mTabs'],
+    [
+      'mButton',
+      'mBadge',
+      'mAlert',
+      'mProgress',
+      'mInput',
+      'mTabs',
+      'mCard',
+      'mBubble',
+    ],
   );
   const c = normalizeComposition({
     name: 'Mantine',
     sections: [
       {
         items: [
-          { id: 'a', kind: 'mButton', variant: 'accent', size: 'lg' },
-          { id: 'b', kind: 'mBadge', variant: 'inconnue' },
+          { kind: 'mButton', variant: 'ghost', size: 'lg' },
+          { id: 'mBad-ancien', kind: 'mBadge', variant: 'inconnue' },
         ],
       },
     ],
   })!;
-  assert.equal(c.sections[0].items[0].variant, 'accent');
-  assert.equal(c.sections[0].items[1].variant, 'primary');
+  assert.equal(c.sections[0].items[0].variant, 'ghost');
+  assert.equal(c.sections[0].items[1].variant, 'default');
+  // Identifiants toujours en minuscules, même pour les blocs « m… ».
+  for (const i of c.sections[0].items) assert.match(i.id, /^[a-z0-9-]+$/);
+  for (const kind of blockKinds)
+    assert.match(newItem(kind).id, /^[a-z0-9-]{1,32}$/, kind);
 });

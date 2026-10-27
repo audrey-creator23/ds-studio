@@ -5,6 +5,32 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.16.0 — 2026-10-27
+
+- **Type** : minor (dépendance `@fontsource-variable/inter` 5.3.0 ; blocs de
+  composition « Kit shadcn · Mantine » renommés avec les variantes du kit,
+  deux nouveaux blocs `mCard` et `mBubble` ; les anciennes variantes `m…`
+  d’un brouillon sont ramenées à la variante par défaut ; tokens Lisière et
+  données inchangés)
+- **Fichiers** : `package.json`, `package-lock.json`, `app/client/theme.ts`,
+  `app/client/main.tsx`, `app/client/styles.css`,
+  `app/client/design/MantineBlocks.tsx`, `app/client/design/ComposeWorkspace.tsx`,
+  `app/shared/composition.ts`, `tests/theme.test.ts`, `docs/FIGMA_KIT.md`
+- **Résumé** : kit Figma shadcn/ui (sitsiilia) adopté comme référence UI,
+  lu en lecture seule via le MCP Figma et les données du skill
+  `figma-shadcn-by-sitsiilia` (non installé : à lancer soi-même, voir
+  `docs/FIGMA_KIT.md`). Rendu avec Mantine, sans Tailwind ni doublon : Inter
+  en local, rayons 4 → 14 (défaut 10), ombres noires à 10 %, focus en halo
+  de 3 px, neutres du kit ; la palette du studio garde les rôles de couleur.
+  Variantes du kit dans le thème : Button (default, outline, secondary,
+  ghost, destructive en teinte douce, link ; 24/28/32/36 px), Badge (h 22,
+  pastille, ghost), Tabs en rail, champs h 32, cartes bordées, menu latéral
+  h 32 à fond neutre, bulles de chat rayon 22. Bibliothèque Design : Bouton,
+  Badge, Alerte, Progression, Champ (Input, Native Select, Textarea), Onglets,
+  Carte et Bulle de chat du kit, utilisables par Claude et prévisualisés.
+  Correctif : identifiants des blocs `m…` en minuscules (l’aperçu refusait
+  la composition).
+
 ## 2.15.0 — 2026-10-27
 
 - **Type** : minor (dépendances `@mantine/core` et `@mantine/hooks` 9.6.3 ;

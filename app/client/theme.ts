@@ -1,7 +1,11 @@
 import {
+  Badge,
+  Button,
   createTheme,
+  defaultVariantColorsResolver,
   type CSSVariablesResolver,
   type MantineColorsTuple,
+  type VariantColorsResolver,
 } from '@mantine/core';
 
 // Thème unique du chrome DS-Studio (Mantine). Il ne touche jamais les tokens
@@ -93,6 +97,26 @@ const scales = {
   ],
 } satisfies Record<keyof typeof palette, MantineColorsTuple>;
 
+// Kit Figma « shadcn/ui components » (sitsiilia), lu via le MCP Figma et les
+// données du skill figma-shadcn-by-sitsiilia : neutres (Tailwind neutral),
+// rayons, typographie Inter, ombres noires à 10 % et focus en halo de 3 px.
+// La palette ci-dessus garde les rôles de couleur (primary, accent…).
+export const kit = {
+  foreground: '#0A0A0A',
+  muted: '#F5F5F5', // secondary, muted, accent du kit
+  mutedForeground: '#737373', // 4,7:1 sur blanc
+  border: '#E5E5E5',
+  ring: '#737373', // bordure au focus
+  ringSubtle: '#A1A1A180', // halo de 3 px
+  ringDestructive: '#DC262633',
+  sidebar: '#FAFAFA',
+  shadowXs: '0 1px 2px 0 rgb(0 0 0 / 0.10)',
+  shadowMd:
+    '0 2px 4px -2px rgb(0 0 0 / 0.10), 0 4px 6px -1px rgb(0 0 0 / 0.10)',
+  shadowLg:
+    '0 4px 6px -4px rgb(0 0 0 / 0.10), 0 10px 15px -3px rgb(0 0 0 / 0.10)',
+} as const;
+
 // Rôles : chaque usage pointe vers une teinte dont le contraste est suffisant.
 export const roles = {
   primary: scales.ember[6], // boutons pleins, liens, sélection : 5,5:1 (b)
@@ -113,31 +137,115 @@ export const roles = {
   surfaceDark: palette.mahogany, // panneaux sombres, bulle, volcan : blanc 15:1
 } as const;
 
+// Variantes du kit sur Button et Badge : default (Mantine filled), outline,
+// secondary, ghost, destructive (teinte douce), link.
+const kitVariants: VariantColorsResolver = (input) => {
+  const danger = {
+    background: roles.dangerSoft,
+    hover: scales.tomato[1],
+    color: roles.dangerText,
+    border: '1px solid transparent',
+  };
+  switch (input.variant) {
+    case 'outline':
+      return {
+        background: '#FFFFFF',
+        hover: kit.muted,
+        color: kit.foreground,
+        border: `1px solid ${kit.border}`,
+      };
+    case 'secondary':
+      return {
+        background: kit.muted,
+        hover: '#EBEBEB',
+        color: kit.foreground,
+        border: '1px solid transparent',
+      };
+    case 'ghost':
+      return {
+        background: 'transparent',
+        hover: kit.muted,
+        color: kit.foreground,
+        border: '1px solid transparent',
+      };
+    case 'destructive':
+      return danger;
+    case 'link':
+      return {
+        background: 'transparent',
+        hover: 'transparent',
+        color: kit.foreground,
+        border: '1px solid transparent',
+      };
+    default:
+      return defaultVariantColorsResolver(input);
+  }
+};
+
+// Tailles du kit : xs 24, sm 28, default 32 (Mantine md), lg 36.
+const buttonSizes = {
+  xs: { h: 24, px: 8, fz: 12, r: 6 },
+  sm: { h: 28, px: 10, fz: 12, r: 6 },
+  md: { h: 32, px: 10, fz: 14, r: 10 },
+  lg: { h: 36, px: 10, fz: 14, r: 10 },
+} as const;
+
 export const theme = createTheme({
   colors: scales,
   primaryColor: 'ember',
   primaryShade: { light: 6, dark: 7 },
   autoContrast: true,
   luminanceThreshold: 0.35,
-  black: '#32302C',
+  variantColorResolver: kitVariants,
+  black: kit.foreground,
   fontFamily:
-    "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif",
-  headings: { fontWeight: '650' },
-  defaultRadius: 'sm',
-  radius: { xs: '4px', sm: '6px', md: '12px', lg: '16px', xl: '24px' },
+    "'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+  fontSizes: { xs: '12px', sm: '14px', md: '16px', lg: '18px', xl: '20px' },
+  lineHeights: { xs: '16px', sm: '20px', md: '24px', lg: '28px', xl: '28px' },
+  headings: { fontWeight: '600' },
+  defaultRadius: 'lg',
+  radius: { xs: '4px', sm: '6px', md: '8px', lg: '10px', xl: '14px' },
   shadows: {
-    sm: 'rgba(0, 0, 0, 0.05) 0 0 0 1px, rgba(0, 0, 0, 0.04) 0 2px 6px',
-    md: 'rgba(0, 0, 0, 0.03) 0 12px 32px, rgba(0, 0, 0, 0.05) 0 0 0 1px',
-    lg: 'rgba(75, 18, 7, 0.12) 0 16px 40px, rgba(0, 0, 0, 0.06) 0 0 0 1px',
+    xs: kit.shadowXs,
+    sm: kit.shadowXs,
+    md: kit.shadowMd,
+    lg: kit.shadowLg,
   },
-  focusRing: 'auto',
+  focusRing: 'never',
   respectReducedMotion: true,
   cursorType: 'pointer',
   components: {
-    Button: { defaultProps: { radius: 'sm' } },
-    Card: { defaultProps: { radius: 'md', withBorder: true, padding: 'lg' } },
+    Button: Button.extend({
+      defaultProps: { size: 'md' },
+      vars: (_theme, props) => {
+        const s =
+          buttonSizes[(props.size ?? 'md') as keyof typeof buttonSizes] ??
+          buttonSizes.md;
+        return {
+          root: {
+            '--button-height': `${s.h}px`,
+            '--button-padding-x': `${s.px}px`,
+            '--button-fz': `${s.fz}px`,
+            '--button-radius': `${s.r}px`,
+          },
+        };
+      },
+    }),
+    Card: { defaultProps: { radius: 'xl', withBorder: true, shadow: 'xs' } },
     Tooltip: { defaultProps: { withArrow: true, openDelay: 300 } },
-    Badge: { defaultProps: { radius: 'sm' } },
+    Badge: Badge.extend({
+      defaultProps: { radius: 26, size: 'md' },
+      vars: () => ({
+        root: {
+          '--badge-height': '22px',
+          '--badge-padding-x': '8px',
+          '--badge-fz': '12px',
+        },
+      }),
+    }),
+    Input: { defaultProps: { radius: 'lg', size: 'sm' } },
+    InputWrapper: { defaultProps: { size: 'sm' } },
+    NavLink: { defaultProps: { variant: 'subtle' } },
   },
   other: { roles },
 });
@@ -147,14 +255,20 @@ export const resolver: CSSVariablesResolver = () => ({
   variables: {
     '--ui-page': roles.surface,
     '--ui-sidebar': roles.surfaceWarm,
-    '--ui-fg': '#32302C',
-    '--ui-fg-secondary': '#5F5E5B',
-    '--ui-fg-support': '#91918E',
-    '--ui-fg-weak': '#73726E',
+    '--ui-fg': kit.foreground,
+    '--ui-fg-secondary': '#404040',
+    '--ui-fg-support': kit.mutedForeground,
+    '--ui-fg-weak': kit.mutedForeground,
     '--ui-brand': roles.primary,
     '--ui-brand-hover': roles.primaryHover,
     '--ui-brand-soft': roles.primarySoft,
-    '--ui-focus': roles.focus,
+    '--ui-focus': kit.ring,
+    '--ui-ring-subtle': kit.ringSubtle,
+    '--ui-ring-destructive': kit.ringDestructive,
+    '--ui-muted': kit.muted,
+    '--ui-shadow-xs': kit.shadowXs,
+    '--ui-shadow-md': kit.shadowMd,
+    '--ui-shadow-lg': kit.shadowLg,
     '--ui-accent': roles.accent,
     '--ui-accent-soft': roles.accentSoft,
     '--ui-warning': roles.warning,
@@ -165,14 +279,13 @@ export const resolver: CSSVariablesResolver = () => ({
     '--ui-danger-text': roles.dangerText,
     '--ui-on-accent': roles.onAccent,
     '--ui-surface-dark': roles.surfaceDark,
-    '--ui-border': 'rgba(84, 72, 49, 0.08)',
-    '--ui-border-strong': 'rgba(55, 53, 47, 0.16)',
-    '--ui-hover': 'rgba(0, 0, 0, 0.03)',
-    '--ui-tabs': 'rgba(0, 0, 0, 0.04)',
-    '--ui-radius': '6px',
-    '--ui-radius-box': '12px',
-    '--ui-box-shadow':
-      'rgba(0, 0, 0, 0.03) 0 12px 32px, rgba(0, 0, 0, 0.05) 0 0 0 1px',
+    '--ui-border': kit.border,
+    '--ui-border-strong': kit.border,
+    '--ui-hover': kit.muted,
+    '--ui-tabs': kit.muted,
+    '--ui-radius': '10px',
+    '--ui-radius-box': '14px',
+    '--ui-box-shadow': `0 0 0 1px ${kit.border}, ${kit.shadowXs}`,
   },
   light: {},
   dark: {},

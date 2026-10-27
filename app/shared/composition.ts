@@ -22,6 +22,8 @@ export const blockKinds = [
   'mProgress',
   'mInput',
   'mTabs',
+  'mCard',
+  'mBubble',
 ] as const;
 export type BlockKind = (typeof blockKinds)[number];
 export const layouts = ['stack', 'row', 'grid'] as const;
@@ -39,7 +41,7 @@ export interface BlockSpec {
     | 'Cartes'
     | 'Navigation'
     | 'Suivi'
-    | 'Interface Mantine';
+    | 'Kit shadcn · Mantine';
   family: 'Lisière' | 'Studio' | 'Mantine';
   description: string;
   variants: [string, string][];
@@ -178,88 +180,118 @@ export const blockSpecs: Record<BlockKind, BlockSpec> = {
     variants: [['standard', 'Synthèse']],
     span: 2,
   },
-  // Composants Mantine personnalisés par le thème du studio (palette
-  // Sunflower → Mahogany). Ils suivent le thème, pas les tokens Lisière.
+  // Kit Figma shadcn/ui (sitsiilia) rendu avec Mantine : variantes, tailles
+  // et géométrie du kit, couleurs de la palette du studio.
   mButton: {
-    label: 'Bouton Mantine',
-    category: 'Interface Mantine',
+    label: 'Bouton (kit)',
+    category: 'Kit shadcn · Mantine',
     family: 'Mantine',
-    description: 'Bouton du thème studio (Mantine Button).',
+    description:
+      'Button du kit : h 28/32/36, rayon 6 ou 10, focus en halo (Figma : Button).',
     variants: [
-      ['filled', 'Principal'],
-      ['light', 'Doux'],
-      ['outline', 'Contour'],
-      ['accent', 'Accent'],
-      ['danger', 'Danger'],
+      ['default', 'Default'],
+      ['outline', 'Outline'],
+      ['secondary', 'Secondary'],
+      ['ghost', 'Ghost'],
+      ['destructive', 'Destructive'],
+      ['link', 'Link'],
     ],
     sizes: true,
     text: 'Continuer',
     span: 1,
   },
   mBadge: {
-    label: 'Badge Mantine',
-    category: 'Interface Mantine',
+    label: 'Badge (kit)',
+    category: 'Kit shadcn · Mantine',
     family: 'Mantine',
-    description: 'Étiquette de statut du thème (Mantine Badge).',
+    description: 'Badge du kit : h 22, pastille, destructive en teinte douce.',
     variants: [
-      ['primary', 'Principal'],
-      ['accent', 'Accent'],
-      ['warning', 'Attention'],
-      ['danger', 'Danger'],
+      ['default', 'Default'],
+      ['secondary', 'Secondary'],
+      ['destructive', 'Destructive'],
+      ['outline', 'Outline'],
+      ['ghost', 'Ghost'],
     ],
-    sizes: true,
     text: 'Nouveau',
     span: 1,
   },
   mAlert: {
-    label: 'Alerte Mantine',
-    category: 'Interface Mantine',
+    label: 'Alerte (kit)',
+    category: 'Kit shadcn · Mantine',
     family: 'Mantine',
-    description: 'Message d’information ou d’alerte (Mantine Alert).',
+    description: 'Alert du kit : bordure, rayon 10, titre et description.',
     variants: [
-      ['info', 'Information'],
-      ['warning', 'Attention'],
-      ['danger', 'Erreur'],
+      ['default', 'Default'],
+      ['destructive', 'Destructive'],
     ],
     text: 'Les inscriptions ferment vendredi.',
     span: 4,
   },
   mProgress: {
-    label: 'Progression Mantine',
-    category: 'Interface Mantine',
+    label: 'Progression (kit)',
+    category: 'Kit shadcn · Mantine',
     family: 'Mantine',
-    description: 'Barre de progression avec libellé (Mantine Progress).',
+    description: 'Progress du kit avec libellé et valeur.',
     variants: [
-      ['primary', 'Principal'],
+      ['default', 'Default'],
       ['accent', 'Accent'],
-      ['warning', 'Attention'],
     ],
     text: 'Places réservées',
     span: 2,
   },
   mInput: {
-    label: 'Champ Mantine',
-    category: 'Interface Mantine',
+    label: 'Champ (kit)',
+    category: 'Kit shadcn · Mantine',
     family: 'Mantine',
-    description: 'Champ texte ou liste du thème (TextInput, NativeSelect).',
+    description:
+      'Field du kit : libellé, champ h 32 rayon 10 ou liste native, description.',
     variants: [
-      ['text', 'Texte'],
-      ['select', 'Liste'],
+      ['text', 'Input'],
+      ['select', 'Native Select'],
+      ['textarea', 'Textarea'],
     ],
     text: 'Votre atelier',
     span: 2,
   },
   mTabs: {
-    label: 'Onglets Mantine',
-    category: 'Interface Mantine',
+    label: 'Onglets (kit)',
+    category: 'Kit shadcn · Mantine',
     family: 'Mantine',
-    description: 'Onglets de navigation locale (Mantine Tabs).',
+    description:
+      'Tabs du kit : pastille sur rail (default) ou soulignés (line).',
     variants: [
-      ['default', 'Soulignés'],
-      ['pills', 'Pastilles'],
+      ['default', 'Default'],
+      ['line', 'Line'],
     ],
     text: 'Ateliers, Agenda, Lieux',
     span: 4,
+  },
+  mCard: {
+    label: 'Carte (kit)',
+    category: 'Kit shadcn · Mantine',
+    family: 'Mantine',
+    description:
+      'Card du kit : en-tête (titre, description), contenu, pied avec action.',
+    variants: [
+      ['default', 'Default'],
+      ['sm', 'Small'],
+    ],
+    text: 'Atelier céramique',
+    span: 2,
+  },
+  mBubble: {
+    label: 'Bulle de chat (kit)',
+    category: 'Kit shadcn · Mantine',
+    family: 'Mantine',
+    description: 'Bubble du kit : message reçu ou envoyé, rayon 22.',
+    variants: [
+      ['secondary', 'Reçu'],
+      ['primary', 'Envoyé'],
+      ['outline', 'Outline'],
+      ['destructive', 'Destructive'],
+    ],
+    text: 'On se retrouve samedi à l’atelier ?',
+    span: 2,
   },
 };
 export const layoutLabels: Record<Layout, string> = {
@@ -311,7 +343,7 @@ export function newId(prefix: string) {
 export function newItem(kind: BlockKind, variant?: string): Item {
   const spec = blockSpecs[kind];
   return {
-    id: newId(kind.slice(0, 4)),
+    id: newId(kind.slice(0, 4).toLowerCase()),
     kind,
     variant: spec.variants.some(([v]) => v === variant)
       ? variant!
@@ -373,7 +405,7 @@ export function normalizeComposition(
       .map((i): Item => {
         const spec = blockSpecs[i.kind];
         return {
-          id: unique(i.id, i.kind.slice(0, 4)),
+          id: unique(i.id, i.kind.slice(0, 4).toLowerCase()),
           kind: i.kind,
           variant: spec.variants.some(([x]) => x === i.variant)
             ? i.variant

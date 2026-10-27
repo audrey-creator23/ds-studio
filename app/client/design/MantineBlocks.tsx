@@ -2,50 +2,40 @@ import {
   Alert,
   Badge,
   Button,
+  Card,
+  Group,
   NativeSelect,
   Progress,
   Stack,
   Tabs,
   Text,
+  Textarea,
   TextInput,
 } from '@mantine/core';
 import type { Item } from '../../shared/composition.js';
 
-// Rendu des blocs « Interface Mantine » : les composants du thème studio,
-// configurés par variante. Les couleurs viennent des rôles du thème.
-const roleColor: Record<string, string> = {
-  primary: 'ember',
-  info: 'ember',
-  accent: 'tangerine',
-  warning: 'sunflower',
-  danger: 'tomato',
-};
+// Blocs « Kit shadcn · Mantine » : composants Mantine configurés comme ceux
+// du kit Figma (variantes, tailles, géométrie). Les variantes outline,
+// secondary, ghost, destructive et link sont résolues par le thème.
+const sizes = { sm: 'sm', md: 'md', lg: 'lg' } as const;
 
 export function MantineBlock({ item }: { item: Item }) {
   switch (item.kind) {
-    case 'mButton': {
-      const variant =
-        item.variant === 'accent' || item.variant === 'danger'
-          ? 'filled'
-          : item.variant;
-      const color =
-        item.variant === 'accent'
-          ? 'tangerine'
-          : item.variant === 'danger'
-            ? 'tomato.7'
-            : 'ember';
+    case 'mButton':
       return (
-        <Button variant={variant} color={color} size={item.size}>
+        <Button
+          variant={item.variant === 'default' ? 'filled' : item.variant}
+          size={sizes[item.size]}
+        >
           {item.text || 'Bouton'}
         </Button>
       );
-    }
     case 'mBadge':
       return (
         <Badge
-          variant={item.variant === 'primary' ? 'filled' : 'light'}
-          color={roleColor[item.variant]}
-          size={item.size}
+          variant={item.variant === 'default' ? 'filled' : item.variant}
+          tt="none"
+          fw={500}
         >
           {item.text || 'Badge'}
         </Badge>
@@ -53,41 +43,54 @@ export function MantineBlock({ item }: { item: Item }) {
     case 'mAlert':
       return (
         <Alert
-          variant="light"
-          color={roleColor[item.variant]}
-          title={
-            item.variant === 'danger'
-              ? 'Erreur'
-              : item.variant === 'warning'
-                ? 'Attention'
-                : 'Information'
-          }
+          className="kit-alert"
+          variant={item.variant === 'destructive' ? 'destructive' : 'outline'}
+          title={item.variant === 'destructive' ? 'Erreur' : 'Information'}
         >
           {item.text}
         </Alert>
       );
     case 'mProgress':
       return (
-        <Stack gap={4}>
-          <Text size="sm" fw={500}>
-            {item.text || 'Progression'} · 64 %
-          </Text>
+        <Stack gap={6}>
+          <Group justify="space-between">
+            <Text size="sm" fw={500}>
+              {item.text || 'Progression'}
+            </Text>
+            <Text size="sm" c="dimmed">
+              64 %
+            </Text>
+          </Group>
           <Progress
             value={64}
-            color={roleColor[item.variant]}
+            size="sm"
+            color={item.variant === 'accent' ? 'tangerine' : 'ember'}
             aria-label={item.text || 'Progression'}
           />
         </Stack>
       );
-    case 'mInput':
-      return item.variant === 'select' ? (
-        <NativeSelect
-          label={item.text || 'Choix'}
-          data={['Céramique', 'Couture', 'Jardin partagé']}
+    case 'mInput': {
+      const label = item.text || 'Libellé';
+      if (item.variant === 'select')
+        return (
+          <NativeSelect
+            label={label}
+            description="Choisissez une option."
+            data={['Céramique', 'Couture', 'Jardin partagé']}
+          />
+        );
+      if (item.variant === 'textarea')
+        return (
+          <Textarea label={label} placeholder="Votre message…" minRows={3} />
+        );
+      return (
+        <TextInput
+          label={label}
+          description="Visible par les participants."
+          placeholder="Saisir…"
         />
-      ) : (
-        <TextInput label={item.text || 'Libellé'} placeholder="Saisir…" />
       );
+    }
     case 'mTabs': {
       const labels = (item.text || 'Onglet 1, Onglet 2')
         .split(',')
@@ -97,7 +100,7 @@ export function MantineBlock({ item }: { item: Item }) {
       return (
         <Tabs
           defaultValue="0"
-          variant={item.variant === 'pills' ? 'pills' : 'default'}
+          className={item.variant === 'line' ? undefined : 'kit-tabs'}
         >
           <Tabs.List>
             {labels.map((l, i) => (
@@ -109,6 +112,39 @@ export function MantineBlock({ item }: { item: Item }) {
         </Tabs>
       );
     }
+    case 'mCard': {
+      const pad = item.variant === 'sm' ? 16 : 24;
+      return (
+        <Card padding={0} className="kit-card" style={{ gap: pad }}>
+          <Stack gap={4} px={pad} pt={pad}>
+            <Text fw={600} size="md">
+              {item.text || 'Titre'}
+            </Text>
+            <Text size="sm" c="dimmed">
+              Samedi · 10 h · 8 places
+            </Text>
+          </Stack>
+          <Text size="sm" px={pad}>
+            Initiation au tournage, terre et émaux fournis.
+          </Text>
+          <Group px={pad} pb={pad} gap={8}>
+            <Button size="md">Réserver</Button>
+            <Button size="md" variant="outline">
+              Détails
+            </Button>
+          </Group>
+        </Card>
+      );
+    }
+    case 'mBubble':
+      return (
+        <div
+          className={`kit-bubble is-${item.variant}`}
+          data-align={item.variant === 'primary' ? 'end' : 'start'}
+        >
+          {item.text || 'Message'}
+        </div>
+      );
     default:
       return null;
   }

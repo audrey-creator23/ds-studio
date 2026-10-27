@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { MantineProvider } from '@mantine/core';
+import '@fontsource-variable/inter/wght.css';
 import '@mantine/core/styles.css';
 import App, { Preview } from './App.js';
 import { resolver, theme } from './theme.js';
