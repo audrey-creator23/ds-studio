@@ -1051,7 +1051,8 @@ h2[id] {
    Mêmes marges, rayon, ombre et titres que les panneaux de l'atelier. */
 :root {
   --card-pad: 16px;
-  --card-gap: 12px;
+  /* Écart entre cartes : 12 px + 10 %. */
+  --card-gap: calc(12px * 1.1);
 }
 .workshop[hidden] {
   display: none;
@@ -1076,9 +1077,27 @@ h2[id] {
   margin-bottom: var(--card-gap);
 }
 .page-head h2 {
-  font-size: 24px;
-  letter-spacing: -0.02em;
-  margin-bottom: 2px;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+.page-head .page-eyebrow {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-fg-support);
+}
+.page-source {
+  margin: var(--card-gap) 0 0;
+  font-size: 13px;
+  color: var(--ui-fg-support);
+}
+.page-source a {
+  color: var(--ui-brand);
 }
 .page-head h2:focus {
   outline: none;
@@ -1170,6 +1189,34 @@ h2[id] {
 }
 .card-toggle {
   margin-top: 6px;
+}
+.card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px 16px;
+  margin-top: 6px;
+}
+.toggle-button {
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ui-fg-weak);
+}
+.toggle-button::before {
+  content: '';
+  display: inline-block;
+  margin-right: 6px;
+  border-left: 6px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s;
+}
+.toggle-button[aria-expanded='true']::before {
+  transform: rotate(90deg);
 }
 .card-toggle summary {
   cursor: pointer;
@@ -1354,7 +1401,7 @@ select.status-tag {
   flex-wrap: wrap;
   gap: 4px 14px;
   list-style: none;
-  margin: 6px 0 0;
+  margin: 0;
   padding: 0;
   font-size: 13px;
   color: var(--ui-fg-weak);

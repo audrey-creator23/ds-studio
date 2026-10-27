@@ -363,7 +363,7 @@ test('brief : page Bento sur un écran, toggles fermés, statuts persistants', a
   const tab = page.getByRole('button', { name: 'Brief du projet' });
   await tab.click();
   await expect(
-    page.getByRole('heading', { name: /Brief du projet · PFE/ }),
+    page.getByRole('heading', { name: 'Brief du projet', exact: true }),
   ).toBeFocused();
   await expect(page.locator('.workshop')).toBeHidden();
   await expect(page.locator('.timeline li')).toHaveCount(6);
@@ -428,7 +428,7 @@ test('dashboard volcan : page secondaire, activité datée, frise et accès', as
     .first()
     .click();
   await expect(
-    page.getByRole('heading', { name: /Brief du projet · PFE/ }),
+    page.getByRole('heading', { name: 'Brief du projet', exact: true }),
   ).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
   await page.getByRole('button', { name: 'Dashboard Volcan' }).click();

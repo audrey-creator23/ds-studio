@@ -5,6 +5,17 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.10.0 — 2026-10-27
+
+- **Type** : minor (interface, données inchangées)
+- **Fichiers** : `app/client/Card.tsx`, `app/client/ProjectContent.tsx`,
+  `app/client/styles.css`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Brief : écart entre cartes +10 % (13,2 px, partagé), grand titre
+  « Brief du projet » à la place de la phrase d’en-tête, sources Notion en pied
+  de page. Planning : légende à gauche et « Détail des échéances » à droite sur
+  une ligne (`Expandable`, flex `space-between`), retour à la ligne sur mobile.
+  Cartes sans bande colorée.
+
 ## 2.9.0 — 2026-10-27
 
 - **Type** : minor (mise en page, données inchangées)

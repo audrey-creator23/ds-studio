@@ -1,4 +1,4 @@
-import { Card, Toggle } from './Card.js';
+import { Card, Expandable, Toggle } from './Card.js';
 import { useTasks } from './useTasks.js';
 import Masonry from './Masonry.js';
 import {
@@ -24,35 +24,38 @@ export function Timeline({
   state: Parameters<typeof milestoneStatus>[1];
 }) {
   return (
-    <>
-      <ol className="timeline">
-        {milestones.map((m, i) => {
-          const status = milestoneStatus(i, state);
-          return (
-            <li
-              key={m.date}
-              className={`is-${status}`}
-              aria-current={status === 'current' ? 'step' : undefined}
-            >
-              <span className="timeline-dot" aria-hidden="true" />
-              <time dateTime={m.date}>{m.label}</time>
-              <strong>{m.title}</strong>
-              <span className="sr-only">{milestoneLabels[status]}</span>
-            </li>
-          );
-        })}
-      </ol>
-      <ul className="timeline-legend" aria-label="Légende">
-        {(['validated', 'done', 'current', 'late', 'upcoming'] as const).map(
-          (s) => (
-            <li key={s} className={`is-${s}`}>
-              <span className="timeline-dot" aria-hidden="true" />
-              {milestoneLabels[s]}
-            </li>
-          ),
-        )}
-      </ul>
-    </>
+    <ol className="timeline">
+      {milestones.map((m, i) => {
+        const status = milestoneStatus(i, state);
+        return (
+          <li
+            key={m.date}
+            className={`is-${status}`}
+            aria-current={status === 'current' ? 'step' : undefined}
+          >
+            <span className="timeline-dot" aria-hidden="true" />
+            <time dateTime={m.date}>{m.label}</time>
+            <strong>{m.title}</strong>
+            <span className="sr-only">{milestoneLabels[status]}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+export function TimelineLegend() {
+  return (
+    <ul className="timeline-legend" aria-label="Légende">
+      {(['validated', 'done', 'current', 'late', 'upcoming'] as const).map(
+        (s) => (
+          <li key={s} className={`is-${s}`}>
+            <span className="timeline-dot" aria-hidden="true" />
+            {milestoneLabels[s]}
+          </li>
+        ),
+      )}
+    </ul>
   );
 }
 
@@ -70,23 +73,10 @@ export default function ProjectContent() {
     <section className="page brief-page" aria-labelledby="projet-title">
       <header className="page-head">
         <div>
+          <p className="page-eyebrow">PFE M2 UX/UI · 2026-27</p>
           <h2 id="projet-title" tabIndex={-1}>
-            Brief du projet · PFE M2 UX/UI 2026-27
+            Brief du projet
           </h2>
-          <p>
-            Prévention des risques naturels en Martinique · iPhone et iPad ·{' '}
-            <span className="brief-source">
-              Notion, lecture seule :{' '}
-              {briefSources.map((src, i) => (
-                <span key={src.url}>
-                  {i > 0 && ' · '}
-                  <a href={src.url} target="_blank" rel="noreferrer">
-                    {src.label}
-                  </a>
-                </span>
-              ))}
-            </span>
-          </p>
         </div>
         <dl className="page-kpis">
           <div>
@@ -111,7 +101,7 @@ export default function ProjectContent() {
       <Masonry className="brief-grid">
         <Card emoji="📅" title="Planning" className="size-full">
           <Timeline state={state} />
-          <Toggle label="Détail des échéances">
+          <Expandable label="Détail des échéances" aside={<TimelineLegend />}>
             <ul>
               {milestones.map((m) => (
                 <li key={m.date}>
@@ -119,7 +109,7 @@ export default function ProjectContent() {
                 </li>
               ))}
             </ul>
-          </Toggle>
+          </Expandable>
         </Card>
         <Card emoji="✅" title="Checklist" className="size-m brief-tasks">
           <div
@@ -196,6 +186,17 @@ export default function ProjectContent() {
           </Card>
         ))}
       </Masonry>
+      <p className="page-source">
+        Synthèse Notion, consultée sans modification :{' '}
+        {briefSources.map((src, i) => (
+          <span key={src.url}>
+            {i > 0 && ' · '}
+            <a href={src.url} target="_blank" rel="noreferrer">
+              {src.label}
+            </a>
+          </span>
+        ))}
+      </p>
     </section>
   );
 }
