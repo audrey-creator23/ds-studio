@@ -5,6 +5,26 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.19.0 — 2026-10-27
+
+- **Type** : minor (branche `v3-dashboard` ; nouvelle page `/v3?vue=brief` ;
+  aucune API ni donnée modifiée ; version actuelle `/` inchangée)
+- **Fichiers** : `app/v3/App.tsx`, `app/v3/Dashboard.tsx`,
+  `app/v3/Brief.tsx`, `app/v3/Timeline.tsx`, `app/v3/v3.css`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : Dashboard v3 resserré. Titre « Récapitulatif des échéances
+  PFE » et sous-titre (dates, jour sur la période) ; frise « Échéances à
+  venir » juste dessous (un second clic sur un jalon revient à aujourd’hui) ;
+  bascule Clair/Sombre persistante en haut à droite ; volcan réduit et
+  toujours animé (image fixe si `prefers-reduced-motion`) ; tailles et
+  espacements compactés (1440 × 900 sans défilement) ; bouton « Liste » sur
+  « Tâches réalisées » ouvrant la liste réelle des tâches (Échap ou clic
+  extérieur pour fermer). Nouvelle page Brief : fiche PFE en sections
+  (présentation, problématique, objectifs, publics, solution, points forts
+  UX, périmètre et contraintes, méthode et tests, livrables, échéances,
+  checklist), résumé visible et « Voir le détail », depuis la synthèse
+  Notion locale (lecture seule) ; checklist et statuts modifiables conservés.
+
 ## 2.18.0 — 2026-10-27
 
 - **Type** : minor (nouvelle interface parallèle `/v3` sur la branche

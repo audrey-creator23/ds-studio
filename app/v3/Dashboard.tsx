@@ -1,24 +1,24 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { useTasks } from '../client/useTasks.js';
 import { levels, levelOf } from '../client/Volcano.js';
 import VolcanoGL, { webglAvailable } from '../client/VolcanoGL.js';
 import {
   daysBetween,
-  milestoneLabels,
   milestoneStatus,
   milestones,
   nextMilestone,
   progress,
   timeProgress,
   today,
-  type MilestoneStatus,
 } from '../shared/brief.js';
 import {
   statusLabels,
   statusOf,
   taskStatuses,
   tasks,
+  type TaskStatus,
 } from '../shared/tasks.js';
+import Timeline, { chartOf, short } from './Timeline.js';
 import {
   Badge,
   Button,
@@ -30,68 +30,82 @@ import {
   CardHeader,
   CardTitle,
   Progress,
-  ToggleGroup,
   type BadgeVariant,
 } from './ui.js';
 
-// Dashboard projet (itération v3). Concept conservé : l'activité du volcan
-// suit les dates du PFE, pas les tâches ; la frise permet de prévisualiser
-// une date. Tout le reste (hiérarchie, composants) est nouveau.
+// Dashboard projet (itération v3). L'activité du volcan suit les dates du
+// PFE, pas les tâches ; un jalon de la frise prévisualise sa date (un second
+// clic revient à aujourd'hui).
 const start = milestones[0].date;
 const end = milestones[milestones.length - 1].date;
-const statusBadge: Record<MilestoneStatus, BadgeVariant> = {
-  validated: 'default',
+export const taskBadge: Record<TaskStatus, BadgeVariant> = {
+  todo: 'outline',
   done: 'secondary',
-  current: 'outline',
-  late: 'destructive',
-  past: 'outline',
-  upcoming: 'outline',
+  validated: 'default',
 };
-// Rampe --chart-1 → 5 : plus l'activité monte, plus la teinte est soutenue.
-const chartOf = (a: number) =>
-  `var(--chart-${Math.min(5, 1 + Math.floor(a * 5))})`;
-// Frise à pas réguliers : la date affichée est placée entre ses deux jalons.
-function railFill(day: string) {
-  const n = milestones.length - 1;
-  for (let i = 0; i < n; i++) {
-    const a = milestones[i].date;
-    const b = milestones[i + 1].date;
-    if (day <= b) {
-      const t = day <= a ? 0 : daysBetween(a, day) / daysBetween(a, b);
-      return ((i + t) / n) * 100;
-    }
-  }
-  return 100;
+
+// Liste réelle des tâches, ouverte depuis la carte « Tâches réalisées ».
+function TaskList({ state }: { state: ReturnType<typeof useTasks>['state'] }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      if (
+        e instanceof KeyboardEvent
+          ? e.key === 'Escape'
+          : !root.current?.contains(e.target as Node)
+      )
+        setOpen(false);
+    };
+    addEventListener('keydown', close);
+    addEventListener('pointerdown', close);
+    return () => {
+      removeEventListener('keydown', close);
+      removeEventListener('pointerdown', close);
+    };
+  }, [open]);
+  return (
+    <div className="popover-root" ref={root}>
+      <Button
+        variant="outline"
+        size="sm"
+        aria-label="Voir la liste des tâches"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen(!open)}
+      >
+        Liste
+      </Button>
+      {open && (
+        <div id={id} className="popover" role="region" aria-label="Tâches">
+          <ul className="task-list">
+            {tasks.map((t) => {
+              const s = state ? statusOf(state, t.id) : t.initial;
+              return (
+                <li key={t.id}>
+                  <span>
+                    {t.label}
+                    {t.due && <small> · {t.due}</small>}
+                  </span>
+                  <Badge variant={taskBadge[s]}>{statusLabels[s]}</Badge>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
-const short = (d: string) =>
-  new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-  });
 
 export default function Dashboard() {
   const { state, error } = useTasks();
   const now = today();
   const [day, setDay] = useState(now);
-  const [mode, setMode] = useState<'live' | 'still'>(() => {
-    try {
-      return localStorage.getItem('ds-v3-activity') === 'still'
-        ? 'still'
-        : 'live';
-    } catch {
-      return 'live';
-    }
-  });
   const [gl, setGl] = useState(webglAvailable);
   const [fail] = useState(() => () => setGl(false));
-  const chooseMode = (m: 'live' | 'still') => {
-    setMode(m);
-    try {
-      localStorage.setItem('ds-v3-activity', m);
-    } catch {
-      /* Préférence facultative. */
-    }
-  };
 
   const intensity = timeProgress(day);
   const statuses = milestones.map((_, i) => milestoneStatus(i, state, now));
@@ -110,33 +124,17 @@ export default function Dashboard() {
   const todo = state
     ? tasks.filter((t) => statusOf(state, t.id) === 'todo').slice(0, 4)
     : [];
-  const previewing = day !== now;
 
   return (
     <div className="page">
       <header className="page-header">
-        <div>
-          <p className="eyebrow">Projet · PFE</p>
-          <h1 id="page-title" tabIndex={-1}>
-            Dashboard
-          </h1>
-          <p className="lead">
-            L’activité suit les dates du projet, du {short(start)} au{' '}
-            {short(end)}.
-          </p>
-        </div>
-        <div className="page-header-side" role="status">
-          {previewing ? (
-            <>
-              <Badge variant="outline">Aperçu au {short(day)}</Badge>
-              <Button variant="outline" size="sm" onClick={() => setDay(now)}>
-                Revenir à aujourd’hui
-              </Button>
-            </>
-          ) : (
-            <Badge variant="secondary">Aujourd’hui · {short(now)}</Badge>
-          )}
-        </div>
+        <h1 id="page-title" tabIndex={-1}>
+          Récapitulatif des échéances PFE
+        </h1>
+        <p className="lead">
+          Activité calculée sur les dates · du {short(start)} au {short(end)} ·
+          jour {elapsed} sur {total}
+        </p>
       </header>
 
       {error && (
@@ -145,11 +143,28 @@ export default function Dashboard() {
         </p>
       )}
 
+      <Card className="timeline-card" aria-labelledby="echeances">
+        <CardHeader>
+          <CardTitle id="echeances">Échéances à venir</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Timeline
+            day={day}
+            statuses={statuses}
+            selected={day}
+            onSelect={(d) => setDay(day === d ? now : d)}
+          />
+        </CardContent>
+      </Card>
+
       <div className="kpis">
         <Card>
           <CardHeader>
             <CardDescription>Tâches réalisées</CardDescription>
             <CardTitle className="stat">{state ? `${done} %` : '…'}</CardTitle>
+            <CardAction>
+              <TaskList state={state} />
+            </CardAction>
           </CardHeader>
           <CardFooter>
             <Progress value={done} label="Tâches faites ou validées" />
@@ -206,18 +221,8 @@ export default function Dashboard() {
             <CardTitle>Activité</CardTitle>
             <CardDescription>
               {levelOf(intensity)} · intensité {Math.round(intensity * 100)} %
+              {day !== now && ` · au ${short(day)}`}
             </CardDescription>
-            <CardAction>
-              <ToggleGroup
-                label="Rendu de l’activité"
-                value={mode}
-                onChange={chooseMode}
-                options={[
-                  { value: 'live', label: 'Animé' },
-                  { value: 'still', label: 'Léger' },
-                ]}
-              />
-            </CardAction>
           </CardHeader>
           <CardContent>
             <div
@@ -226,11 +231,7 @@ export default function Dashboard() {
               aria-label={`Volcan, intensité ${Math.round(intensity * 100)} % : ${levelOf(intensity)}`}
             >
               {gl ? (
-                <VolcanoGL
-                  activity={intensity}
-                  onFail={fail}
-                  still={mode === 'still'}
-                />
+                <VolcanoGL activity={intensity} onFail={fail} />
               ) : (
                 <p className="stage-fallback">
                   Rendu 3D indisponible sur cet appareil.
@@ -294,47 +295,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="timeline-card">
-        <CardHeader>
-          <CardTitle>Frise des jalons</CardTitle>
-          <CardDescription>
-            Choisissez un jalon pour prévisualiser l’activité à sa date.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="timeline">
-            <div className="timeline-rail" aria-hidden="true">
-              <span style={{ width: `${railFill(day)}%` }} />
-            </div>
-            <ol>
-              {milestones.map((m, i) => {
-                const a = timeProgress(m.date);
-                return (
-                  <li
-                    key={m.date}
-                    style={{ '--tone': chartOf(a) } as CSSProperties}
-                  >
-                    <button
-                      type="button"
-                      aria-pressed={day === m.date}
-                      aria-label={`${m.title}, ${short(m.date)}, ${milestoneLabels[statuses[i]]} : prévisualiser l’activité`}
-                      onClick={() => setDay(m.date)}
-                    >
-                      <span className="dot" aria-hidden="true" />
-                      <time dateTime={m.date}>{short(m.date)}</time>
-                      <strong>{m.title}</strong>
-                      <Badge variant={statusBadge[statuses[i]]}>
-                        {milestoneLabels[statuses[i]]}
-                      </Badge>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

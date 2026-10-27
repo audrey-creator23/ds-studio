@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import Dashboard from './Dashboard.js';
-import { Badge, Button } from './ui.js';
+import Brief from './Brief.js';
+import { Badge, Button, ToggleGroup } from './ui.js';
 
-// Itération v3 : seule la page Dashboard existe pour l'instant. Les autres
-// pages sont annoncées dans la navigation mais désactivées.
+// Itération v3 : Dashboard et Brief disponibles ; les autres pages sont
+// annoncées dans la navigation mais désactivées. ?vue=… garde la page.
 const pages = [
   { id: 'home', label: 'Accueil' },
   { id: 'design', label: 'Design' },
@@ -11,6 +12,8 @@ const pages = [
   { id: 'brief', label: 'Brief projet' },
   { id: 'dashboard', label: 'Dashboard' },
 ] as const;
+type Ready = 'dashboard' | 'brief';
+const ready: Ready[] = ['dashboard', 'brief'];
 
 function stored(key: string, fallback: string) {
   try {
@@ -26,8 +29,13 @@ function store(key: string, value: string) {
     /* Préférence facultative. */
   }
 }
+const fromUrl = (): Ready => {
+  const v = new URLSearchParams(location.search).get('vue');
+  return ready.includes(v as Ready) ? (v as Ready) : 'dashboard';
+};
 
 export default function App() {
+  const [page, setPage] = useState<Ready>(fromUrl);
   const [theme, setTheme] = useState(() => stored('ds-v3-theme', 'dark'));
   const [collapsed, setCollapsed] = useState(
     () => stored('ds-v3-nav', 'open') === 'closed',
@@ -40,6 +48,15 @@ export default function App() {
     () => store('ds-v3-nav', collapsed ? 'closed' : 'open'),
     [collapsed],
   );
+  useEffect(() => {
+    const url = new URL(location.href);
+    url.searchParams.set('vue', page);
+    history.replaceState(null, '', url);
+  }, [page]);
+  function go(next: Ready) {
+    setPage(next);
+    requestAnimationFrame(() => document.getElementById('page-title')?.focus());
+  }
 
   return (
     <div className="shell" data-nav={collapsed ? 'closed' : 'open'}>
@@ -66,20 +83,25 @@ export default function App() {
         <nav>
           <ul>
             {pages.map((p) => {
-              const current = p.id === 'dashboard';
+              const available = ready.includes(p.id as Ready);
               return (
                 <li key={p.id}>
                   <a
-                    href={current ? '#page-title' : undefined}
-                    aria-current={current ? 'page' : undefined}
-                    aria-disabled={current ? undefined : true}
-                    title={current ? undefined : 'Bientôt dans la v3'}
+                    href={available ? `?vue=${p.id}` : undefined}
+                    aria-current={page === p.id ? 'page' : undefined}
+                    aria-disabled={available ? undefined : true}
+                    title={available ? undefined : 'Bientôt dans la v3'}
+                    onClick={(e) => {
+                      if (!available) return;
+                      e.preventDefault();
+                      go(p.id as Ready);
+                    }}
                   >
                     <span className="nav-initial" aria-hidden="true">
                       {p.label[0]}
                     </span>
                     <span className="nav-label">{p.label}</span>
-                    {!current && <small className="nav-soon">bientôt</small>}
+                    {!available && <small className="nav-soon">bientôt</small>}
                   </a>
                 </li>
               );
@@ -87,22 +109,25 @@ export default function App() {
           </ul>
         </nav>
         <div className="sidebar-foot">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-pressed={theme === 'dark'}
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
-            {theme === 'dark' ? 'Thème sombre' : 'Thème clair'}
-          </Button>
           <a className="back" href="/">
             Version actuelle
           </a>
         </div>
       </aside>
-      <main className="main">
-        <Dashboard />
-      </main>
+      <div className="main">
+        <div className="topbar">
+          <ToggleGroup
+            label="Thème"
+            value={theme === 'dark' ? 'dark' : 'light'}
+            onChange={setTheme}
+            options={[
+              { value: 'light', label: 'Clair' },
+              { value: 'dark', label: 'Sombre' },
+            ]}
+          />
+        </div>
+        <main>{page === 'brief' ? <Brief /> : <Dashboard />}</main>
+      </div>
     </div>
   );
 }

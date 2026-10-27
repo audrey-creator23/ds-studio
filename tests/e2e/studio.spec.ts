@@ -864,34 +864,50 @@ test('bulle Claude : toutes les pages, contexte, clavier, glisser, position mém
   ).toBeVisible();
 });
 
-test('v3 : dashboard séparé, frise, rendu léger, thème, version actuelle intacte', async ({
+test('v3 : dashboard compact, frise, liste des tâches, thème, fiche PFE', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/v3');
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Récapitulatif des échéances PFE' }),
+  ).toBeVisible();
   await expect(page.locator('html')).toHaveClass(/dark/);
-  await expect(page.getByRole('progressbar').first()).toBeVisible();
-  // Frise : prévisualiser la fin du projet, puis revenir à aujourd'hui.
-  await page.getByRole('button', { name: /^Fin du DS/ }).click();
+  // Page desktop sans défilement.
+  expect(
+    await page.evaluate(() => document.documentElement.scrollHeight),
+  ).toBeLessThanOrEqual(900);
+  // Frise : un jalon prévisualise sa date, un second clic revient à aujourd'hui.
+  const fin = page.getByRole('button', { name: /^Fin du DS/ });
+  await fin.click();
   await expect(
     page.getByRole('img', { name: 'Volcan, intensité 100 % : Éruption' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Revenir à aujourd’hui' }).click();
-  // Rendu léger mémorisé.
-  await page.getByRole('button', { name: 'Léger' }).click();
-  await expect(page.getByRole('button', { name: 'Léger' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
+  await fin.click();
+  await expect(fin).toHaveAttribute('aria-pressed', 'false');
+  // Liste réelle des tâches depuis la carte.
+  await page.getByRole('button', { name: 'Voir la liste des tâches' }).click();
+  await expect(page.getByRole('region', { name: 'Tâches' })).toContainText(
+    'Recherche utilisateurs',
   );
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('region', { name: 'Tâches' })).toHaveCount(0);
   // Thème clair mémorisé.
-  await page.getByRole('button', { name: 'Thème sombre' }).click();
+  await page.getByRole('button', { name: 'Clair' }).click();
   await page.reload();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
-  await expect(page.getByRole('button', { name: 'Léger' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  // Fiche PFE : résumé visible, détail à la demande, checklist modifiable.
+  await page.locator('.sidebar a', { hasText: 'Brief projet' }).click();
+  await expect(page.getByRole('heading', { name: 'Fiche PFE' })).toBeFocused();
+  const objectifs = page.locator('.sheet-section', { hasText: 'Objectifs' });
+  await objectifs.getByRole('button', { name: 'Voir le détail' }).click();
+  await expect(objectifs).toContainText('Préparation progressive');
+  await expect(
+    page.getByRole('combobox', { name: /^Statut : Recherche utilisateurs/ }),
+  ).toHaveCount(0);
+  const checklist = page.locator('.sheet-section', { hasText: 'Checklist' });
+  await checklist.getByRole('button', { name: 'Voir le détail' }).click();
+  await expect(checklist.getByRole('combobox')).toHaveCount(9);
   // Autres pages annoncées mais désactivées ; la version actuelle reste là.
   await expect(
     page.locator('.sidebar a', { hasText: 'Accueil' }),

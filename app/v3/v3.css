@@ -7,7 +7,7 @@
   --radius-xl: calc(var(--radius) + 4px);
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --focus: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
-  --gap: 16px;
+  --gap: 12px;
   color-scheme: light;
 }
 .dark {
@@ -50,9 +50,9 @@ button {
 .card {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
   min-width: 0;
-  padding: 24px 0;
+  padding: 16px 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   background: var(--card);
@@ -63,8 +63,8 @@ button {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: start;
-  gap: 4px 12px;
-  padding: 0 24px;
+  gap: 2px 12px;
+  padding: 0 18px;
 }
 .card-header > :not(.card-action) {
   grid-column: 1;
@@ -83,13 +83,13 @@ button {
   color: var(--muted-foreground);
 }
 .card-content {
-  padding: 0 24px;
+  padding: 0 18px;
 }
 .card-footer {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 24px;
+  padding: 0 18px;
 }
 .muted {
   color: var(--muted-foreground);
@@ -327,8 +327,16 @@ button {
   justify-content: center;
 }
 .main {
+  position: relative;
   min-width: 0;
-  padding: 32px clamp(16px, 3vw, 40px) 48px;
+  padding: 20px clamp(16px, 2.5vw, 32px) 20px;
+}
+/* Bascule clair/sombre persistante, en haut à droite de chaque page. */
+.topbar {
+  position: absolute;
+  top: 18px;
+  right: clamp(16px, 2.5vw, 32px);
+  z-index: 2;
 }
 
 /* ——— Dashboard ——— */
@@ -339,33 +347,21 @@ button {
   margin: 0 auto;
 }
 .page-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 8px;
-}
-.eyebrow {
-  color: var(--muted-foreground);
-  font-size: 12px;
-  font-weight: 500;
+  padding-right: 180px;
 }
 .page-header h1 {
-  margin-top: 4px;
-  font-size: 30px;
+  font-size: 24px;
   font-weight: 600;
-  line-height: 36px;
+  line-height: 32px;
   letter-spacing: -0.02em;
 }
 .lead {
-  margin-top: 6px;
+  margin-top: 2px;
   color: var(--muted-foreground);
 }
-.page-header-side {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.lead a {
+  color: inherit;
+  text-underline-offset: 3px;
 }
 .kpis {
   display: grid;
@@ -373,19 +369,19 @@ button {
   gap: var(--gap);
 }
 .kpis .card {
-  gap: 16px;
-  padding: 20px 0;
+  gap: 10px;
+  padding: 14px 0;
 }
 .kpis .card-header,
 .kpis .card-footer {
-  padding: 0 20px;
+  padding: 0 16px;
 }
 .kpis .card-footer {
   min-height: 22px;
   font-size: 13px;
 }
 .stat {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
   line-height: 32px;
   letter-spacing: -0.02em;
@@ -404,7 +400,8 @@ button {
 }
 .stage {
   position: relative;
-  aspect-ratio: 16 / 9;
+  /* Volcan réduit : remplit l'espace restant sans faire défiler. */
+  height: clamp(200px, calc(100vh - 572px), 340px);
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: oklch(0.145 0 0);
@@ -426,7 +423,7 @@ button {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
-  margin: 16px 0 0;
+  margin: 10px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -466,8 +463,8 @@ button {
 }
 .legend {
   display: grid;
-  gap: 8px;
-  margin: 16px 0 0;
+  gap: 6px;
+  margin: 12px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -488,8 +485,8 @@ button {
   font-variant-numeric: tabular-nums;
 }
 .subhead {
-  margin: 20px 0 8px;
-  padding-top: 16px;
+  margin: 12px 0 6px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
   color: var(--muted-foreground);
   font-size: 12px;
@@ -497,7 +494,7 @@ button {
 }
 .list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -518,7 +515,7 @@ button {
 }
 .timeline-rail {
   position: absolute;
-  top: 19px;
+  top: 15px;
   left: calc(100% / 12);
   right: calc(100% / 12);
   height: 2px;
@@ -538,28 +535,38 @@ button {
   padding: 0;
   list-style: none;
 }
-.timeline button {
+.timeline-item {
   display: grid;
   justify-items: center;
-  gap: 4px;
+  gap: 2px;
   width: 100%;
-  padding: 10px 6px 12px;
+  padding: 6px 6px 8px;
   border: 0;
   border-radius: var(--radius-lg);
   background: transparent;
   text-align: center;
+}
+button.timeline-item {
   cursor: pointer;
 }
-.timeline button:hover {
+button.timeline-item:hover {
   background: var(--accent);
 }
-.timeline button[aria-pressed='true'] {
+button.timeline-item[aria-pressed='true'] {
   background: var(--secondary);
 }
+.timeline-item .badge {
+  margin-top: 2px;
+}
+.timeline-detail {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
 .dot {
-  width: 20px;
-  height: 20px;
-  margin-bottom: 6px;
+  width: 18px;
+  height: 18px;
+  margin-bottom: 4px;
   border: 4px solid var(--card);
   border-radius: 50%;
   background: var(--tone);
@@ -631,9 +638,9 @@ button {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   }
-  .timeline button {
+  .timeline-item {
     grid-template-columns: auto 1fr auto;
-    grid-template-areas: 'dot title badge' 'dot date badge';
+    grid-template-areas: 'dot title badge' 'dot date badge' 'dot detail detail';
     justify-items: start;
     align-items: center;
     column-gap: 12px;
@@ -652,9 +659,136 @@ button {
   .timeline .badge {
     grid-area: badge;
   }
+  .timeline-detail {
+    grid-area: detail;
+  }
+  .page-header {
+    padding-right: 0;
+    padding-top: 40px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+  }
+}
+
+/* Liste des tâches ouverte depuis la carte « Tâches réalisées ». */
+.popover-root {
+  position: relative;
+}
+.popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 60vh;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2);
+}
+.task-list,
+.checklist {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.task-list li,
+.checklist li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+.task-list li:hover {
+  background: var(--accent);
+}
+.task-list small,
+.checklist small {
+  color: var(--muted-foreground);
+}
+
+/* Fiche PFE : document en sections, sans bento. */
+.sheet {
+  max-width: 980px;
+}
+.sheet-body {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  color: var(--card-foreground);
+}
+.sheet-section + .sheet-section {
+  border-top: 1px solid var(--border);
+}
+.sheet-row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  padding: 14px 18px;
+}
+.sheet-row h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.sheet-summary {
+  display: grid;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+.sheet-detail {
+  padding: 0 18px 16px calc(220px + 34px);
+}
+.sheet-detail p + p,
+.sheet-detail p + ul {
+  margin-top: 8px;
+}
+.sheet-detail ul:not(.checklist, .timeline ol) {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+.sheet-detail ul.cols {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+}
+.sheet-detail .timeline {
+  margin-top: 4px;
+}
+.checklist select {
+  flex: none;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .sheet-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .sheet-summary {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .sheet-detail {
+    padding: 0 18px 16px;
+  }
+  .sheet-detail ul.cols {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
