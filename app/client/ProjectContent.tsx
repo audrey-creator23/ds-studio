@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Card, Toggle } from './Card.js';
 import { useTasks } from './useTasks.js';
 import {
   briefCards,
@@ -16,44 +16,6 @@ import {
   tasks,
   type TaskStatus,
 } from '../shared/tasks.js';
-
-export function Toggle({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <details className="brief-toggle">
-      <summary>{label}</summary>
-      <div className="brief-toggle-body">{children}</div>
-    </details>
-  );
-}
-
-// Carte Bento commune : emoji en bannière, titre, résumé, contenu.
-export function BentoCard({
-  emoji,
-  title,
-  className = '',
-  children,
-}: {
-  emoji: string;
-  title: string;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <article className={`bento-card ${className}`}>
-      <span className="bento-emoji" aria-hidden="true">
-        {emoji}
-      </span>
-      <h3>{title}</h3>
-      {children}
-    </article>
-  );
-}
 
 export function Timeline({
   state,
@@ -104,8 +66,8 @@ export default function ProjectContent() {
   const done = progress(state);
   const next = nextMilestone();
   return (
-    <section className="brief-page" aria-labelledby="projet-title">
-      <header className="brief-head">
+    <section className="page brief-page" aria-labelledby="projet-title">
+      <header className="page-head">
         <div>
           <h2 id="projet-title" tabIndex={-1}>
             Brief du projet · PFE M2 UX/UI 2026-27
@@ -125,7 +87,7 @@ export default function ProjectContent() {
             </span>
           </p>
         </div>
-        <dl className="brief-kpis">
+        <dl className="page-kpis">
           <div>
             <dt>Avancement</dt>
             <dd>{state ? `${done} %` : '…'}</dd>
@@ -145,8 +107,8 @@ export default function ProjectContent() {
           {error}
         </p>
       )}
-      <div className="bento">
-        <BentoCard emoji="📅" title="Planning" className="bento-planning">
+      <div className="brief-grid">
+        <Card emoji="📅" title="Planning" className="brief-planning">
           <Timeline state={state} />
           <Toggle label="Détail des échéances">
             <ul>
@@ -157,8 +119,8 @@ export default function ProjectContent() {
               ))}
             </ul>
           </Toggle>
-        </BentoCard>
-        <BentoCard emoji="✅" title="Checklist" className="bento-tasks">
+        </Card>
+        <Card emoji="✅" title="Checklist" className="brief-tasks">
           <div
             className="progress"
             role="progressbar"
@@ -209,15 +171,15 @@ export default function ProjectContent() {
               })}
             </ul>
           </Toggle>
-        </BentoCard>
+        </Card>
         {briefCards.map((c) => (
-          <BentoCard
+          <Card
             key={c.id}
             emoji={c.emoji}
             title={c.title}
-            className={`bento-${c.size}`}
+            className={`brief-${c.size}`}
           >
-            <p className="bento-summary">{c.summary}</p>
+            <p className="card-summary">{c.summary}</p>
             <Toggle label="Détails">
               {c.paragraphs?.map((p) => (
                 <p key={p}>{p}</p>
@@ -230,7 +192,7 @@ export default function ProjectContent() {
                 </ul>
               )}
             </Toggle>
-          </BentoCard>
+          </Card>
         ))}
       </div>
     </section>

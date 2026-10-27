@@ -5,6 +5,22 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.8.0 — 2026-10-27
+
+- **Type** : minor (interface, données et API inchangées)
+- **Fichiers** : `app/client/Card.tsx`, `app/client/Volcano.tsx`,
+  `app/client/VolcanoDashboard.tsx`, `app/client/ProjectContent.tsx`,
+  `app/client/AssistantPage.tsx`, `app/client/styles.css`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : composant `Card` unique (marges, rayon, ombre, titres, emoji à
+  taille de titre) pour Brief, Volcan et Assistant ; agrandissement ×5 des emojis
+  retiré ; CSS des pages secondaires regroupée. Dashboard Volcan : volcan sur
+  toute la colonne gauche, cartes à droite, « Avancement du projet » calculé
+  depuis les tâches, intensité toujours liée aux dates. Volcan plus réaliste et
+  léger : relief texturé statique, lave incandescente qui coule, fumée, cendres,
+  braises, fontaine progressive, sans recadrage quel que soit le format.
+  Vérifié sans débordement en 1440, 1024, 768 et 375 px.
+
 ## 2.7.0 — 2026-10-27
 
 - **Type** : minor (nouvelle page et API locale `/api/assistant`, dépendance

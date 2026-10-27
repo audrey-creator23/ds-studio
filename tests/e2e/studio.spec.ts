@@ -367,7 +367,7 @@ test('brief : page Bento sur un écran, toggles fermés, statuts persistants', a
   ).toBeFocused();
   await expect(page.locator('.workshop')).toBeHidden();
   await expect(page.locator('.timeline li')).toHaveCount(6);
-  await expect(page.locator('.brief-toggle[open]')).toHaveCount(0);
+  await expect(page.locator('.card-toggle[open]')).toHaveCount(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollHeight <= innerHeight,
@@ -382,7 +382,7 @@ test('brief : page Bento sur un écran, toggles fermés, statuts persistants', a
   await expect(page.getByText('Validé par le prof · 1')).toBeVisible();
   await page.reload();
   await page.getByRole('button', { name: 'Brief du projet' }).click();
-  await expect(page.locator('.brief-toggle[open]')).toHaveCount(0);
+  await expect(page.locator('.card-toggle[open]')).toHaveCount(0);
   await expect(page.getByText('Validé par le prof · 1')).toBeVisible();
   await page.getByRole('link', { name: 'Tokens et composants' }).click();
   await expect(page.locator('.workshop')).toBeVisible();
@@ -395,7 +395,7 @@ test('brief : mobile 375 px sans débordement horizontal', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/');
   await page.getByRole('button', { name: 'Brief du projet' }).click();
-  await expect(page.locator('.bento-tasks')).toBeVisible();
+  await expect(page.locator('.brief-tasks')).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -414,14 +414,14 @@ test('dashboard volcan : page secondaire, activité datée, frise et accès', as
   ).toBeFocused();
   await expect(page.locator('.workshop')).toBeHidden();
   await expect(
-    page.getByRole('img', { name: /Volcan, activité/ }),
+    page.getByRole('img', { name: /Volcan, intensité/ }),
   ).toBeVisible();
   await expect(page.locator('.volcano-track li')).toHaveCount(6);
   await page.getByRole('button', { name: /12 mars · Fin du DS/ }).click();
   await expect(
-    page.getByRole('img', { name: 'Volcan, activité 100 % : Éruption' }),
+    page.getByRole('img', { name: 'Volcan, intensité 100 % : Éruption' }),
   ).toBeVisible();
-  await expect(page.locator('.v-fountain')).toHaveCount(1);
+  await expect(page.locator('.vl-fountain')).toHaveCount(1);
   await page.getByRole('button', { name: 'Revenir à aujourd’hui' }).click();
   await page
     .getByRole('button', { name: 'Brief du projet', exact: true })
@@ -458,4 +458,44 @@ test('contexte & assistant : page Bento, sources en lecture seule, saisie multil
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test('harmonisation : avancement réel indépendant de l’intensité, tablette sans débordement', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Dashboard Volcan' }).click();
+  const kpi = page.locator('.page-kpis dd');
+  await expect(page.locator('.page-kpis dt')).toHaveText(
+    'Avancement du projet',
+  );
+  await expect(kpi).toHaveText('11 %');
+  await page.getByRole('button', { name: /12 mars · Fin du DS/ }).click();
+  await expect(
+    page.getByText('Intensité · Éruption', { exact: false }),
+  ).toBeVisible();
+  await expect(kpi).toHaveText('11 %');
+  await expect(page.locator('.card-emoji').first()).toHaveCSS(
+    'font-size',
+    '18px',
+  );
+  for (const [width, height] of [
+    [1024, 768],
+    [768, 1024],
+  ]) {
+    await page.setViewportSize({ width, height });
+    for (const name of [
+      'Contexte & Assistant',
+      'Brief du projet',
+      'Dashboard Volcan',
+    ]) {
+      await page.getByRole('button', { name }).first().click();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
+  }
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { postStream, request } from './api.js';
 import Markdown from './Markdown.js';
-import { BentoCard } from './ProjectContent.js';
+import { Card } from './Card.js';
 import type { ChatMessage, ContextSource } from '../server/assistant.js';
 
 interface AssistantInfo {
@@ -112,8 +112,8 @@ export default function AssistantPage() {
   const lastUsage = [...messages].reverse().find((m) => m.usage)?.usage;
   const available = info?.status.available ?? false;
   return (
-    <section className="assistant-page" aria-labelledby="assistant-title">
-      <header className="brief-head">
+    <section className="page assistant-page" aria-labelledby="assistant-title">
+      <header className="page-head">
         <div>
           <h2 id="assistant-title" tabIndex={-1}>
             Contexte & Assistant
@@ -123,7 +123,7 @@ export default function AssistantPage() {
             sans votre validation dans DS-Studio.
           </p>
         </div>
-        <dl className="brief-kpis">
+        <dl className="page-kpis">
           <div>
             <dt>Modèle</dt>
             <dd>{info?.model ?? '…'}</dd>
@@ -134,8 +134,8 @@ export default function AssistantPage() {
           </div>
         </dl>
       </header>
-      <div className="bento assistant-bento">
-        <BentoCard emoji="💬" title="Conversation" className="assistant-chat">
+      <div className="assistant-grid">
+        <Card emoji="💬" title="Conversation" className="assistant-chat">
           <div
             className="chat-thread"
             ref={log}
@@ -233,8 +233,8 @@ export default function AssistantPage() {
               )}
             </div>
           </form>
-        </BentoCard>
-        <BentoCard emoji="📚" title="Contexte consulté">
+        </Card>
+        <Card emoji="📚" title="Contexte consulté">
           <ul className="assistant-sources">
             {info?.sources.map((s) => (
               <li key={s.id} className={s.available ? '' : 'is-missing'}>
@@ -250,18 +250,18 @@ export default function AssistantPage() {
               </li>
             ))}
           </ul>
-          <p className="bento-summary">
+          <p className="card-summary">
             Lecture seule. Envoyé à Anthropic à chaque question.
           </p>
-        </BentoCard>
-        <BentoCard emoji="🔐" title="Connexion">
-          <p className="bento-summary">{info?.status.detail ?? '…'}</p>
+        </Card>
+        <Card emoji="🔐" title="Connexion">
+          <p className="card-summary">{info?.status.detail ?? '…'}</p>
           <p className="chat-note">
             Clé conservée côté serveur, jamais envoyée au navigateur.
           </p>
-        </BentoCard>
-        <BentoCard emoji="📏" title="Limites">
-          <ul className="volcano-kpis">
+        </Card>
+        <Card emoji="📏" title="Limites">
+          <ul className="card-list">
             <li>
               {info?.limits.maxOutputTokens ?? '…'} tokens max par réponse
             </li>
@@ -280,7 +280,7 @@ export default function AssistantPage() {
           >
             Effacer l’historique ({messages.length})
           </button>
-        </BentoCard>
+        </Card>
       </div>
     </section>
   );
