@@ -7,6 +7,8 @@ import { proposeSchema } from '../shared/model.js';
 import { Store, StudioError } from './store.js';
 import { ProjectStore } from './project.js';
 import { projectSchema } from '../shared/project.js';
+import { TaskStore } from './tasks.js';
+import { taskUpdateSchema } from '../shared/tasks.js';
 import { CodexAdapter } from '../../connectors/agents/codex.js';
 import { unvalidatedAdapter } from '../../connectors/agents/unvalidated.js';
 import type { AgentAdapter } from '../../connectors/agents/types.js';
@@ -27,6 +29,7 @@ export async function createStudioServer(options: {
     gemini: unvalidatedAdapter('gemini'),
   };
   const project = new ProjectStore(store.directory);
+  const tasks = new TaskStore(store.directory);
   const csrf = randomBytes(32).toString('hex');
   let busy = false;
   const active = new Set<AbortController>();
@@ -107,6 +110,8 @@ export async function createStudioServer(options: {
             );
           if (url.pathname === '/api/project')
             return send(200, await project.read());
+          if (url.pathname === '/api/tasks')
+            return send(200, await tasks.read());
           if (url.pathname === '/api/state') return send(200, store.snapshot());
           if (url.pathname === '/api/export')
             return send(200, store.snapshot().tokens);
@@ -142,6 +147,10 @@ export async function createStudioServer(options: {
             .strict()
             .parse(body);
           return send(200, await project.save(b.base, b.project));
+        }
+        if (url.pathname === '/api/tasks') {
+          const b = taskUpdateSchema.parse(body);
+          return send(200, await tasks.set(b.id, b.status));
         }
         if (url.pathname === '/api/proposals') {
           const b = proposeSchema.parse(body);

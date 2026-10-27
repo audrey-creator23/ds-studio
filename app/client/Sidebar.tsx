@@ -5,6 +5,7 @@ import table from './icons/table.svg';
 import compass from './icons/compass.svg';
 import calendar from './icons/calendar.svg';
 import help from './icons/help.svg';
+import Logo from './Logo.js';
 
 // Menu vertical du chrome de l'atelier, d'après le DS Figma de référence.
 // Il n'utilise pas les tokens éditables : seul le DS change avec eux.
@@ -21,6 +22,7 @@ export default function Sidebar({
   onToggleHistory,
   briefOpen,
   onToggleBrief,
+  onNavigate,
   figmaLabel,
 }: {
   revision: number;
@@ -28,6 +30,7 @@ export default function Sidebar({
   onToggleHistory: () => void;
   briefOpen: boolean;
   onToggleBrief: () => void;
+  onNavigate: () => void;
   figmaLabel: string;
 }) {
   const [active, setActive] = useState('accueil');
@@ -48,9 +51,7 @@ export default function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-account">
-        <span className="sidebar-avatar" aria-hidden="true">
-          ds
-        </span>
+        <Logo />
         <span>
           <strong>DS-Studio</strong>
           <small>Atelier de Design System</small>
@@ -62,8 +63,19 @@ export default function Sidebar({
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                aria-current={active === s.id ? 'location' : undefined}
-                onClick={() => setActive(s.id)}
+                aria-current={
+                  !briefOpen && active === s.id ? 'location' : undefined
+                }
+                onClick={(e) => {
+                  if (briefOpen) {
+                    e.preventDefault();
+                    onNavigate();
+                    requestAnimationFrame(() =>
+                      document.getElementById(s.id)?.scrollIntoView(),
+                    );
+                  }
+                  setActive(s.id);
+                }}
               >
                 <img src={s.icon} alt="" width="18" height="18" />
                 {s.label}

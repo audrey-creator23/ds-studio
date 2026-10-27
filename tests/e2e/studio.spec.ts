@@ -354,22 +354,51 @@ test('V2 : clavier, mobile 375 px et absence de stockage navigateur', async ({
   ).toBe(true);
 });
 
-test('brief du projet : onglet du menu, contenu affiché puis masqué', async ({
+test('brief : page Bento sur un écran, toggles fermés, statuts persistants', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
+  await expect(page.getByRole('img', { name: 'DS-Studio' })).toHaveText('🌋');
   const tab = page.getByRole('button', { name: 'Brief du projet' });
-  await expect(tab).toHaveAttribute('aria-expanded', 'false');
   await tab.click();
   await expect(
     page.getByRole('heading', { name: /Brief du projet · PFE/ }),
   ).toBeFocused();
+  await expect(page.locator('.workshop')).toBeHidden();
+  await expect(page.locator('.timeline li')).toHaveCount(6);
+  await expect(page.locator('.brief-toggle[open]')).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollHeight <= innerHeight,
+    ),
+  ).toBe(true);
+  await page.getByText('Voir les 9 tâches').click();
+  const select = page.getByRole('combobox', {
+    name: 'Statut : Recherche utilisateurs',
+  });
+  await expect(select).toHaveValue('todo');
+  await select.selectOption('validated');
+  await expect(page.getByText('Validé par le prof · 1')).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Brief du projet' }).click();
+  await expect(page.locator('.brief-toggle[open]')).toHaveCount(0);
+  await expect(page.getByText('Validé par le prof · 1')).toBeVisible();
+  await page.getByRole('link', { name: 'Tokens et composants' }).click();
+  await expect(page.locator('.workshop')).toBeVisible();
   await expect(
-    page.getByText('Tests utilisateurs', { exact: true }),
+    page.getByRole('heading', { name: 'Tokens sémantiques' }),
   ).toBeVisible();
-  await expect(tab).toHaveAttribute('aria-expanded', 'true');
-  await tab.click();
-  await expect(
-    page.getByRole('heading', { name: /Brief du projet · PFE/ }),
-  ).toHaveCount(0);
+});
+
+test('brief : mobile 375 px sans débordement horizontal', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Brief du projet' }).click();
+  await expect(page.locator('.bento-tasks')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });

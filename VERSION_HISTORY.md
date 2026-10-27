@@ -5,6 +5,22 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.4.0 — 2026-10-27
+
+- **Type** : minor (nouvelle API locale `/api/tasks`, données existantes intactes)
+- **Fichiers** : `app/client/Logo.tsx`, `app/client/ProjectContent.tsx`,
+  `app/client/Sidebar.tsx`, `app/client/App.tsx`, `app/client/styles.css`,
+  `app/shared/tasks.ts`, `app/server/tasks.ts`, `app/server/http.ts`,
+  `launcher/index.html`, `launcher/launcher.css`, `launcher/INSTALLATION.html`,
+  `tests/tasks.test.ts`, `tests/e2e/studio.spec.ts`, `package.json`,
+  `package-lock.json`
+- **Résumé** : logo 🌋 centralisé (`Logo`) et palette du chrome étendue au
+  lanceur et au guide. Brief devenu une page Bento tenant sur un écran :
+  frise des échéances, cartes à emoji repliées par défaut, checklist de 9 tâches
+  avec statuts « À faire / Fait / Validé par le prof » sauvegardés dans
+  `.ds-studio/tasks.json`. Contenu tiré de la note d’intention Notion, lue sans
+  modification.
+
 ## 2.3.0 — 2026-10-27
 
 - **Type** : minor (nouvel onglet, aucune donnée ni API modifiée)
