@@ -51,6 +51,9 @@ export const fakeComposer: Composer = {
         columns: 2,
         gap: 'md',
         align: 'stretch',
+        justify: 'start',
+        padding: 'none',
+        margin: 'none',
         items: [
           item('card', 'grande', { variant: 'accent', rows: 3 }),
           item('panel', 'petite-1', { text: 'Première idée' }),
@@ -75,6 +78,9 @@ export const fakeComposer: Composer = {
         columns: 1,
         gap: 'md',
         align: 'stretch',
+        justify: 'start',
+        padding: 'none',
+        margin: 'none',
         items: [planning, tasks],
       });
     } else

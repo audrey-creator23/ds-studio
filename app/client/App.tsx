@@ -136,9 +136,54 @@ export function Preview() {
         });
     };
     addEventListener('message', onMessage);
+    // Export demandé par le studio v3 : rendu réel de cette page (styles,
+    // polices, dimensions), en image ou en HTML autonome.
+    const onExport = async (e: MessageEvent) => {
+      if (
+        e.origin !== location.origin ||
+        e.source !== parent ||
+        e.data?.type !== 'ds-export'
+      )
+        return;
+      const reply = (result: Record<string, unknown>) =>
+        parent.postMessage(
+          { type: 'ds-export-result', id: e.data.id, ...result },
+          location.origin,
+        );
+      try {
+        const page = document.querySelector<HTMLElement>('.cmp-page');
+        if (!page) throw new Error('Aucun écran à exporter.');
+        if (e.data.format === 'html') {
+          const css = [...document.styleSheets]
+            .flatMap((sheet) => [...sheet.cssRules].map((r) => r.cssText))
+            .join('\n');
+          const html = `<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${document.title}</title>\n<style>\n${css}\n</style>\n</head>\n<body class="${document.body.className}">\n${document.getElementById('root')!.innerHTML}\n</body>\n</html>\n`;
+          return reply({ data: html });
+        }
+        const { toJpeg, toPng } = await import('html-to-image');
+        const options = {
+          pixelRatio: 2,
+          width: page.scrollWidth,
+          height: page.scrollHeight,
+          backgroundColor: getComputedStyle(document.body).backgroundColor,
+        };
+        reply({
+          data:
+            e.data.format === 'jpeg'
+              ? await toJpeg(page, { ...options, quality: 0.92 })
+              : await toPng(page, options),
+        });
+      } catch (err) {
+        reply({ error: (err as Error).message || 'Export impossible.' });
+      }
+    };
+    addEventListener('message', onExport);
     if (parent !== window)
       parent.postMessage({ type: 'ds-preview-ready' }, location.origin);
-    return () => removeEventListener('message', onMessage);
+    return () => {
+      removeEventListener('message', onMessage);
+      removeEventListener('message', onExport);
+    };
   }, []);
   const scenario =
     live?.screen ??
@@ -155,6 +200,9 @@ export function Preview() {
         interact={live.interact}
         onSelect={(id) =>
           parent.postMessage({ type: 'ds-select', id }, location.origin)
+        }
+        onDrop={(drop) =>
+          parent.postMessage({ type: 'ds-drop', ...drop }, location.origin)
         }
       />
     );

@@ -329,7 +329,7 @@ export default function Simulator({
           <iframe
             ref={frame}
             title={compose ? 'Aperçu de la page' : 'Aperçu responsive'}
-            src={`/?preview=1&scenario=${compose ? 'compose' : screen === 'components' ? 'cards' : screen}`}
+            src={`/index.html?preview=1&scenario=${compose ? 'compose' : screen === 'components' ? 'cards' : screen}`}
             width={size.w}
             height={size.h}
             style={{ transform: `scale(${scale})` }}

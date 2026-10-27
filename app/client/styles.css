@@ -1134,6 +1134,10 @@ select.status-tag {
   background: var(--ui-muted);
   color: var(--ui-fg-secondary);
 }
+.status-doing {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning-text);
+}
 .status-done {
   background: var(--ui-brand-soft);
   color: var(--ui-brand-hover);
@@ -2648,70 +2652,123 @@ select.status-tag {
   container-type: inline-size;
   border-radius: var(--radius-control);
 }
-.cmp-section-body {
+/* Auto Layout : chaque conteneur (section ou conteneur imbriqué) ne règle
+   que ses enfants directs, pour que l'imbrication ne fuie pas. */
+.cmp-section > .cmp-section-body {
   display: flex;
   flex-direction: column;
 }
-.cmp-section.gap-sm .cmp-section-body {
+.cmp-section.gap-sm > .cmp-section-body {
   gap: var(--space-sm);
 }
-.cmp-section.gap-md .cmp-section-body {
+.cmp-section.gap-md > .cmp-section-body {
   gap: var(--space-md);
 }
-.cmp-section.gap-lg .cmp-section-body {
+.cmp-section.gap-lg > .cmp-section-body {
   gap: var(--space-lg);
 }
-.cmp-section.align-start .cmp-section-body {
+.cmp-section.align-start > .cmp-section-body {
   align-items: flex-start;
 }
-.cmp-section.align-center .cmp-section-body {
+.cmp-section.align-center > .cmp-section-body {
   align-items: center;
 }
-.cmp-section.align-end .cmp-section-body {
+.cmp-section.align-end > .cmp-section-body {
   align-items: flex-end;
 }
-.cmp-section.align-stretch .cmp-section-body {
+.cmp-section.align-stretch > .cmp-section-body {
   align-items: stretch;
 }
-.cmp-section.layout-row .cmp-section-body {
+.cmp-section.justify-center > .cmp-section-body {
+  justify-content: center;
+}
+.cmp-section.justify-end > .cmp-section-body {
+  justify-content: flex-end;
+}
+.cmp-section.justify-between > .cmp-section-body {
+  justify-content: space-between;
+}
+.cmp-section.pad-sm {
+  padding: var(--space-sm);
+}
+.cmp-section.pad-md {
+  padding: var(--space-md);
+}
+.cmp-section.pad-lg {
+  padding: var(--space-lg);
+}
+.cmp-section.mar-sm {
+  margin-block: var(--space-sm);
+}
+.cmp-section.mar-md {
+  margin-block: var(--space-md);
+}
+.cmp-section.mar-lg {
+  margin-block: var(--space-lg);
+}
+.cmp-section.layout-row > .cmp-section-body {
   flex-direction: row;
   flex-wrap: wrap;
 }
-.cmp-section.layout-row .cmp-item.width-fill {
+.cmp-section.layout-row > .cmp-section-body > .cmp-item.width-fill {
   flex: 1 1 200px;
 }
-.cmp-section.layout-row .cmp-item.width-hug {
+.cmp-section.layout-row > .cmp-section-body > .cmp-item.width-hug {
   flex: 0 0 auto;
 }
-.cmp-section.layout-stack .cmp-item.width-hug {
+.cmp-section.layout-stack > .cmp-section-body > .cmp-item.width-hug {
   align-self: flex-start;
 }
-.cmp-section.layout-grid .cmp-section-body {
+.cmp-section.layout-grid > .cmp-section-body {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   grid-auto-flow: row dense;
 }
-.cmp-section.layout-grid .cmp-item {
+.cmp-section.layout-grid > .cmp-section-body > .cmp-item {
   grid-column: span var(--span);
   grid-row: span var(--rows);
 }
-.cmp-section.layout-grid.align-start .cmp-section-body {
+.cmp-section.layout-grid.align-start > .cmp-section-body {
   align-items: start;
 }
-.cmp-section.layout-grid.align-center .cmp-section-body {
+.cmp-section.layout-grid.align-center > .cmp-section-body {
   align-items: center;
 }
-.cmp-section.layout-grid.align-end .cmp-section-body {
+.cmp-section.layout-grid.align-end > .cmp-section-body {
   align-items: end;
 }
+.cmp-section.layout-grid.justify-center > .cmp-section-body {
+  justify-items: center;
+}
+.cmp-section.layout-grid.justify-end > .cmp-section-body {
+  justify-items: end;
+}
 @container (max-width: 560px) {
-  .cmp-section.layout-grid .cmp-section-body {
+  .cmp-section.layout-grid > .cmp-section-body {
     grid-template-columns: minmax(0, 1fr);
   }
-  .cmp-section.layout-grid .cmp-item {
+  .cmp-section.layout-grid > .cmp-section-body > .cmp-item {
     grid-column: auto;
     grid-row: auto;
   }
+}
+/* Conteneur imbriqué : repérable en édition, vide = zone de dépôt. */
+.cmp-group {
+  min-height: 48px;
+}
+.is-editing .cmp-group {
+  outline: 1px dashed color-mix(in srgb, currentColor 25%, transparent);
+  outline-offset: 2px;
+}
+.cmp-drop-line {
+  height: 3px;
+  margin: -2px 0;
+  border-radius: 2px;
+  background: #ec003f;
+}
+.is-editing [data-drop-target] {
+  outline: 2px dashed #ec003f;
+  outline-offset: 2px;
 }
 .cmp-item {
   min-width: 0;

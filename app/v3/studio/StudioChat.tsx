@@ -42,7 +42,7 @@ export default function StudioChat({ c }: { c: CompositionState }) {
     .join(' ');
 
   return (
-    <section className="panel chat-panel" aria-labelledby="studio-chat">
+    <section className="chat-panel" aria-labelledby="studio-chat">
       <div className="panel-head">
         <h2 id="studio-chat">Claude</h2>
         <select

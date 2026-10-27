@@ -95,7 +95,7 @@ export async function createStudioServer(options: {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader(
       'Content-Security-Policy',
-      `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'${options.dev ? ' ws://127.0.0.1:*' : ''}; frame-ancestors 'self'; base-uri 'none'; form-action 'self'`,
+      `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'${options.dev ? ' ws://127.0.0.1:*' : ''}; frame-src 'self' https://embed.figma.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'`,
     );
     try {
       if (req.headers.host !== `127.0.0.1:${port}`)
@@ -543,11 +543,16 @@ export async function createStudioServer(options: {
       let file: string;
       if (pathname.startsWith('/assets/'))
         file = path.join(root, 'dist', pathname);
-      else if (pathname === '/' || pathname === '/index.html')
-        file = path.join(root, 'dist', 'index.html');
-      // Itération v3, servie à côté de la version actuelle.
-      else if (pathname === '/v3' || pathname === '/v3.html')
+      // Interface v3 au lancement ; l'interface précédente (et sa route
+      // d'aperçu ?preview=1) reste servie sur /index.html.
+      else if (
+        pathname === '/' ||
+        pathname === '/v3' ||
+        pathname === '/v3.html'
+      )
         file = path.join(root, 'dist', 'v3.html');
+      else if (pathname === '/index.html')
+        file = path.join(root, 'dist', 'index.html');
       else throw new StudioError('Fichier introuvable.', 404);
       const data = await fs.readFile(file);
       const ext = path.extname(file);

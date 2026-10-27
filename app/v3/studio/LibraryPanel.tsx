@@ -13,7 +13,8 @@ import { Badge, Button } from '../ui.js';
 
 // Bibliothèque : composants réels du projet uniquement (registre
 // blockSpecs). Glisser vers un calque ou une zone de l'aperçu, ou « + ».
-export const dragType = 'application/x-ds-block';
+import { blockDrag as dragType } from '../../client/design/CompositionView.js';
+export { dragType };
 const categories = [...new Set(blockKinds.map((k) => blockSpecs[k].category))];
 // Composants demandés mais absents du DS : signalés, jamais inventés.
 const missing = ['Modale', 'Menu déroulant', 'Onglets Lisière', 'Tableau'];
@@ -71,13 +72,10 @@ export default function LibraryPanel({
   }, [focus, tokens]);
 
   return (
-    <aside className="panel library-panel" aria-label="Bibliothèque du DS">
-      <div className="panel-head">
-        <h2>Bibliothèque</h2>
-        <small>
-          Ajout dans : <strong>{target ?? 'nouvelle section'}</strong>
-        </small>
-      </div>
+    <div className="library" aria-label="Bibliothèque du DS">
+      <p className="muted small">
+        Ajout dans : <strong>{target ?? 'nouvelle section'}</strong>
+      </p>
       <input
         type="search"
         className="input"
@@ -160,9 +158,9 @@ export default function LibraryPanel({
         <iframe
           ref={frame}
           title={`Aperçu des variantes : ${blockSpecs[focus].label}`}
-          src="/?preview=1&scenario=compose"
+          src="/index.html?preview=1&scenario=compose"
         />
       </figure>
-    </aside>
+    </div>
   );
 }

@@ -34,6 +34,35 @@ function jsx(i: Item): string {
   }
 }
 
+type Box = {
+  layout: string;
+  columns: number;
+  gap: string;
+  align: string;
+  justify: string;
+  padding: string;
+  margin?: string;
+};
+const classes = (b: Box) =>
+  `cmp-section layout-${b.layout} gap-${b.gap} align-${b.align} justify-${b.justify} pad-${b.padding}${b.margin ? ` mar-${b.margin}` : ''}`;
+// Conteneur (section ou conteneur imbriqué) : mêmes classes Auto Layout.
+function container(b: Box, items: Item[], pad: string): string {
+  const inner = items
+    .map((i) => {
+      const content =
+        i.kind === 'group' && i.box
+          ? container(
+              { ...i.box, layout: i.variant },
+              (i.children ?? []) as Item[],
+              pad + '    ',
+            )
+          : `${pad}    ${jsx(i)}`;
+      return `${pad}  <div className="cmp-item width-${i.width}" style={{ '--span': ${Math.min(i.span, b.columns)}, '--rows': ${i.rows} } as CSSProperties}>\n${content}\n${pad}  </div>`;
+    })
+    .join('\n');
+  return `${pad}<div className=${q(classes(b) + (b.margin === undefined ? ' cmp-group' : ''))} style={{ '--cols': ${b.columns} } as CSSProperties}>\n${pad}  <div className="cmp-section-body">\n${inner}\n${pad}  </div>\n${pad}</div>`;
+}
+
 export function exportReact(c: Composition) {
   const name =
     c.name
@@ -44,15 +73,7 @@ export function exportReact(c: Composition) {
       .map((w) => w[0].toUpperCase() + w.slice(1))
       .join('') || 'Ecran';
   const sections = c.sections
-    .map((s) => {
-      const items = s.items
-        .map(
-          (i) =>
-            `        <div className="cmp-item width-${i.width}" style={{ '--span': ${Math.min(i.span, s.columns)}, '--rows': ${i.rows} } as CSSProperties}>\n          ${jsx(i)}\n        </div>`,
-        )
-        .join('\n');
-      return `      <section aria-label=${q(s.name)} className="cmp-section layout-${s.layout} gap-${s.gap} align-${s.align}" style={{ '--cols': ${s.columns} } as CSSProperties}>\n        <div className="cmp-section-body">\n${items}\n        </div>\n      </section>`;
-    })
+    .map((s) => container(s, s.items as Item[], '      '))
     .join('\n');
   return `// Écran « ${c.name} » exporté depuis DS-Studio (v3). Composants du DS.
 import type { CSSProperties } from 'react';

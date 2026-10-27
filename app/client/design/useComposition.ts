@@ -15,7 +15,7 @@ import {
 // Brouillon de composition : bibliothèque → composition → aperçu → validation.
 // Le brouillon survit au rechargement (localStorage facultatif) ; seule
 // « Enregistrer la page » écrit sur disque, dans un fichier séparé des tokens.
-const draftKey = 'ds-studio-composition-draft-v1';
+const defaultDraftKey = 'ds-studio-composition-draft-v1';
 
 export function starterComposition(): Composition {
   const page = emptyComposition('Accueil ateliers');
@@ -30,15 +30,15 @@ export function starterComposition(): Composition {
   cards.items = [newItem('card'), { ...newItem('card', 'accent') }];
   return { ...page, sections: [head, cards] };
 }
-function load(): Composition {
+function load(draftKey: string, starter: () => Composition): Composition {
   try {
     return (
       normalizeComposition(
         JSON.parse(localStorage.getItem(draftKey) || 'null'),
-      ) ?? starterComposition()
+      ) ?? starter()
     );
   } catch {
-    return starterComposition();
+    return starter();
   }
 }
 const same = (a?: Composition, b?: Composition) => {
@@ -46,11 +46,40 @@ const same = (a?: Composition, b?: Composition) => {
     c && JSON.stringify({ ...c, updatedAt: undefined });
   return strip(a) === strip(b);
 };
+// Bloc où qu'il soit : dans une section ou dans un conteneur imbriqué.
+// `list` est le tableau qui le contient, `section` sa section.
 const findItem = (c: Composition, id: string) => {
   for (const s of c.sections) {
     const index = s.items.findIndex((i) => i.id === id);
-    if (index >= 0) return { section: s, index, item: s.items[index] };
+    if (index >= 0)
+      return {
+        section: s,
+        list: s.items as Item[],
+        index,
+        item: s.items[index] as Item,
+        group: undefined as Item | undefined,
+      };
+    for (const g of s.items) {
+      const ci = g.children?.findIndex((i) => i.id === id) ?? -1;
+      if (ci >= 0)
+        return {
+          section: s,
+          list: g.children as Item[],
+          index: ci,
+          item: g.children![ci] as Item,
+          group: g,
+        };
+    }
   }
+};
+// Liste d'accueil d'un conteneur : section ou conteneur imbriqué.
+const containerList = (c: Composition, id: string) => {
+  const section = c.sections.find((s) => s.id === id);
+  if (section) return section.items;
+  const found = findItem(c, id);
+  return found?.item.kind === 'group'
+    ? (found.item.children ??= [])
+    : undefined;
 };
 
 export interface ComposeTurn {
@@ -64,8 +93,13 @@ export interface Proposal {
   reply: string;
 }
 
-export function useComposition() {
-  const [draft, setDraft] = useState<Composition>(load);
+export function useComposition({
+  draftKey = defaultDraftKey,
+  starter = starterComposition,
+}: { draftKey?: string; starter?: () => Composition } = {}) {
+  const [draft, setDraft] = useState<Composition>(() =>
+    load(draftKey, starter),
+  );
   const [past, setPast] = useState<Composition[]>([]);
   const [future, setFuture] = useState<Composition[]>([]);
   const [saved, setSaved] = useState<Composition[]>([]);
@@ -118,10 +152,17 @@ export function useComposition() {
     setSelected(undefined);
     setProposal(undefined);
   }
-  const target = (c: Composition) =>
-    c.sections.find((s) => s.id === selected) ??
-    (selected && findItem(c, selected)?.section) ??
-    c.sections.at(-1);
+  // Conteneur cible d'un ajout : sélection (section, conteneur, ou conteneur
+  // du bloc sélectionné), sinon dernière section.
+  const target = (c: Composition) => {
+    if (selected) {
+      const own = containerList(c, selected);
+      if (own) return own;
+      const found = findItem(c, selected);
+      if (found) return found.list;
+    }
+    return c.sections.at(-1)?.items;
+  };
 
   const savedVersion = saved.find((c) => c.id === draft.id);
   return {
@@ -155,22 +196,30 @@ export function useComposition() {
       setDraft(future[0]);
       setFuture((f) => f.slice(1));
     },
-    addItem(kind: BlockKind, variant?: string) {
+    addItem(kind: BlockKind, variant?: string, into?: string, index?: number) {
       const item = newItem(kind, variant);
+      let added = false;
       update((c) => {
-        let section = target(c);
-        if (!section) {
-          section = newSection('stack');
+        let list = into ? containerList(c, into) : target(c);
+        if (!list) {
+          const section = newSection('stack');
           c.sections.push(section);
+          list = section.items;
         }
-        if (section.items.length >= 16) {
-          setError('16 éléments maximum par section.');
+        const nested = c.sections.every((s) => s.items !== list);
+        if (nested && kind === 'group') {
+          setError('Un conteneur ne peut pas contenir un autre conteneur.');
           return c;
         }
-        section.items.push(item);
+        if (list.length >= 16) {
+          setError('16 éléments maximum par conteneur.');
+          return c;
+        }
+        list.splice(index ?? list.length, 0, item);
+        added = true;
         return c;
       });
-      setSelected(item.id);
+      if (added) setSelected(item.id);
     },
     addSection(layout: Layout, columns = 1) {
       const section = newSection(layout, columns);
@@ -187,8 +236,7 @@ export function useComposition() {
     patchItem(id: string, patch: Partial<Item>) {
       update((c) => {
         const found = findItem(c, id);
-        if (found)
-          found.section.items[found.index] = { ...found.item, ...patch };
+        if (found) found.list[found.index] = { ...found.item, ...patch };
         return c;
       });
     },
@@ -216,11 +264,11 @@ export function useComposition() {
         if (!found) return c;
         const to = found.index + delta;
         const sectionIndex = c.sections.indexOf(found.section);
-        const items = found.section.items;
+        const items = found.list;
         if (to >= 0 && to < items.length) {
           items.splice(found.index, 1);
           items.splice(to, 0, found.item);
-        } else {
+        } else if (!found.group) {
           // Au bord d'une section : passe dans la section voisine.
           const next = c.sections[sectionIndex + delta];
           if (!next || next.items.length >= 16) return c;
@@ -231,14 +279,21 @@ export function useComposition() {
         return c;
       });
     },
-    moveTo(id: string, sectionId: string, index?: number) {
+    // Déplacement vers une section ou un conteneur, à une position donnée.
+    moveTo(id: string, containerId: string, index?: number) {
       update((c) => {
         const found = findItem(c, id);
-        const dest = c.sections.find((s) => s.id === sectionId);
-        if (!found || !dest) return c;
-        if (dest !== found.section && dest.items.length >= 16) return c;
-        found.section.items.splice(found.index, 1);
-        dest.items.splice(index ?? dest.items.length, 0, found.item);
+        const dest = containerList(c, containerId);
+        if (!found || !dest || id === containerId) return c;
+        const nested = c.sections.every((s) => s.items !== dest);
+        if (nested && found.item.kind === 'group') return c;
+        if (dest !== found.list && dest.length >= 16) return c;
+        found.list.splice(found.index, 1);
+        const at =
+          dest === found.list && index !== undefined && index > found.index
+            ? index - 1
+            : index;
+        dest.splice(at ?? dest.length, 0, found.item);
         return c;
       });
     },
@@ -246,7 +301,16 @@ export function useComposition() {
       update((c) => {
         c.sections = c.sections
           .filter((s) => s.id !== id)
-          .map((s) => ({ ...s, items: s.items.filter((i) => i.id !== id) }));
+          .map((s) => ({
+            ...s,
+            items: s.items
+              .filter((i) => i.id !== id)
+              .map((i) =>
+                i.children
+                  ? { ...i, children: i.children.filter((x) => x.id !== id) }
+                  : i,
+              ),
+          }));
         return c;
       });
       setSelected(undefined);
@@ -254,10 +318,14 @@ export function useComposition() {
     duplicate(id: string) {
       update((c) => {
         const found = findItem(c, id);
-        if (found && found.section.items.length < 16)
-          found.section.items.splice(found.index + 1, 0, {
-            ...found.item,
+        if (found && found.list.length < 16)
+          found.list.splice(found.index + 1, 0, {
+            ...structuredClone(found.item),
             id: newItem(found.item.kind).id,
+            children: found.item.children?.map((x) => ({
+              ...x,
+              id: newItem(x.kind).id,
+            })),
           });
         return c;
       });

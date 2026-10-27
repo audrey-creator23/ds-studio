@@ -5,6 +5,41 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.21.0 — 2026-10-27
+
+- **Type** : minor (branche `v3-dashboard` ; `/` sert désormais l’interface v3,
+  l’interface précédente reste sur `/index.html` ; modèle de composition
+  étendu de façon rétrocompatible : conteneurs imbriqués `group`, `justify`,
+  `padding`, `margin` ; statut de tâche « En cours » ; CSP `frame-src`
+  limitée à `https://embed.figma.com` ; dépendance `html-to-image` 1.11.13)
+- **Fichiers** : `app/server/http.ts`, `app/shared/composition.ts`,
+  `app/shared/tasks.ts`, `connectors/agents/fakeComposer.ts`,
+  `app/client/App.tsx` (aperçu : dépôts, export, thème),
+  `app/client/design/CompositionView.tsx`, `app/client/design/useComposition.ts`,
+  `app/client/design/Simulator.tsx`, `app/client/ui.tsx`, `app/client/styles.css`,
+  `app/v3/*` (App, Studio, Brief, Schemas, Dashboard, v3.css),
+  `app/v3/studio/*` (Device, PropsBar, ExportPanel, LayersPanel, LibraryPanel,
+  StudioChat, exportReact), `package.json`, `tests/composition.test.ts`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : navigation : 🌋, Dashboard au lancement, ordre Dashboard →
+  Design → Fiche PFE → Mes schémas, « Version actuelle » retiré. Mon espace
+  Design : panneau gauche à onglets (Claude, Bibliothèque, Calques, Versions,
+  Export), aperçu 70 % redimensionnable, appareils Mobile (iPhone 15 Pro
+  393 × 852), iPad (Air 11" 820 × 1180), MacBook (Pro 14" 1512 × 982) et
+  Screen libre, zones système iOS réservées, rotation, zoom ; écran initial
+  vide ; glisser-déposer directement dans l’écran et dans les calques, avec
+  conteneurs imbriqués ; Auto Layout (direction, alignement, justification,
+  gap, padding, margin, colonnes) via une barre de propriétés fine ;
+  enregistrement automatique dans le projet ; « Enregistrer » et l’onglet
+  Export partagent un export réel (PNG, JPEG, HTML/CSS, React/TSX ; Figma
+  indiqué indisponible). Fiche PFE : liens Notion uniformes, checklist
+  résumée et vue détaillée, statuts « En cours » ajoutés, badges en lecture
+  seule et édition dans le détail (tâches liées, échéances du brief),
+  « Voir le détail » renforcé, frise remplie jusqu’en bas. Mes schémas :
+  7 onglets, tableaux FigJam par onglet (intégration officielle
+  embed.figma.com, lecture seule), liens persistants, « Ouvrir dans FigJam ».
+  Espacement titre / sous-titre / premier bloc +15 px.
+
 ## 2.20.0 — 2026-10-27
 
 - **Type** : minor (branche `v3-dashboard` ; dépendance `lucide-react` 1.55.0 ;

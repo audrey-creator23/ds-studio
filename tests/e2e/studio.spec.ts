@@ -8,7 +8,7 @@ const save = (page: Page) =>
 test('boucle centrale : brouillon en direct, diff, validation, recharge, annulation sélective', async ({
   page,
 }) => {
-  await page.goto('/?vue=design&mode=tokens');
+  await page.goto('/index.html?vue=design&mode=tokens');
   await expect(
     page.getByRole('heading', { name: 'Design', exact: true }),
   ).toBeVisible();
@@ -64,7 +64,7 @@ test('simulateur : appareils, largeur personnalisée, glisser, interactions', as
   page,
 }) => {
   await page.setViewportSize({ width: 1600, height: 1100 });
-  await page.goto('/?vue=design&mode=tokens');
+  await page.goto('/index.html?vue=design&mode=tokens');
   const frame = page.frameLocator('iframe');
   const iframe = page.locator('iframe');
   for (const [device, width] of [
@@ -138,7 +138,7 @@ test('simulateur : appareils, largeur personnalisée, glisser, interactions', as
 test('composants : variante, taille et états réels dans l’aperçu', async ({
   page,
 }) => {
-  await page.goto('/?vue=design&mode=tokens');
+  await page.goto('/index.html?vue=design&mode=tokens');
   await page
     .getByRole('combobox', { name: 'Composant', exact: true })
     .selectOption('button');
@@ -172,7 +172,7 @@ test('composants : variante, taille et états réels dans l’aperçu', async ({
 test('entrée couleur invalide sans mutation et clavier du diff', async ({
   page,
 }) => {
-  await page.goto('/?vue=design&mode=tokens');
+  await page.goto('/index.html?vue=design&mode=tokens');
   await token(page, 'color.brand').fill('red');
   await expect(page.getByRole('alert').first()).toContainText(
     'Couleur attendue',
@@ -193,7 +193,7 @@ test('entrée couleur invalide sans mutation et clavier du diff', async ({
 test('export navigateur, import valide avec diff, fichier invalide sans écriture', async ({
   page,
 }) => {
-  await page.goto('/?vue=design&mode=tokens');
+  await page.goto('/index.html?vue=design&mode=tokens');
   await expect(
     page.getByRole('heading', { name: 'Tokens', exact: true }),
   ).toBeVisible();
@@ -233,7 +233,7 @@ test('export navigateur, import valide avec diff, fichier invalide sans écritur
 test('contraste du brouillon immédiat sans modifier les composants enregistrés', async ({
   page,
 }) => {
-  await page.goto('/?vue=design&mode=tokens');
+  await page.goto('/index.html?vue=design&mode=tokens');
   await token(page, 'color.brand').fill('#FFFFFF');
   await expect(page.getByText('Contraste marque / texte')).toContainText(
     '1.00:1',
@@ -250,7 +250,7 @@ test('contraste du brouillon immédiat sans modifier les composants enregistrés
 test('brief privé et Codex conservés sur la page Assistant', async ({
   page,
 }) => {
-  await page.goto('/?vue=assistant');
+  await page.goto('/index.html?vue=assistant');
   await page.getByText('Mon PFE · brief privé', { exact: true }).click();
   await page
     .getByLabel('Nom du PFE', { exact: true })
@@ -272,14 +272,14 @@ test('brief privé et Codex conservés sur la page Assistant', async ({
   await expect(
     page.getByRole('combobox', { name: 'Mode de travail' }),
   ).toHaveValue('manual');
-  await page.goto('/?vue=design');
+  await page.goto('/index.html?vue=design');
   await expect(page.getByText('Mode de travail')).toHaveCount(0);
 });
 
 test('recherche, brouillon récupéré après recharge, annuler et rétablir', async ({
   page,
 }) => {
-  await page.goto('/?vue=design&mode=tokens');
+  await page.goto('/index.html?vue=design&mode=tokens');
   const before = await (await page.request.get('/api/state')).json();
   await page.getByLabel('Rechercher un token').fill('space');
   await expect(page.locator('.token-row')).toHaveCount(3);
@@ -312,11 +312,11 @@ test('conflit multi-onglets visible dans le diff, aucune perte de données', asy
   page,
   context,
 }) => {
-  await page.goto('/?vue=design&mode=tokens');
+  await page.goto('/index.html?vue=design&mode=tokens');
   await token(page, 'color.brand').fill('#223355');
   await save(page);
   const other = await context.newPage();
-  await other.goto('/?vue=design&mode=tokens');
+  await other.goto('/index.html?vue=design&mode=tokens');
   await token(other, 'color.brand').fill('#664422');
   await save(other);
   await other.getByRole('button', { name: 'Valider et enregistrer' }).click();
@@ -337,7 +337,7 @@ test('conflit multi-onglets visible dans le diff, aucune perte de données', asy
 test('capacité de session périmée simulée sans rejeu ambigu', async ({
   page,
 }) => {
-  await page.goto('/?vue=design&mode=tokens');
+  await page.goto('/index.html?vue=design&mode=tokens');
   await page.getByRole('heading', { name: 'Tokens', exact: true }).waitFor();
   const boot = await (await page.request.get('/api/bootstrap')).json();
   // Un seul refus certain avant mutation, comme une capacité périmée après restart.
@@ -374,7 +374,7 @@ test('clavier, mobile 375 px et absence de stockage navigateur', async ({
     };
   });
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/?vue=design');
+  await page.goto('/index.html?vue=design');
   // Le lien d'évitement ouvre l'onglet Tokens depuis la composition.
   await page.getByRole('heading', { name: 'Claude', exact: true }).waitFor();
   await page.keyboard.press('Tab');
@@ -398,7 +398,7 @@ test('brief : page Bento sur un écran, toggles fermés, statuts persistants', a
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/index.html');
   await expect(page.getByRole('img', { name: 'DS-Studio' })).toHaveText('🌋');
   const tab = page.getByRole('button', { name: 'Brief du projet' });
   await tab.click();
@@ -434,7 +434,7 @@ test('brief : page Bento sur un écran, toggles fermés, statuts persistants', a
 
 test('brief : mobile 375 px sans débordement horizontal', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/');
+  await page.goto('/index.html');
   await page.getByRole('button', { name: 'Brief du projet' }).click();
   await expect(page.locator('.brief-tasks')).toBeVisible();
   expect(
@@ -448,7 +448,7 @@ test('dashboard volcan : page secondaire, activité datée, frise et accès', as
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/index.html');
   await page.getByRole('button', { name: 'Dashboard Volcan' }).click();
   await expect(
     page.getByRole('heading', { name: 'Dashboard Volcan' }),
@@ -496,7 +496,7 @@ test('dashboard volcan : page secondaire, activité datée, frise et accès', as
 test('contexte & assistant : page Bento, sources en lecture seule, saisie multiligne', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/index.html');
   await page.getByRole('button', { name: 'Contexte & Assistant' }).click();
   await expect(
     page.getByRole('heading', { name: 'Contexte & Assistant' }),
@@ -537,7 +537,7 @@ test('harmonisation : avancement réel indépendant de l’intensité, tablette 
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/index.html');
   await page.getByRole('button', { name: 'Dashboard Volcan' }).click();
   const kpi = page.locator('.page-kpis dd');
   await expect(page.locator('.page-kpis dt')).toHaveText(
@@ -578,7 +578,7 @@ test('bento masonry : ouvrir des détails n’étire jamais les cartes voisines'
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/index.html');
   await page.getByRole('button', { name: 'Brief du projet' }).click();
   const card = (title: string) =>
     page.locator('.masonry > .card').filter({
@@ -621,7 +621,7 @@ test('accueil : page par défaut, CTA Notion, aucune donnée en double, navigati
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/index.html');
   await expect(page).toHaveURL(/vue=accueil/);
   await expect(
     page.getByRole('heading', { name: 'Tableau de bord' }),
@@ -666,7 +666,7 @@ const pageFrame = (page: Page) =>
 test('composition : bibliothèque, sélection dans l’aperçu, inspecteur, ordre, annuler, enregistrer', async ({
   page,
 }) => {
-  await page.goto('/?vue=design');
+  await page.goto('/index.html?vue=design');
   const frame = pageFrame(page);
   const title = frame.getByRole('heading', {
     name: 'De petites idées. De vrais liens.',
@@ -765,7 +765,7 @@ test('composition : Claude propose, l’aperçu montre, l’utilisatrice valide'
   const revision = async () =>
     (await (await page.request.get('/api/state')).json()).revision;
   const before = await revision();
-  await page.goto('/?vue=design');
+  await page.goto('/index.html?vue=design');
   const frame = pageFrame(page);
   await page.getByRole('button', { name: /grande card à gauche/ }).click();
   await page.getByRole('button', { name: 'Composer', exact: true }).click();
@@ -816,7 +816,7 @@ test('bulle Claude : toutes les pages, contexte, clavier, glisser, position mém
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('/?vue=volcan');
+  await page.goto('/index.html?vue=volcan');
   const bubble = page.getByRole('button', { name: 'Ouvrir le chat Claude' });
   await expect(bubble).toBeVisible();
   await bubble.click();
@@ -868,7 +868,7 @@ test('v3 : dashboard, frise temporelle, liste des tâches, thème', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/v3');
+  await page.goto('/');
   await expect(
     page.getByRole('heading', { name: 'Récapitulatif des échéances PFE' }),
   ).toBeVisible();
@@ -914,99 +914,286 @@ test('v3 : dashboard, frise temporelle, liste des tâches, thème', async ({
   await page.getByRole('button', { name: 'Clair' }).click();
   await page.reload();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
-  await page.getByRole('link', { name: 'Version actuelle' }).click();
+  // Interface précédente toujours servie sur /index.html.
+  await page.goto('/index.html');
   await expect(
     page.getByRole('heading', { name: 'Tableau de bord' }),
   ).toBeVisible();
 });
 
-test('v3 : fiche PFE, checklist d’abord, statuts d’étape persistants', async ({
+test('v3 : fiche PFE, checklist, statuts persistants, frise jusqu’en bas', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/v3?vue=brief');
+  await page.goto('/?vue=brief');
   await expect(page.getByRole('heading', { name: 'Fiche PFE' })).toBeVisible();
-  for (const name of ['Brief du professeur', 'Mon Notion'])
+  for (const name of [
+    'Accéder au brief Notion',
+    'Accéder à ma rédaction Notion',
+  ])
     await expect(page.getByRole('link', { name })).toHaveAttribute(
       'target',
       '_blank',
     );
-  const checklist = await page
-    .getByRole('heading', { name: 'Checklist' })
-    .boundingBox();
-  const first = await page
-    .getByRole('heading', { name: /Présentation/ })
-    .boundingBox();
-  expect(checklist!.y).toBeLessThan(first!.y);
+  // Checklist résumée ; le détail s'ouvre par le CTA.
+  const summary = page.locator('.checklist-card');
+  await expect(summary).toContainText('%');
+  await expect(summary.getByRole('combobox')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Continuer ma progression' }).click();
+  const detail = page.getByRole('dialog', { name: /Ma progression/ });
+  await expect(detail.getByRole('combobox')).toHaveCount(9);
+  const recherche = detail.getByRole('combobox', {
+    name: 'Statut : Recherche utilisateurs',
+  });
+  await recherche.selectOption('todo');
+  await expect(recherche).toHaveValue('todo');
+  const before = await summary.locator('.stat').textContent();
+  await recherche.selectOption('done');
+  await expect(summary.locator('.stat')).not.toHaveText(before!);
+  await detail
+    .getByRole('combobox', { name: 'Statut : Recherche utilisateurs' })
+    .selectOption('doing');
+  await detail.getByRole('button', { name: 'Fermer' }).click();
+  // Étapes : badge en lecture seule ; statut modifiable dans le détail.
   await expect(page.locator('.steps > li')).toHaveCount(10);
-  const status = page.getByRole('combobox', { name: 'Statut : Objectifs' });
-  await status.selectOption('doing');
+  const step = page.locator('.step', { hasText: 'Objectifs' });
+  await expect(step.getByRole('combobox')).toHaveCount(0);
+  await step.getByRole('button', { name: 'Voir le détail' }).click();
+  await expect(step).toContainText('Échéances et attendus');
+  await step
+    .getByRole('combobox', { name: 'Statut de l’étape : Objectifs' })
+    .selectOption('doing');
+  await expect(step.locator('.step-badge')).toHaveText('En cours');
   await page.reload();
-  await expect(status).toHaveValue('doing');
-  const objectifs = page.locator('.step', { hasText: 'Objectifs' });
-  await objectifs.getByRole('button', { name: 'Voir le détail' }).click();
-  await expect(objectifs).toContainText('Préparation progressive');
+  await expect(
+    page.locator('.step', { hasText: 'Objectifs' }).locator('.step-badge'),
+  ).toHaveText('En cours');
+  await page.getByRole('button', { name: 'Continuer ma progression' }).click();
+  await expect(
+    page.getByRole('combobox', { name: 'Statut : Recherche utilisateurs' }),
+  ).toHaveValue('doing');
+  await page.keyboard.press('Escape');
+  // Frise verticale remplie jusqu'au bas du parcours.
+  await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        getComputedStyle(document.querySelector('.steps')!).getPropertyValue(
+          '--progress',
+        ),
+      ),
+    )
+    .toBe('1');
 });
 
-test('v3 : studio Design, glisser-déposer, appareils, export', async ({
+test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/v3?vue=design');
-  await expect(page.getByRole('heading', { name: 'Claude' })).toBeVisible();
+  await page.goto('/?vue=design');
+  await expect(
+    page.getByRole('heading', { name: 'Mon espace Design' }),
+  ).toBeVisible();
+  // Onglets : un seul contenu à la fois, Bibliothèque par défaut.
+  const tabs = page.getByRole('tablist', { name: 'Outils du studio' });
+  await expect(tabs.getByRole('tab')).toHaveText([
+    'Claude',
+    'Bibliothèque',
+    'Calques',
+    'Versions',
+    'Export',
+  ]);
+  await expect(tabs.getByRole('tab', { name: 'Bibliothèque' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByRole('tabpanel')).toHaveCount(1);
+  // Écran initial vide.
   const frame = page.frameLocator('iframe[title="Aperçu de l’écran"]');
-  await expect(frame.locator('.cmp-page')).toBeVisible();
-  const items = await frame.locator('.cmp-item').count();
-  // Bibliothèque → glisser un badge sur la section « Ateliers » des calques.
-  await page.getByRole('button', { name: 'Bibliothèque' }).click();
-  const badge = page.locator('.library-list li', { hasText: 'Badge' }).first();
-  await page.getByRole('button', { name: 'Calques et propriétés' }).click();
-  await page.getByRole('button', { name: 'Bibliothèque' }).click();
-  await expect(badge).toBeVisible();
-  // Ajout au clavier, équivalent du glisser-déposer.
+  await expect(frame.locator('.cmp-section')).toHaveCount(1);
+  await expect(frame.locator('.cmp-item')).toHaveCount(0);
+  // Dépôt réel dans l'écran : événements de glisser-déposer de l'iframe.
+  const drop = (target: string, data: Record<string, string>) =>
+    frame
+      .locator(target)
+      .first()
+      .evaluate((el, data) => {
+        const dt = new DataTransfer();
+        for (const [k, v] of Object.entries(data)) dt.setData(k, v);
+        const r = el.getBoundingClientRect();
+        const at = { clientX: r.left + 4, clientY: r.bottom - 2 };
+        el.dispatchEvent(
+          new DragEvent('dragover', {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer: dt,
+            ...at,
+          }),
+        );
+        el.dispatchEvent(
+          new DragEvent('drop', {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer: dt,
+            ...at,
+          }),
+        );
+      }, data);
+  const block = (kind: string, variant: string) => ({
+    'application/x-ds-block': JSON.stringify({ kind, variant }),
+  });
+  // Composant → écran.
+  await drop('.cmp-section > .cmp-section-body', block('button', 'primary'));
+  await expect(frame.locator('.cmp-item')).toHaveCount(1);
+  // Conteneur → écran, puis composant → conteneur (imbrication).
+  await drop('.cmp-section > .cmp-section-body', block('group', 'row'));
+  await expect(frame.locator('.cmp-group')).toHaveCount(1);
+  await drop('.cmp-group > .cmp-section-body', block('badge', 'neutral'));
+  await expect(frame.locator('.cmp-group .cmp-item')).toHaveCount(1);
+  await drop('.cmp-group > .cmp-section-body', block('badge', 'brand'));
+  await expect(frame.locator('.cmp-group .cmp-item')).toHaveCount(2);
+  // Calques synchronisés.
+  await tabs.getByRole('tab', { name: 'Calques' }).click();
+  await expect(page.locator('.tree-group .tree-row')).toHaveCount(2);
+  // Réordonner dans l'écran : le second badge passe devant.
+  const second = await frame
+    .locator('.cmp-group .cmp-item')
+    .nth(1)
+    .getAttribute('data-id');
+  await drop('.cmp-group .cmp-item', { 'application/x-ds-move': second! });
+  await expect(frame.locator('.cmp-group .cmp-item').first()).toHaveAttribute(
+    'data-id',
+    second!,
+  );
+  // Auto Layout : justification et padding appliqués immédiatement.
+  // Sélection du conteneur depuis les calques (synchronisée avec l'écran).
+  await page.locator('.tree-group > .tree-pick').click();
+  await expect(frame.locator('.cmp-group.is-selected')).toHaveCount(1);
+  const bar = page.getByRole('complementary', { name: /Propriétés/ });
+  await bar.getByRole('button', { name: 'Justification' }).click();
   await page
-    .getByRole('button', { name: 'Ajouter Badge', exact: true })
+    .getByRole('dialog', { name: 'Justification' })
+    .getByRole('button', { name: 'Centre' })
     .click();
-  await expect(frame.locator('.cmp-item')).toHaveCount(items + 1);
-  await page.getByRole('button', { name: 'Annuler' }).click();
-  await expect(frame.locator('.cmp-item')).toHaveCount(items);
-  // Calques : glisser un bloc d'une section à l'autre.
-  await page.getByRole('button', { name: 'Calques et propriétés' }).click();
-  const tree = page.locator('.tree');
-  const nav = tree.locator('.tree-row', { hasText: 'Navigation' });
-  const ateliers = tree.locator('.tree-section').nth(1);
-  await nav.dragTo(ateliers);
-  await expect(ateliers).toContainText('Navigation');
-  await page.getByRole('button', { name: 'Annuler' }).click();
-  // Sélection dans l'aperçu → propriétés et ciblage du chat.
-  await frame.locator('.cmp-item').first().click();
-  await expect(page.getByRole('region', { name: 'Propriétés' })).toBeVisible();
-  await expect(page.getByText(/^Cibler :/)).toBeVisible();
-  // Appareils : écran conservé, rotation.
-  await page.getByRole('combobox', { name: 'Appareil' }).selectOption('tablet');
-  await expect(page.getByRole('spinbutton', { name: 'Largeur' })).toHaveValue(
-    '820',
+  await expect(frame.locator('.cmp-group > .cmp-section-body')).toHaveCSS(
+    'justify-content',
+    'center',
   );
+  await bar.getByRole('button', { name: 'Marge intérieure (padding)' }).click();
+  await page
+    .getByRole('dialog', { name: 'Marge intérieure (padding)' })
+    .getByRole('button', { name: 'L' })
+    .click();
+  await expect(frame.locator('.cmp-group')).not.toHaveCSS('padding', '0px');
+  // Annuler / rétablir.
+  await page.getByRole('button', { name: 'Annuler' }).click();
+  await expect(frame.locator('.cmp-group')).toHaveCSS('padding', '0px');
+  await page.getByRole('button', { name: 'Rétablir' }).click();
+  // Changement d'appareil sans perte, rotation, Screen sans cadre.
+  await page
+    .getByRole('group', { name: 'Appareil' })
+    .getByRole('button', { name: 'iPad' })
+    .click();
+  await expect(page.getByText('820 × 1180')).toBeVisible();
+  await expect(frame.locator('.cmp-item')).toHaveCount(4);
   await page.getByRole('button', { name: 'Pivoter' }).click();
-  await expect(page.getByRole('spinbutton', { name: 'Largeur' })).toHaveValue(
-    '1180',
-  );
-  await expect(frame.locator('.cmp-item')).toHaveCount(items);
-  // IA → aperçu → validation → calques (composeur simulé côté serveur).
+  await expect(page.getByText('1180 × 820')).toBeVisible();
+  await page
+    .getByRole('group', { name: 'Appareil' })
+    .getByRole('button', { name: 'MacBook' })
+    .click();
+  await expect(page.getByText('1512 × 982')).toBeVisible();
+  await page
+    .getByRole('group', { name: 'Appareil' })
+    .getByRole('button', { name: 'Screen' })
+    .click();
+  await expect(page.locator('.device--screen')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Redimensionner l’écran/ }),
+  ).toBeVisible();
+  await page
+    .getByRole('group', { name: 'Appareil' })
+    .getByRole('button', { name: 'Mobile' })
+    .click();
+  await expect(page.locator('.device--mobile .island')).toBeVisible();
+  await expect(frame.locator('.cmp-item')).toHaveCount(4);
+  // Exports réels depuis « Enregistrer » : TSX et PNG téléchargés.
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Enregistrer l’écran' });
+  await expect(dialog.getByRole('radio', { name: 'Figma' })).toBeDisabled();
+  await dialog.getByRole('radio', { name: 'Composant React/TSX' }).check();
+  let download = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Valider' }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.tsx$/);
+  await dialog.getByRole('radio', { name: 'Image PNG' }).check();
+  download = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Valider' }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.png$/);
+  await expect(dialog.getByRole('status')).toContainText('téléchargé');
+  await dialog.getByRole('button', { name: 'Fermer' }).click();
+  // Persistance : l'écran survit au rechargement.
+  await page.reload();
+  await expect(frame.locator('.cmp-item')).toHaveCount(4);
+  // IA → proposition → validation (composeur simulé côté serveur).
+  await tabs.getByRole('tab', { name: 'Claude' }).click();
   await page
     .getByRole('textbox', { name: 'Message à Claude' })
     .fill('Place une grande card à gauche, trois petites à droite');
   await page.getByRole('button', { name: 'Envoyer' }).click();
   await expect(page.getByRole('region', { name: 'Proposition' })).toBeVisible();
-  await expect(page.getByText('Proposition', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Appliquer' }).click();
-  await expect(page.getByRole('region', { name: 'Proposition' })).toHaveCount(
-    0,
+  await expect(
+    frame.locator('.cmp-item').filter({ hasText: 'Faire moins' }).first(),
+  ).toBeVisible();
+});
+
+test('v3 : mes schémas, onglets FigJam, liens persistants', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=schemas');
+  await expect(
+    page.getByRole('heading', { name: 'Mes schémas' }),
+  ).toBeVisible();
+  await expect(page.locator('.sidebar nav li').last()).toContainText(
+    'Mes schémas',
   );
-  await expect(tree).toContainText('Carte atelier');
-  // Export React/TS avec les composants du DS.
-  await page.getByRole('button', { name: 'Exporter en React' }).click();
-  await expect(page.getByRole('dialog')).toContainText(
-    "from './DesignSystem.js'",
+  const tabs = page.getByRole('tablist', { name: 'Types de schémas' });
+  await expect(tabs.getByRole('tab')).toHaveCount(7);
+  await expect(page.getByText(/Aucun tableau FigJam/)).toBeVisible();
+  // Lien refusé s'il ne s'agit pas d'un tableau FigJam.
+  await page
+    .getByRole('textbox', { name: 'Lien FigJam' })
+    .fill('https://example.com/x');
+  await page.getByRole('button', { name: 'Ajouter' }).click();
+  await expect(page.getByRole('alert')).toContainText('Lien non reconnu');
+  // Lien FigJam : intégration officielle et ouverture dans FigJam.
+  const board =
+    'https://www.figma.com/board/AbCdEfGhIjKlMnOp/Entretiens?node-id=0-1';
+  await page
+    .getByRole('textbox', { name: 'Nom du tableau' })
+    .fill('Entretiens');
+  await page.getByRole('textbox', { name: 'Lien FigJam' }).fill(board);
+  await page.getByRole('button', { name: 'Ajouter' }).click();
+  await expect(page.locator('.schema-view iframe')).toHaveAttribute(
+    'src',
+    'https://embed.figma.com/board/AbCdEfGhIjKlMnOp/Entretiens?node-id=0-1&embed-host=ds-studio',
   );
+  await expect(
+    page.getByRole('link', { name: /Ouvrir dans FigJam/ }),
+  ).toHaveAttribute('href', board);
+  // Persistance, onglets indépendants.
+  await page.reload();
+  await expect(
+    page.getByRole('button', { name: 'Entretiens', exact: true }),
+  ).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Personas' }).click();
+  await expect(
+    page.getByText(/Aucun tableau FigJam pour « Personas »/),
+  ).toBeVisible();
+  await tabs.getByRole('tab', { name: /Entretiens utilisateurs/ }).click();
+  // Retrait (le tableau FigJam n'est pas supprimé).
+  page.once('dialog', (d) => void d.accept());
+  await page.getByRole('button', { name: 'Retirer Entretiens' }).click();
+  await expect(page.getByText(/Aucun tableau FigJam/)).toBeVisible();
 });

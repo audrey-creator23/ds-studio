@@ -24,6 +24,7 @@ export const blockKinds = [
   'mTabs',
   'mCard',
   'mBubble',
+  'group',
 ] as const;
 export type BlockKind = (typeof blockKinds)[number];
 export const layouts = ['stack', 'row', 'grid'] as const;
@@ -31,6 +32,8 @@ export const gaps = ['sm', 'md', 'lg'] as const;
 export const aligns = ['start', 'center', 'end', 'stretch'] as const;
 export const sizes = ['sm', 'md', 'lg'] as const;
 export const widths = ['fill', 'hug'] as const;
+export const justifies = ['start', 'center', 'end', 'between'] as const;
+export const spaces = ['none', 'sm', 'md', 'lg'] as const;
 
 export interface BlockSpec {
   label: string;
@@ -41,7 +44,8 @@ export interface BlockSpec {
     | 'Cartes'
     | 'Navigation'
     | 'Suivi'
-    | 'Kit shadcn · Mantine';
+    | 'Kit shadcn · Mantine'
+    | 'Conteneurs';
   family: 'Lisière' | 'Studio' | 'Mantine';
   description: string;
   variants: [string, string][];
@@ -293,6 +297,22 @@ export const blockSpecs: Record<BlockKind, BlockSpec> = {
     text: 'On se retrouve samedi à l’atelier ?',
     span: 2,
   },
+  // Conteneur Auto Layout imbriqué dans une section : sa variante est sa
+  // direction (colonne, rangée, grille). Il contient des blocs, pas d'autres
+  // conteneurs (deux niveaux : section > conteneur > blocs).
+  group: {
+    label: 'Conteneur',
+    category: 'Conteneurs',
+    family: 'Studio',
+    description:
+      'Conteneur Auto Layout (Flex/Grid) dans une section : direction, alignements, espacement, padding.',
+    variants: [
+      ['stack', 'Colonne'],
+      ['row', 'Rangée'],
+      ['grid', 'Grille'],
+    ],
+    span: 4,
+  },
 };
 export const layoutLabels: Record<Layout, string> = {
   stack: 'Pile verticale',
@@ -301,7 +321,17 @@ export const layoutLabels: Record<Layout, string> = {
 };
 
 const id = z.string().regex(/^[a-z0-9-]{1,32}$/);
-export const itemSchema = z
+// Réglages Auto Layout d'un conteneur imbriqué (la direction est sa variante).
+export const boxSchema = z
+  .object({
+    columns: z.number().int().min(1).max(4),
+    gap: z.enum(gaps),
+    align: z.enum(aligns),
+    justify: z.enum(justifies),
+    padding: z.enum(spaces),
+  })
+  .strict();
+const leafSchema = z
   .object({
     id,
     kind: z.enum(blockKinds),
@@ -313,6 +343,12 @@ export const itemSchema = z
     width: z.enum(widths),
   })
   .strict();
+export const itemSchema = leafSchema
+  .extend({
+    box: boxSchema.optional(),
+    children: z.array(leafSchema).max(16).optional(),
+  })
+  .strict();
 export const sectionSchema = z
   .object({
     id,
@@ -321,6 +357,9 @@ export const sectionSchema = z
     columns: z.number().int().min(1).max(4),
     gap: z.enum(gaps),
     align: z.enum(aligns),
+    justify: z.enum(justifies).default('start'),
+    padding: z.enum(spaces).default('none'),
+    margin: z.enum(spaces).default('none'),
     items: z.array(itemSchema).max(16),
   })
   .strict();
@@ -333,6 +372,7 @@ export const compositionSchema = z
   })
   .strict();
 export type Item = z.infer<typeof itemSchema>;
+export type Box = z.infer<typeof boxSchema>;
 export type Section = z.infer<typeof sectionSchema>;
 export type Composition = z.infer<typeof compositionSchema>;
 export type Layout = (typeof layouts)[number];
@@ -340,9 +380,19 @@ export type Layout = (typeof layouts)[number];
 export function newId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 }
+export const defaultBox: Box = {
+  columns: 2,
+  gap: 'md',
+  align: 'stretch',
+  justify: 'start',
+  padding: 'none',
+};
 export function newItem(kind: BlockKind, variant?: string): Item {
   const spec = blockSpecs[kind];
+  const group =
+    kind === 'group' ? { box: { ...defaultBox }, children: [] as Item[] } : {};
   return {
+    ...group,
     id: newId(kind.slice(0, 4).toLowerCase()),
     kind,
     variant: spec.variants.some(([v]) => v === variant)
@@ -363,6 +413,9 @@ export function newSection(layout: Layout, columns = 1): Section {
     columns: layout === 'grid' ? Math.min(4, Math.max(2, columns)) : 1,
     gap: 'md',
     align: 'stretch',
+    justify: 'start',
+    padding: 'none',
+    margin: 'none',
     items: [],
   };
 }
@@ -396,19 +449,25 @@ export function normalizeComposition(
     typeof raw === 'number' && Number.isFinite(raw)
       ? Math.min(max, Math.max(min, Math.round(raw)))
       : def;
-  const sections = v.sections.slice(0, 12).flatMap((s): Section[] => {
-    if (!s || typeof s !== 'object') return [];
-    const layout = pick(layouts, s.layout, 'stack');
-    const items = (Array.isArray(s.items) ? s.items : [])
-      .filter((i) => i && blockKinds.includes(i.kind as BlockKind))
+  // Blocs d'un conteneur ; un conteneur imbriqué n'accepte pas d'autre
+  // conteneur (deux niveaux).
+  const normItems = (raw: unknown, nest: boolean): Item[] =>
+    (Array.isArray(raw) ? (raw as Partial<Item>[]) : [])
+      .filter(
+        (i) =>
+          i &&
+          blockKinds.includes(i.kind as BlockKind) &&
+          (nest || i.kind !== 'group'),
+      )
       .slice(0, 16)
       .map((i): Item => {
-        const spec = blockSpecs[i.kind];
-        return {
-          id: unique(i.id, i.kind.slice(0, 4).toLowerCase()),
-          kind: i.kind,
+        const kind = i.kind as BlockKind;
+        const spec = blockSpecs[kind];
+        const item: Item = {
+          id: unique(i.id, kind.slice(0, 4).toLowerCase()),
+          kind,
           variant: spec.variants.some(([x]) => x === i.variant)
-            ? i.variant
+            ? i.variant!
             : spec.variants[0][0],
           size: pick(sizes, i.size, 'md'),
           text:
@@ -419,7 +478,24 @@ export function normalizeComposition(
           rows: int(i.rows, 1, 4, 1),
           width: pick(widths, i.width, 'fill'),
         };
+        if (kind !== 'group') return item;
+        const b = (i.box ?? {}) as Partial<Box>;
+        return {
+          ...item,
+          box: {
+            columns: int(b.columns, 1, 4, 2),
+            gap: pick(gaps, b.gap, 'md'),
+            align: pick(aligns, b.align, 'stretch'),
+            justify: pick(justifies, b.justify, 'start'),
+            padding: pick(spaces, b.padding, 'none'),
+          },
+          children: normItems(i.children, false),
+        };
       });
+  const sections = v.sections.slice(0, 12).flatMap((s): Section[] => {
+    if (!s || typeof s !== 'object') return [];
+    const layout = pick(layouts, s.layout, 'stack');
+    const items = normItems(s.items, true);
     return [
       {
         id: unique(s.id, 'sec'),
@@ -431,6 +507,9 @@ export function normalizeComposition(
         columns: layout === 'grid' ? int(s.columns, 1, 4, 2) : 1,
         gap: pick(gaps, s.gap, 'md'),
         align: pick(aligns, s.align, 'stretch'),
+        justify: pick(justifies, s.justify, 'start'),
+        padding: pick(spaces, s.padding, 'none'),
+        margin: pick(spaces, s.margin, 'none'),
         items,
       },
     ];
@@ -454,7 +533,16 @@ export function describeChanges(before: Composition, after: Composition) {
   const flat = (c: Composition) =>
     new Map(
       c.sections.flatMap((s, si) =>
-        s.items.map((i, ii) => [i.id, { item: i, si, ii, section: s.name }]),
+        s.items.flatMap((i, ii) => [
+          [i.id, { item: i, si, ii, section: s.name }] as const,
+          ...(i.children ?? []).map(
+            (child, ci) =>
+              [
+                child.id,
+                { item: child, si, ii: ci, section: `${s.name} › Conteneur` },
+              ] as const,
+          ),
+        ]),
       ),
     );
   const a = flat(before);
@@ -482,6 +570,9 @@ export function describeChanges(before: Composition, after: Composition) {
         old.columns !== s.columns ||
         old.gap !== s.gap ||
         old.align !== s.align ||
+        old.justify !== s.justify ||
+        old.padding !== s.padding ||
+        old.margin !== s.margin ||
         old.name !== s.name)
     )
       lines.push(`Mise en page : ${s.name} (${layoutLabels[s.layout]})`);
@@ -489,6 +580,16 @@ export function describeChanges(before: Composition, after: Composition) {
   return lines;
 }
 
+const outputLeaf = z.object({
+  id: z.string(),
+  kind: z.enum(blockKinds),
+  variant: z.string(),
+  size: z.enum(sizes),
+  text: z.string(),
+  span: z.number().int(),
+  rows: z.number().int(),
+  width: z.enum(widths),
+});
 // Schéma de sortie demandé à Claude (sorties structurées : pas de récursion,
 // bornes vérifiées ensuite par normalizeComposition côté serveur).
 export const composeOutputSchema = z.object({
@@ -502,16 +603,21 @@ export const composeOutputSchema = z.object({
       columns: z.number().int(),
       gap: z.enum(gaps),
       align: z.enum(aligns),
+      justify: z.enum(justifies),
+      padding: z.enum(spaces),
+      margin: z.enum(spaces),
       items: z.array(
-        z.object({
-          id: z.string(),
-          kind: z.enum(blockKinds),
-          variant: z.string(),
-          size: z.enum(sizes),
-          text: z.string(),
-          span: z.number().int(),
-          rows: z.number().int(),
-          width: z.enum(widths),
+        outputLeaf.extend({
+          box: z
+            .object({
+              columns: z.number().int(),
+              gap: z.enum(gaps),
+              align: z.enum(aligns),
+              justify: z.enum(justifies),
+              padding: z.enum(spaces),
+            })
+            .optional(),
+          children: z.array(outputLeaf).optional(),
         }),
       ),
     }),
@@ -535,7 +641,8 @@ export function composeSystem() {
     [
       'Mise en page (comme l’Auto Layout de Figma, toujours responsive) :',
       '- Une section a un layout : stack (pile verticale), row (rangée qui passe à la ligne), grid (grille de 1 à 4 colonnes, columns).',
-      '- gap : sm, md ou lg (tokens space.*). align : start, center, end, stretch.',
+      '- gap : sm, md ou lg (tokens space.*). align : start, center, end, stretch. justify : start, center, end, between. padding et margin : none, sm, md, lg.',
+      '- Un item kind group est un conteneur imbriqué : sa variante (stack, row, grid) est sa direction, box porte columns, gap, align, justify, padding, et children ses blocs. Pas de conteneur dans un conteneur.',
       '- Dans une grille, span = colonnes occupées (1 à columns) et rows = lignes occupées (1 à 4). Le placement est automatique et dense : pour « une grande carte à gauche et trois petites à droite », grille de 2 colonnes, grande carte span 1 rows 3 en premier, puis trois cartes span 1 rows 1.',
       '- Dans une rangée, width = fill (partage la place) ou hug (taille du contenu).',
       '- Sous 560 px de large, les grilles passent automatiquement sur une colonne : ne crée pas de version mobile séparée.',

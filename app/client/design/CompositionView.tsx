@@ -1,4 +1,10 @@
-import type { CSSProperties, MouseEvent } from 'react';
+import {
+  Fragment,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+  type MouseEvent,
+} from 'react';
 import { StatusSummary, TaskProgress } from '../ui.js';
 import type { Tokens } from '../../shared/model.js';
 import type { Composition, Item } from '../../shared/composition.js';
@@ -80,30 +86,163 @@ export function Block({ item }: { item: Item }) {
   }
 }
 
+// Glisser-déposer dans l'écran (mode édition) : un dépôt est relayé au studio
+// (bloc de la bibliothèque ou bloc déplacé), qui modifie le brouillon.
+export const blockDrag = 'application/x-ds-block';
+export const moveDrag = 'application/x-ds-move';
+export interface DropEvent {
+  container: string;
+  index: number;
+  block?: { kind: string; variant: string };
+  move?: string;
+}
+type Box = {
+  id: string;
+  layout: string;
+  columns: number;
+  gap: string;
+  align: string;
+  justify: string;
+  padding: string;
+  margin?: string;
+};
+
 // Rendu responsive : Flex pour les piles et rangées, Grid pour les grilles,
-// avec repli sur une colonne sous 560 px (requêtes de conteneur).
+// avec repli sur une colonne sous 560 px (requêtes de conteneur). Un
+// conteneur imbriqué (bloc « group ») se rend comme une section.
 export function CompositionView({
   tokens,
   composition,
   selected,
   interact,
   onSelect,
+  onDrop,
 }: {
   tokens: Tokens;
   composition: Composition;
   selected?: string;
   interact: boolean;
   onSelect: (id: string) => void;
+  onDrop?: (drop: DropEvent) => void;
 }) {
+  const [over, setOver] = useState<{ container: string; index: number }>();
+  const editing = !interact;
   const pick = (id: string) => (e: MouseEvent) => {
     if (interact) return;
     e.preventDefault();
     e.stopPropagation();
     onSelect(id);
   };
+  // Position d'insertion : avant ou après le bloc survolé, selon l'axe ;
+  // recalculée au dépôt pour ne pas dépendre du dernier survol.
+  const accepts = (e: DragEvent) =>
+    editing &&
+    !!onDrop &&
+    (e.dataTransfer.types.includes(blockDrag) ||
+      e.dataTransfer.types.includes(moveDrag));
+  function spot(e: DragEvent, container: string, index: number, row: boolean) {
+    if (index < 0) return { container, index: -index - 1 };
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const after = row
+      ? e.clientX > r.left + r.width / 2
+      : e.clientY > r.top + r.height / 2;
+    return { container, index: index + (after ? 1 : 0) };
+  }
+  function hover(e: DragEvent, container: string, index: number, row: boolean) {
+    if (!accepts(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const next = spot(e, container, index, row);
+    if (over?.container !== next.container || over.index !== next.index)
+      setOver(next);
+  }
+  function drop(e: DragEvent, container: string, index: number, row: boolean) {
+    if (!accepts(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const block = e.dataTransfer.getData(blockDrag);
+    const move = e.dataTransfer.getData(moveDrag);
+    onDrop!({
+      ...spot(e, container, index, row),
+      block: block ? JSON.parse(block) : undefined,
+      move: move || undefined,
+    });
+    setOver(undefined);
+  }
+  const line = (container: string, index: number) =>
+    over?.container === container && over.index === index ? (
+      <div className="cmp-drop-line" aria-hidden="true" />
+    ) : null;
+  const classes = (b: Box) =>
+    `cmp-section layout-${b.layout} gap-${b.gap} align-${b.align} justify-${b.justify} pad-${b.padding}${b.margin ? ` mar-${b.margin}` : ''}`;
+
+  function body(box: Box, items: Item[]) {
+    const row = box.layout === 'row';
+    return (
+      <div
+        className="cmp-section-body"
+        onDragOver={(e) => hover(e, box.id, -items.length - 1, row)}
+        onDrop={(e) => drop(e, box.id, -items.length - 1, row)}
+      >
+        {!items.length && (
+          <p className="cmp-placeholder">
+            {editing ? 'Déposer un composant ici' : ''}
+          </p>
+        )}
+        {items.map((i, index) => (
+          <Fragment key={i.id}>
+            {line(box.id, index)}
+            <div
+              data-id={i.id}
+              className={`cmp-item width-${i.width}${selected === i.id ? ' is-selected' : ''}`}
+              style={
+                {
+                  '--span': Math.min(i.span, box.columns),
+                  '--rows': i.rows,
+                } as CSSProperties
+              }
+              draggable={editing && !!onDrop}
+              onDragStart={(e) => {
+                e.stopPropagation();
+                e.dataTransfer.setData(moveDrag, i.id);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragEnd={() => setOver(undefined)}
+              onDragOver={(e) => hover(e, box.id, index, row)}
+              onDrop={(e) => drop(e, box.id, index, row)}
+              onClickCapture={i.kind === 'group' ? undefined : pick(i.id)}
+            >
+              {i.kind === 'group' && i.box ? (
+                <div
+                  className={`cmp-group ${classes({ ...i.box, id: i.id, layout: i.variant })}${selected === i.id ? ' is-selected' : ''}`}
+                  style={{ '--cols': i.box.columns } as CSSProperties}
+                  onClick={pick(i.id)}
+                  aria-label="Conteneur"
+                >
+                  {body(
+                    { ...i.box, id: i.id, layout: i.variant },
+                    (i.children ?? []) as Item[],
+                  )}
+                </div>
+              ) : (
+                <Block item={i} />
+              )}
+            </div>
+          </Fragment>
+        ))}
+        {line(box.id, items.length)}
+      </div>
+    );
+  }
+
   return (
     <DSProvider tokens={tokens}>
-      <div className={`cmp-page${interact ? '' : ' is-editing'}`}>
+      <div
+        className={`cmp-page${interact ? '' : ' is-editing'}`}
+        onDragLeave={(e) => {
+          if (e.currentTarget === e.target) setOver(undefined);
+        }}
+      >
         {!composition.sections.length && (
           <p className="cmp-empty">
             Page vide : ajoutez une section depuis la bibliothèque ou décrivez
@@ -115,31 +254,11 @@ export function CompositionView({
             key={s.id}
             data-id={s.id}
             aria-label={s.name}
-            className={`cmp-section layout-${s.layout} gap-${s.gap} align-${s.align}${selected === s.id ? ' is-selected' : ''}`}
+            className={`${classes(s)}${selected === s.id ? ' is-selected' : ''}`}
             style={{ '--cols': s.columns } as CSSProperties}
             onClick={pick(s.id)}
           >
-            <div className="cmp-section-body">
-              {!s.items.length && (
-                <p className="cmp-placeholder">{s.name} · section vide</p>
-              )}
-              {s.items.map((i) => (
-                <div
-                  key={i.id}
-                  data-id={i.id}
-                  className={`cmp-item width-${i.width}${selected === i.id ? ' is-selected' : ''}`}
-                  style={
-                    {
-                      '--span': Math.min(i.span, s.columns),
-                      '--rows': i.rows,
-                    } as CSSProperties
-                  }
-                  onClickCapture={pick(i.id)}
-                >
-                  <Block item={i} />
-                </div>
-              ))}
-            </div>
+            {body(s, s.items)}
           </section>
         ))}
       </div>

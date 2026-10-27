@@ -40,6 +40,7 @@ const start = milestones[0].date;
 const end = milestones[milestones.length - 1].date;
 export const taskBadge: Record<TaskStatus, BadgeVariant> = {
   todo: 'outline',
+  doing: 'outline',
   done: 'secondary',
   validated: 'default',
 };

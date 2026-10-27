@@ -13,6 +13,7 @@ import {
 
 export const statusColors: Record<TaskStatus, string> = {
   todo: 'neutral',
+  doing: 'yellow',
   done: 'blue',
   validated: 'green',
 };

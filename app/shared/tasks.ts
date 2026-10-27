@@ -2,10 +2,11 @@ import { z } from 'zod';
 
 // Tâches du PFE, tirées du brief Notion et de la note d'intention (lecture seule).
 // Seuls les statuts sont modifiables ; ils restent sur ce poste.
-export const taskStatuses = ['todo', 'done', 'validated'] as const;
+export const taskStatuses = ['todo', 'doing', 'done', 'validated'] as const;
 export type TaskStatus = (typeof taskStatuses)[number];
 export const statusLabels: Record<TaskStatus, string> = {
   todo: 'À faire',
+  doing: 'En cours',
   done: 'Fait',
   validated: 'Validé par le prof',
 };
