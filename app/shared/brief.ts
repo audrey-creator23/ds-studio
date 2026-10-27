@@ -108,6 +108,8 @@ export function progress(state: TaskState | undefined) {
   const finished = tasks.filter((t) => statusOf(state, t.id) !== 'todo');
   return Math.round((finished.length / tasks.length) * 100);
 }
+export const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 // Part de la période du projet écoulée, de 0 (lancement) à 1 (échéance finale).
 export function timeProgress(day = today()) {
   const start = Date.parse(milestones[0].date);

@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Catalogue, Scenario } from './DesignSystem.js';
 import ProjectBrief from './ProjectBrief.js';
-import Sidebar, { pageHeadings, pageTitles, type Page } from './Sidebar.js';
+import Sidebar, {
+  pageHeadings,
+  pageSlugs,
+  pageTitles,
+  type Page,
+} from './Sidebar.js';
+import HomePage from './HomePage.js';
 import VolcanoDashboard from './VolcanoDashboard.js';
 import AssistantPage from './AssistantPage.js';
 import Logo from './Logo.js';
@@ -113,8 +119,23 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [page, setPage] = useState<Page>('workshop');
+  // Accueil par défaut ; ?vue=… garde la page affichée au rechargement.
+  const [page, setPage] = useState<Page>(() => {
+    const slug = new URLSearchParams(location.search).get('vue');
+    return (
+      (Object.keys(pageSlugs) as Page[]).find((p) => pageSlugs[p] === slug) ??
+      'home'
+    );
+  });
+  const firstPage = useRef(true);
   useEffect(() => {
+    const url = new URL(location.href);
+    url.searchParams.set('vue', pageSlugs[page]);
+    history.replaceState(null, '', url);
+    if (firstPage.current) {
+      firstPage.current = false;
+      return;
+    }
     if (page !== 'workshop')
       document.getElementById(pageHeadings[page])?.focus();
   }, [page]);
@@ -240,7 +261,18 @@ export default function App() {
   );
   return (
     <>
-      <a className="skip-link" href="#ds-title">
+      <a
+        className="skip-link"
+        href="#ds-title"
+        onClick={(e) => {
+          if (page === 'workshop') return;
+          e.preventDefault();
+          setPage('workshop');
+          requestAnimationFrame(() =>
+            document.getElementById('ds-title')?.focus(),
+          );
+        }}
+      >
         Aller aux tokens
       </a>
       <div className="shell">
@@ -258,6 +290,7 @@ export default function App() {
             <span aria-hidden="true">/</span>
             <strong>{pageTitles[page]}</strong>
           </header>
+          {page === 'home' && <HomePage onPage={setPage} />}
           {page === 'assistant' && <AssistantPage />}
           {page === 'brief' && <ProjectContent />}
           {page === 'volcano' && (

@@ -5,6 +5,7 @@ import Masonry from './Masonry.js';
 import Volcano, { levelOf } from './Volcano.js';
 import type { Page } from './Sidebar.js';
 import {
+  daysBetween,
   milestoneLabels,
   milestoneStatus,
   milestones,
@@ -21,11 +22,9 @@ import {
 } from '../shared/tasks.js';
 import { tokenKeys, type Tokens } from '../shared/model.js';
 
-const DAY = 86_400_000;
 const start = milestones[0].date;
 const end = milestones[milestones.length - 1].date;
-const days = (from: string, to: string) =>
-  Math.round((Date.parse(to) - Date.parse(from)) / DAY);
+const days = daysBetween;
 
 export default function VolcanoDashboard({
   tokens,

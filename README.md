@@ -84,7 +84,9 @@ contenant des espaces est accepté. N’utilisez ni `sudo` ni installation de se
 
 ## Votre première boucle, en deux minutes
 
-1. Dans **Design System**, choisissez `color.brand`, remplacez la valeur par `#8A3B20`.
+1. L’outil s’ouvre sur l’**Accueil** (tableau de bord). Ouvrez l’**Atelier** (carte ou menu
+   « Tokens et composants » ; adresse directe `?vue=atelier`). Dans **Design System**,
+   choisissez `color.brand`, remplacez la valeur par `#8A3B20`.
 2. Cliquez **Proposer**. Le diff montre l’ancienne et la nouvelle valeur, sans écriture.
 3. Cliquez **Valider et enregistrer**. Boutons, réservation et navigation changent dans les deux vues.
 4. Testez la réservation, puis les viewports 320, 375, 430 et 1024 px (défilement horizontal si nécessaire).

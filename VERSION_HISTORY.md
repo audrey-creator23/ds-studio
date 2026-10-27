@@ -5,6 +5,22 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.11.0 — 2026-10-27
+
+- **Type** : minor (nouvelle page par défaut ; l’atelier reste accessible via
+  `?vue=atelier`)
+- **Fichiers** : `app/client/HomePage.tsx`, `app/client/App.tsx`,
+  `app/client/Sidebar.tsx`, `app/client/VolcanoDashboard.tsx`,
+  `app/shared/brief.ts`, `app/client/styles.css`, `tests/e2e/studio.spec.ts`,
+  `README.md`
+- **Résumé** : Accueil « Tableau de bord » ouvert par défaut. Chaque indicateur
+  n’apparaît qu’une fois : avancement (avec jalons repliables), prochaine
+  échéance avec tâches à faire avant, temps restant avec alertes de retard.
+  CTA « Ouvrir le brief du prof » et « Accéder à mon Notion » (liens existants,
+  nouvel onglet, lecture seule). Cartes de navigation cliquables vers Atelier,
+  Brief, Assistant et Volcan. Pages adressables par `?vue=` et conservées au
+  rechargement. Dashboard Volcan conservé.
+
 ## 2.10.0 — 2026-10-27
 
 - **Type** : minor (interface, données inchangées)

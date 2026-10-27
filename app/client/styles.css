@@ -1976,3 +1976,109 @@ select.status-tag {
     display: none;
   }
 }
+
+/* Accueil : tableau de bord, CTA et cartes de navigation cliquables. */
+.home-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: white;
+  color: var(--ui-fg);
+  font-weight: 500;
+  text-decoration: none;
+}
+.cta:hover {
+  background: var(--ui-hover);
+}
+.cta-primary {
+  border-color: var(--ui-brand);
+  background: var(--ui-brand);
+  color: white;
+}
+.cta-primary:hover {
+  background: #1b6fc2;
+}
+.cta:focus-visible,
+.nav-card:focus-visible {
+  outline: 2px solid var(--ui-brand);
+  outline-offset: 2px;
+}
+.card-action {
+  margin-top: 10px;
+}
+.progress-time span {
+  background: var(--ui-fg-support);
+}
+.home-alerts li {
+  color: #a13d24;
+}
+.home-nav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--card-gap);
+}
+@media (max-width: 1100px) {
+  .home-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .home-nav {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.nav-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2px 10px;
+  border: 0;
+  text-align: left;
+  font-weight: 400;
+  color: var(--ui-fg);
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.nav-card .card-emoji {
+  grid-row: span 2;
+  font-size: 24px;
+}
+.nav-card strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+.nav-card span:last-child {
+  font-size: 14px;
+  color: var(--ui-fg-secondary);
+}
+.nav-card:hover {
+  background: white;
+  transform: translateY(-1px);
+  box-shadow:
+    rgba(0, 0, 0, 0.06) 0 12px 28px,
+    rgba(0, 0, 0, 0.08) 0 0 0 1px;
+}
+@media (max-width: 740px) {
+  .home-cta .cta {
+    flex: 1;
+    justify-content: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-card {
+    transition: none;
+  }
+  .nav-card:hover {
+    transform: none;
+  }
+}
