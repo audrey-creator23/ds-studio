@@ -402,3 +402,39 @@ test('brief : mobile 375 px sans débordement horizontal', async ({ page }) => {
     ),
   ).toBe(true);
 });
+
+test('dashboard volcan : page secondaire, activité datée, frise et accès', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Dashboard Volcan' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Dashboard Volcan' }),
+  ).toBeFocused();
+  await expect(page.locator('.workshop')).toBeHidden();
+  await expect(
+    page.getByRole('img', { name: /Volcan, activité/ }),
+  ).toBeVisible();
+  await expect(page.locator('.volcano-track li')).toHaveCount(6);
+  await page.getByRole('button', { name: /12 mars · Fin du DS/ }).click();
+  await expect(
+    page.getByRole('img', { name: 'Volcan, activité 100 % : Éruption' }),
+  ).toBeVisible();
+  await expect(page.locator('.v-fountain')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Revenir à aujourd’hui' }).click();
+  await page
+    .getByRole('button', { name: 'Brief du projet', exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole('heading', { name: /Brief du projet · PFE/ }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.getByRole('button', { name: 'Dashboard Volcan' }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

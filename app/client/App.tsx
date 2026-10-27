@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Catalogue, Scenario } from './DesignSystem.js';
 import ProjectBrief from './ProjectBrief.js';
-import Sidebar from './Sidebar.js';
+import Sidebar, { pageHeadings, pageTitles, type Page } from './Sidebar.js';
+import VolcanoDashboard from './VolcanoDashboard.js';
 import Logo from './Logo.js';
 import ProjectContent from './ProjectContent.js';
 import { useTokenDraft } from './useTokenDraft.js';
@@ -111,10 +112,11 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [briefOpen, setBriefOpen] = useState(false);
+  const [page, setPage] = useState<Page>('workshop');
   useEffect(() => {
-    if (briefOpen) document.getElementById('projet-title')?.focus();
-  }, [briefOpen]);
+    if (page !== 'workshop')
+      document.getElementById(pageHeadings[page])?.focus();
+  }, [page]);
   const dialog = useRef<HTMLDialogElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -245,19 +247,21 @@ export default function App() {
           revision={state.revision}
           historyOpen={historyOpen}
           onToggleHistory={() => setHistoryOpen(!historyOpen)}
-          briefOpen={briefOpen}
-          onToggleBrief={() => setBriefOpen(!briefOpen)}
-          onNavigate={() => setBriefOpen(false)}
+          current={page}
+          onPage={setPage}
           figmaLabel={boot?.figma.label ?? 'Figma non connecté'}
         />
         <div className="shell-main">
           <header className="topbar">
             <span>DS-Studio</span>
             <span aria-hidden="true">/</span>
-            <strong>{briefOpen ? 'Brief du projet' : 'Lisière'}</strong>
+            <strong>{pageTitles[page]}</strong>
           </header>
-          {briefOpen && <ProjectContent />}
-          <div className="workshop" hidden={briefOpen}>
+          {page === 'brief' && <ProjectContent />}
+          {page === 'volcano' && (
+            <VolcanoDashboard tokens={state.tokens} onPage={setPage} />
+          )}
+          <div className="workshop" hidden={page !== 'workshop'}>
             <div className="intro" id="accueil" tabIndex={-1}>
               <div>
                 <span className="eyebrow">STARTER PÉDAGOGIQUE / M2 UX/UI</span>

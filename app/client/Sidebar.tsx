@@ -7,6 +7,22 @@ import calendar from './icons/calendar.svg';
 import help from './icons/help.svg';
 import Logo from './Logo.js';
 
+// Pages secondaires : elles remplacent l'atelier sans le démonter.
+export type Page = 'workshop' | 'brief' | 'volcano';
+export const pageTitles: Record<Page, string> = {
+  workshop: 'Lisière',
+  brief: 'Brief du projet',
+  volcano: 'Dashboard Volcan',
+};
+export const pageHeadings: Record<Exclude<Page, 'workshop'>, string> = {
+  brief: 'projet-title',
+  volcano: 'volcan-title',
+};
+const projectPages = [
+  { id: 'brief', label: 'Brief du projet', icon: page },
+  { id: 'volcano', label: 'Dashboard Volcan', emoji: '🌋' },
+] as const;
+
 // Menu vertical du chrome de l'atelier, d'après le DS Figma de référence.
 // Il n'utilise pas les tokens éditables : seul le DS change avec eux.
 const sections = [
@@ -20,19 +36,18 @@ export default function Sidebar({
   revision,
   historyOpen,
   onToggleHistory,
-  briefOpen,
-  onToggleBrief,
-  onNavigate,
+  current,
+  onPage,
   figmaLabel,
 }: {
   revision: number;
   historyOpen: boolean;
   onToggleHistory: () => void;
-  briefOpen: boolean;
-  onToggleBrief: () => void;
-  onNavigate: () => void;
+  current: Page;
+  onPage: (page: Page) => void;
   figmaLabel: string;
 }) {
+  const away = current !== 'workshop';
   const [active, setActive] = useState('accueil');
   useEffect(() => {
     const targets = sections
@@ -63,13 +78,11 @@ export default function Sidebar({
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                aria-current={
-                  !briefOpen && active === s.id ? 'location' : undefined
-                }
+                aria-current={!away && active === s.id ? 'location' : undefined}
                 onClick={(e) => {
-                  if (briefOpen) {
+                  if (away) {
                     e.preventDefault();
-                    onNavigate();
+                    onPage('workshop');
                     requestAnimationFrame(() =>
                       document.getElementById(s.id)?.scrollIntoView(),
                     );
@@ -85,12 +98,23 @@ export default function Sidebar({
         </ul>
         <p className="sidebar-eyebrow">Projet</p>
         <ul className="sidebar-menu">
-          <li>
-            <button onClick={onToggleBrief} aria-expanded={briefOpen}>
-              <img src={page} alt="" width="18" height="18" />
-              Brief du projet
-            </button>
-          </li>
+          {projectPages.map((p) => (
+            <li key={p.id}>
+              <button
+                aria-current={current === p.id ? 'page' : undefined}
+                onClick={() => onPage(current === p.id ? 'workshop' : p.id)}
+              >
+                {'icon' in p ? (
+                  <img src={p.icon} alt="" width="18" height="18" />
+                ) : (
+                  <span className="sidebar-emoji" aria-hidden="true">
+                    {p.emoji}
+                  </span>
+                )}
+                {p.label}
+              </button>
+            </li>
+          ))}
         </ul>
         <p className="sidebar-eyebrow">Suivi</p>
         <ul className="sidebar-menu">

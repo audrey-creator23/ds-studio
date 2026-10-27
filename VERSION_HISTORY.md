@@ -5,6 +5,18 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.6.0 — 2026-10-27
+
+- **Type** : minor (nouvelle page, aucune page existante modifiée)
+- **Fichiers** : `app/client/VolcanoDashboard.tsx`, `app/client/Sidebar.tsx`,
+  `app/client/App.tsx`, `app/client/styles.css`, `tests/e2e/studio.spec.ts`
+- **Résumé** : page secondaire « Dashboard Volcan » dans le menu. Volcan SVG
+  animé dont l’activité suit la période réelle du PFE (25 sept. → 12 mars),
+  éruption à l’échéance finale ; frise proportionnelle aux dates, cliquable pour
+  prévisualiser l’activité, colorée par statut réel. Bento : accès aux pages,
+  période, prochaine échéance, tâches, indicateurs. Animations coupées si
+  « réduire les animations » est actif.
+
 ## 2.5.0 — 2026-10-27
 
 - **Type** : minor (interface, données inchangées)

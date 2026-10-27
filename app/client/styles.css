@@ -1419,3 +1419,311 @@ select.status-tag {
     display: none;
   }
 }
+
+/* Dashboard Volcan : palette lave et roche, réutilise .bento et .bento-card. */
+.sidebar-emoji {
+  width: 18px;
+  text-align: center;
+  font-family:
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+.volcano-page {
+  --rock-950: #1f1411;
+  --rock-900: #2a1b16;
+  --rock-800: #3a2620;
+  --rock-600: #6b4a3e;
+  --ash: #d8c9c2;
+  --lava-600: #d9381e;
+  --lava-500: #ff5a1f;
+  --lava-300: #ffb020;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 44px);
+  padding: 0 28px 12px;
+}
+.volcano-page .bento {
+  grid-auto-rows: minmax(min-content, 1fr);
+}
+.volcano-page .bento-card {
+  --banner: #fbe3d6;
+}
+.volcano-hero {
+  grid-column: span 4;
+  grid-row: span 3;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  color: var(--ash);
+  background: var(--rock-900);
+}
+.volcano-bento > .bento-card:nth-child(n + 2) {
+  grid-column: span 2;
+}
+.volcano-bento > .bento-card:nth-child(n + 5) {
+  grid-column: span 3;
+}
+.volcano-svg {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 220px;
+  max-height: 44vh;
+}
+.v-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: v-pulse var(--speed) ease-in-out infinite;
+}
+.v-smoke {
+  fill: rgb(216 201 194 / calc(0.25 + var(--activity) * 0.45));
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: v-rise var(--speed) linear infinite;
+}
+.v-ember {
+  fill: var(--lava-300);
+  animation: v-ember calc(var(--speed) * 0.6) ease-out infinite;
+}
+.v-lava {
+  fill: none;
+  stroke: var(--lava-500);
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s ease;
+}
+.v-fountain {
+  fill: none;
+  stroke: var(--lava-300);
+  stroke-width: 5;
+  stroke-linecap: round;
+  animation: v-pulse 0.8s ease-in-out infinite;
+}
+@keyframes v-pulse {
+  50% {
+    opacity: 0.6;
+    transform: scale(1.06);
+  }
+}
+@keyframes v-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-90px) scale(1.8);
+  }
+}
+@keyframes v-ember {
+  from {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--dx), -110px);
+  }
+}
+.volcano-track {
+  position: relative;
+  margin: 0 28px;
+  padding: 52px 0 56px;
+}
+.volcano-track::before,
+.volcano-fill {
+  content: '';
+  position: absolute;
+  top: 52px;
+  left: 0;
+  height: 6px;
+  border-radius: 3px;
+}
+.volcano-track::before {
+  right: 0;
+  background: var(--rock-600);
+}
+.volcano-fill {
+  background: linear-gradient(90deg, var(--lava-300), var(--lava-500));
+  transition: width 0.6s ease;
+}
+.volcano-track ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  --tl-color: var(--ash);
+  --tl-dot: var(--rock-900);
+}
+.volcano-track li {
+  position: absolute;
+  top: 45px;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.volcano-track li:first-child {
+  transform: translateX(-8px);
+  text-align: left;
+}
+.volcano-track li:last-child {
+  transform: translateX(calc(-100% + 8px));
+  text-align: right;
+}
+.volcano-track button {
+  display: flex;
+  flex-direction: column;
+  align-items: inherit;
+  gap: 0;
+  padding: 24px 4px 0;
+  border: 0;
+  background: none;
+  color: var(--ash);
+  font-size: 14px;
+  white-space: nowrap;
+  position: relative;
+}
+.volcano-track li:first-child button {
+  align-items: flex-start;
+}
+.volcano-track li:last-child button {
+  align-items: flex-end;
+}
+.volcano-track li:nth-child(even) button {
+  padding: 0 4px 24px;
+  flex-direction: column-reverse;
+  transform: translateY(-46px);
+}
+.volcano-track .timeline-dot {
+  top: 0;
+  left: 50%;
+  margin-left: -8px;
+}
+.volcano-track li:first-child .timeline-dot {
+  left: 4px;
+  margin-left: 0;
+}
+.volcano-track li:last-child .timeline-dot {
+  left: auto;
+  right: 4px;
+  margin-left: 0;
+}
+.volcano-track li:nth-child(even) .timeline-dot {
+  top: auto;
+  bottom: 0;
+}
+.volcano-track button:hover,
+.volcano-track button[aria-pressed='true'] {
+  background: none;
+  color: white;
+}
+.volcano-track button[aria-pressed='true'] strong {
+  text-decoration: underline;
+  text-decoration-color: var(--lava-500);
+}
+.volcano-track time {
+  color: var(--lava-300);
+}
+.volcano-track strong {
+  font-weight: 500;
+}
+.volcano-preview {
+  margin: 0;
+  padding: 0 28px 14px;
+  font-size: 14px;
+  color: var(--ash);
+}
+.volcano-preview button {
+  margin-left: 6px;
+  padding: 2px 8px;
+  font-size: 14px;
+}
+.volcano-nav ul,
+.volcano-kpis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.volcano-nav button {
+  width: 100%;
+  text-align: left;
+}
+.volcano-big {
+  margin: 0 0 2px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--lava-600);
+}
+.volcano-kpis li {
+  font-size: 15px;
+}
+.volcano-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+@media (max-width: 1300px) {
+  .volcano-hero {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  .volcano-bento > .bento-card:nth-child(n + 2) {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 740px) {
+  .volcano-page {
+    padding: 0 14px 20px;
+  }
+  .volcano-bento > .bento-card:nth-child(n + 2) {
+    grid-column: auto;
+  }
+  /* Frise du volcan en liste : aucun libellé coupé ni superposé. */
+  .volcano-track {
+    margin: 0 16px;
+    padding: 20px 0 8px;
+  }
+  .volcano-track::before,
+  .volcano-fill {
+    top: 8px;
+  }
+  .volcano-track ol {
+    display: grid;
+    gap: 6px;
+    padding-top: 16px;
+  }
+  .volcano-track li,
+  .volcano-track li:first-child,
+  .volcano-track li:last-child {
+    position: static;
+    transform: none;
+    text-align: left;
+  }
+  .volcano-track button,
+  .volcano-track li:nth-child(even) button {
+    flex-direction: row;
+    gap: 8px;
+    padding: 0 0 0 24px;
+    transform: none;
+    white-space: normal;
+  }
+  .volcano-track .timeline-dot,
+  .volcano-track li:nth-child(n) .timeline-dot {
+    top: 2px;
+    bottom: auto;
+    left: 0;
+    right: auto;
+    margin-left: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .volcano-svg * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
