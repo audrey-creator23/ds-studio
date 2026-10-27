@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { palette, roles, theme } from '../app/client/theme.js';
+import {
+  palette,
+  radii,
+  radiusBase,
+  roles,
+  theme,
+} from '../app/client/theme.js';
 import {
   blockKinds,
   blockSpecs,
@@ -40,6 +46,13 @@ test('thème : palette fournie, échelles de 10 teintes, rôles accessibles', ()
   assert.ok(contrast(roles.primary, roles.primarySoft) >= 4.5);
   assert.ok(contrast(roles.warningText, roles.warningSoft) >= 4.5);
   assert.ok(contrast(white, roles.surfaceDark) >= 7);
+  // Rayons : thème shadcn/create (--radius: 0.875rem), paliers par décalage.
+  assert.equal(radiusBase, 14);
+  assert.equal(theme.radius!.lg, '14px');
+  assert.deepEqual(
+    [radii.sm, radii.md, radii.xl, radii['3xl']],
+    [10, 12, 18, 26],
+  );
   // Anneau de focus : 3:1 minimum sur fond clair.
   assert.ok(contrast(roles.focus, white) >= 3);
 });

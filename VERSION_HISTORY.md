@@ -5,6 +5,19 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.16.1 — 2026-10-27
+
+- **Type** : patch (valeurs de thème ; aucune API ni donnée modifiée)
+- **Fichiers** : `app/client/theme.ts`, `app/client/styles.css`,
+  `tests/theme.test.ts`, `docs/FIGMA_KIT.md`
+- **Résumé** : thème shadcn/create collé (onglet Theme → Copy Theme)
+  appliqué au thème Mantine. Ses neutres étaient déjà en place ; le rayon de
+  base passe de 10 à 14 px (`--radius: 0.875rem`) et tous les paliers en
+  dérivent depuis une seule valeur (`radiusBase`, `radii`) : champs et
+  boutons 14, cartes 18, menu 12, bulles 26. Bordure de focus gardée à
+  `#737373` (le `#A1A1A1` du thème n’atteint que 2,6:1). Mode sombre et
+  couleurs `--chart-*` non repris (interface claire, aucun graphique).
+
 ## 2.16.0 — 2026-10-27
 
 - **Type** : minor (dépendance `@fontsource-variable/inter` 5.3.0 ; blocs de

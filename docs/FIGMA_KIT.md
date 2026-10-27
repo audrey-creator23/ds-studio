@@ -30,15 +30,21 @@ l’équivalent Mantine ci-dessous.
 
 ## Tokens importés
 
-| Kit                | Valeur                                     | DS-Studio                                                 |
-| ------------------ | ------------------------------------------ | --------------------------------------------------------- |
-| Police             | Inter                                      | `@fontsource-variable/inter` (local, hors ligne)          |
-| Tailles            | 12/16 · 14/20 · 16/24 · 18/28 · 20/28      | `fontSizes`, `lineHeights`                                |
-| Rayons             | 4 · 6 · 8 · **10** · 14                    | `radius` xs → xl, défaut `lg` (10)                        |
-| Ombres             | xs, md, lg, noir 10 %                      | `shadows`, `--ui-shadow-*`                                |
-| Focus              | bordure `#737373` + halo 3 px `#A1A1A180`  | `--ui-focus`, `--ui-ring-subtle`                          |
-| Neutres            | `#0A0A0A`, `#737373`, `#E5E5E5`, `#F5F5F5` | `--ui-fg`, `--ui-fg-support`, `--ui-border`, `--ui-muted` |
-| Couleurs de marque | neutres du kit                             | **palette du studio** (choix validé)                      |
+| Kit                | Valeur                                                                                    | DS-Studio                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Police             | Inter                                                                                     | `@fontsource-variable/inter` (local, hors ligne)                              |
+| Tailles            | 12/16 · 14/20 · 16/24 · 18/28 · 20/28                                                     | `fontSizes`, `lineHeights`                                                    |
+| Rayons             | base **14** (`--radius: 0.875rem`, thème shadcn/create) : 8 · 10 · 12 · 14 · 18 · 22 · 26 | `radiusBase` et `radii` (theme.ts), défaut `lg`                               |
+| Ombres             | xs, md, lg, noir 10 %                                                                     | `shadows`, `--ui-shadow-*`                                                    |
+| Focus              | bordure `#737373` + halo 3 px `#A1A1A180`                                                 | `--ui-focus`, `--ui-ring-subtle`                                              |
+| Neutres            | `#0A0A0A`, `#737373`, `#E5E5E5`, `#F5F5F5`                                                | `--ui-fg`, `--ui-fg-support`, `--ui-border`, `--ui-muted`                     |
+| Ring (focus)       | `#A1A1A1` dans le thème collé                                                             | conservé `#737373` pour la bordure de focus (3:1 minimum ; `#A1A1A1` = 2,6:1) |
+| Couleurs de marque | neutres du kit                                                                            | **palette du studio** (choix validé)                                          |
+
+Pour appliquer un autre thème de ui.shadcn.com/create : « Get Code » →
+onglet Theme → « Copy Theme », puis coller le CSS à Claude. Seuls les neutres
+et `--radius` sont repris ; le mode sombre n’est pas utilisé (interface
+claire) et les couleurs `--chart-*` attendent un premier graphique.
 
 ## Composants disponibles
 
@@ -46,13 +52,13 @@ l’équivalent Mantine ci-dessous.
 | ---------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Button                                   | Mantine `Button`                                                | `filled` (= default), `outline`, `secondary`, `ghost`, `destructive`, `link` · xs 24, sm 28, md 32, lg 36 |
 | Badge                                    | Mantine `Badge`                                                 | `filled`, `secondary`, `destructive` (teinte), `outline`, `ghost` · h 22                                  |
-| Card                                     | `Surface` / Mantine `Card`                                      | rayon 14, bordure, ombre xs ; tailles default (24) et sm (16)                                             |
+| Card                                     | `Surface` / Mantine `Card`                                      | rayon xl (18), bordure, ombre xs ; tailles default (24) et sm (16)                                        |
 | Tabs                                     | Mantine `Tabs`                                                  | `className="kit-tabs"` (pastille sur rail) ou défaut (= line)                                             |
-| Input / Textarea / Native Select / Field | Mantine `TextInput`, `Textarea`, `NativeSelect` ; champs natifs | h 32, rayon 10, ombre xs, libellé + description                                                           |
+| Input / Textarea / Native Select / Field | Mantine `TextInput`, `Textarea`, `NativeSelect` ; champs natifs | h 32, rayon lg (14), ombre xs, libellé + description                                                      |
 | Alert                                    | Mantine `Alert`                                                 | `outline` (default), `destructive`                                                                        |
 | Progress                                 | Mantine `Progress` / `TaskProgress`                             | couleur de rôle                                                                                           |
-| Sidebar menu                             | Mantine `NavLink` (`Sidebar.tsx`)                               | h 32, rayon 8, actif neutre, rétractable                                                                  |
-| Bubble                                   | `.chat-bubble`, `.kit-bubble`                                   | reçu (muted), envoyé (primary), outline, destructive · rayon 22, angle 6                                  |
+| Sidebar menu                             | Mantine `NavLink` (`Sidebar.tsx`)                               | h 32, rayon md (12), actif neutre, rétractable                                                            |
+| Bubble                                   | `.chat-bubble`, `.kit-bubble`                                   | reçu (muted), envoyé (primary), outline, destructive · rayon 3xl (26), angle 6                            |
 
 Dans l’atelier Design, la catégorie **Kit shadcn · Mantine** propose Bouton,
 Badge, Alerte, Progression, Champ, Onglets, Carte et Bulle de chat ; Claude

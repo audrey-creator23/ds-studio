@@ -1642,13 +1642,13 @@ select.status-tag {
   text-align: center;
   font-size: 15px;
 }
-/* Bubble du kit : rayon 22, px 12, py 10, angle d'ancrage 6 px. Partagée
+/* Bubble du kit : rayon 3xl, px 12, py 10, angle d'ancrage 6 px. Partagée
    par le chat et le bloc « Bulle de chat (kit) » de la bibliothèque. */
 .kit-bubble,
 .chat-bubble {
   max-width: 80%;
   padding: 10px 12px;
-  border-radius: 22px;
+  border-radius: var(--ui-radius-bubble);
   border-end-start-radius: 6px;
   background: var(--ui-muted);
   font-size: 14px;
@@ -1658,7 +1658,7 @@ select.status-tag {
 .chat-bubble.user {
   align-self: flex-end;
   margin-inline-start: auto;
-  border-radius: 22px;
+  border-radius: var(--ui-radius-bubble);
   border-end-end-radius: 6px;
   background: var(--ui-brand);
 }
@@ -2897,8 +2897,8 @@ select.status-tag {
 }
 
 /* ——— Kit Figma shadcn/ui (sitsiilia) appliqué au chrome ———
-   Focus : bordure --ui-focus + halo 3 px ; champs h 32, rayon 10, ombre xs ;
-   cartes rayon 14, bordure, ombre xs ; menu h 32, rayon 8, actif neutre. */
+   Focus : bordure --ui-focus + halo 3 px ; champs h 32, ombre xs ; cartes
+   bordées, ombre xs ; menu h 32, actif neutre. Rayons : theme.ts (radii). */
 :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible,
 .mantine-focus-auto:focus-visible,
 .mantine-focus-never:focus-visible {
@@ -2941,7 +2941,7 @@ select.status-tag {
 .sidebar-link {
   min-height: 32px;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-md);
   color: var(--ui-fg);
   letter-spacing: normal;
 }
@@ -2952,7 +2952,7 @@ select.status-tag {
 .kit-tabs .mantine-Tabs-list {
   gap: 0;
   padding: 2px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius);
   background: var(--ui-muted);
 }
 .kit-tabs .mantine-Tabs-list::before {
@@ -2961,7 +2961,7 @@ select.status-tag {
 .kit-tabs .mantine-Tabs-tab {
   padding: 4px 10px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-md);
   background: transparent;
   color: var(--ui-fg-support);
   font-size: 14px;

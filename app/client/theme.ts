@@ -101,6 +101,23 @@ const scales = {
 // données du skill figma-shadcn-by-sitsiilia : neutres (Tailwind neutral),
 // rayons, typographie Inter, ombres noires à 10 % et focus en halo de 3 px.
 // La palette ci-dessus garde les rôles de couleur (primary, accent…).
+// Rayon de base du thème shadcn/create (--radius: 0.875rem) ; chaque palier
+// en dérive par décalage, comme dans le kit : xs = base − 6 … 4xl = base + 16.
+export const radiusBase = 14;
+export const radii = {
+  xs: radiusBase - 6,
+  sm: radiusBase - 4,
+  md: radiusBase - 2,
+  lg: radiusBase,
+  xl: radiusBase + 4,
+  '2xl': radiusBase + 8,
+  '3xl': radiusBase + 12,
+  '4xl': radiusBase + 16,
+} as const;
+
+// Neutres identiques au thème shadcn/create collé (oklch converti) :
+// foreground 0.145 → #0A0A0A, muted 0.97 → #F5F5F5, muted-foreground
+// 0.556 → #737373, border/input 0.922 → #E5E5E5, ring 0.708 → #A1A1A1.
 export const kit = {
   foreground: '#0A0A0A',
   muted: '#F5F5F5', // secondary, muted, accent du kit
@@ -184,10 +201,10 @@ const kitVariants: VariantColorsResolver = (input) => {
 
 // Tailles du kit : xs 24, sm 28, default 32 (Mantine md), lg 36.
 const buttonSizes = {
-  xs: { h: 24, px: 8, fz: 12, r: 6 },
-  sm: { h: 28, px: 10, fz: 12, r: 6 },
-  md: { h: 32, px: 10, fz: 14, r: 10 },
-  lg: { h: 36, px: 10, fz: 14, r: 10 },
+  xs: { h: 24, px: 8, fz: 12, r: radii.sm },
+  sm: { h: 28, px: 10, fz: 12, r: radii.sm },
+  md: { h: 32, px: 10, fz: 14, r: radii.lg },
+  lg: { h: 36, px: 10, fz: 14, r: radii.lg },
 } as const;
 
 export const theme = createTheme({
@@ -204,7 +221,13 @@ export const theme = createTheme({
   lineHeights: { xs: '16px', sm: '20px', md: '24px', lg: '28px', xl: '28px' },
   headings: { fontWeight: '600' },
   defaultRadius: 'lg',
-  radius: { xs: '4px', sm: '6px', md: '8px', lg: '10px', xl: '14px' },
+  radius: {
+    xs: `${radii.xs}px`,
+    sm: `${radii.sm}px`,
+    md: `${radii.md}px`,
+    lg: `${radii.lg}px`,
+    xl: `${radii.xl}px`,
+  },
   shadows: {
     xs: kit.shadowXs,
     sm: kit.shadowXs,
@@ -234,7 +257,7 @@ export const theme = createTheme({
     Card: { defaultProps: { radius: 'xl', withBorder: true, shadow: 'xs' } },
     Tooltip: { defaultProps: { withArrow: true, openDelay: 300 } },
     Badge: Badge.extend({
-      defaultProps: { radius: 26, size: 'md' },
+      defaultProps: { radius: radii['4xl'], size: 'md' },
       vars: () => ({
         root: {
           '--badge-height': '22px',
@@ -283,8 +306,10 @@ export const resolver: CSSVariablesResolver = () => ({
     '--ui-border-strong': kit.border,
     '--ui-hover': kit.muted,
     '--ui-tabs': kit.muted,
-    '--ui-radius': '10px',
-    '--ui-radius-box': '14px',
+    '--ui-radius': `${radii.lg}px`,
+    '--ui-radius-box': `${radii.xl}px`,
+    '--ui-radius-md': `${radii.md}px`,
+    '--ui-radius-bubble': `${radii['3xl']}px`,
     '--ui-box-shadow': `0 0 0 1px ${kit.border}, ${kit.shadowXs}`,
   },
   light: {},
