@@ -5,6 +5,17 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.2.0 — 2026-10-27
+
+- **Type** : minor (interface, aucune donnée ni API modifiée)
+- **Fichiers** : `app/client/Sidebar.tsx`, `app/client/icons/*.svg`,
+  `app/client/App.tsx`, `app/client/styles.css`, `package.json`,
+  `package-lock.json`
+- **Résumé** : l’atelier devient un dashboard avec menu vertical à gauche
+  (sections, historique, statut local et Figma). Couleurs, rayons, ombres et
+  icônes du chrome repris du DS Figma de référence, lu sans modification. Les
+  tokens éditables du DS restent indépendants du chrome.
+
 ## 2.1.0 — 2026-10-27
 
 - **Type** : minor (fonctionnalité compatible, schéma de tokens inchangé)
