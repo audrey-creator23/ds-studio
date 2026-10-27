@@ -353,3 +353,23 @@ test('V2 : clavier, mobile 375 px et absence de stockage navigateur', async ({
     await page.locator('body').evaluate((el) => el.scrollWidth <= innerWidth),
   ).toBe(true);
 });
+
+test('brief du projet : onglet du menu, contenu affiché puis masqué', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const tab = page.getByRole('button', { name: 'Brief du projet' });
+  await expect(tab).toHaveAttribute('aria-expanded', 'false');
+  await tab.click();
+  await expect(
+    page.getByRole('heading', { name: /Brief du projet · PFE/ }),
+  ).toBeFocused();
+  await expect(
+    page.getByText('Tests utilisateurs', { exact: true }),
+  ).toBeVisible();
+  await expect(tab).toHaveAttribute('aria-expanded', 'true');
+  await tab.click();
+  await expect(
+    page.getByRole('heading', { name: /Brief du projet · PFE/ }),
+  ).toHaveCount(0);
+});

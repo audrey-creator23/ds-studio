@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Catalogue, Scenario } from './DesignSystem.js';
 import ProjectBrief from './ProjectBrief.js';
 import Sidebar from './Sidebar.js';
+import ProjectContent from './ProjectContent.js';
 import { useTokenDraft } from './useTokenDraft.js';
 import {
   bootstrap,
@@ -109,6 +110,10 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [briefOpen, setBriefOpen] = useState(false);
+  useEffect(() => {
+    if (briefOpen) document.getElementById('projet-title')?.focus();
+  }, [briefOpen]);
   const dialog = useRef<HTMLDialogElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -238,6 +243,8 @@ export default function App() {
           revision={state.revision}
           historyOpen={historyOpen}
           onToggleHistory={() => setHistoryOpen(!historyOpen)}
+          briefOpen={briefOpen}
+          onToggleBrief={() => setBriefOpen(!briefOpen)}
           figmaLabel={boot?.figma.label ?? 'Figma non connecté'}
         />
         <div className="shell-main">
@@ -298,6 +305,7 @@ export default function App() {
               </p>
             )}
           </div>
+          {briefOpen && <ProjectContent />}
           {historyOpen && (
             <section
               className="history"

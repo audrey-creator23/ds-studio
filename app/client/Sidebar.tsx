@@ -19,11 +19,15 @@ export default function Sidebar({
   revision,
   historyOpen,
   onToggleHistory,
+  briefOpen,
+  onToggleBrief,
   figmaLabel,
 }: {
   revision: number;
   historyOpen: boolean;
   onToggleHistory: () => void;
+  briefOpen: boolean;
+  onToggleBrief: () => void;
   figmaLabel: string;
 }) {
   const [active, setActive] = useState('accueil');
@@ -66,6 +70,15 @@ export default function Sidebar({
               </a>
             </li>
           ))}
+        </ul>
+        <p className="sidebar-eyebrow">Projet</p>
+        <ul className="sidebar-menu">
+          <li>
+            <button onClick={onToggleBrief} aria-expanded={briefOpen}>
+              <img src={page} alt="" width="18" height="18" />
+              Brief du projet
+            </button>
+          </li>
         </ul>
         <p className="sidebar-eyebrow">Suivi</p>
         <ul className="sidebar-menu">

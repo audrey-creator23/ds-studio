@@ -5,6 +5,16 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.3.0 — 2026-10-27
+
+- **Type** : minor (nouvel onglet, aucune donnée ni API modifiée)
+- **Fichiers** : `app/client/ProjectContent.tsx`, `app/client/Sidebar.tsx`,
+  `app/client/App.tsx`, `app/client/styles.css`, `tests/e2e/studio.spec.ts`,
+  `package.json`, `package-lock.json`
+- **Résumé** : onglet « Brief du projet » dans le menu de gauche : synthèse du
+  brief PFE Notion (sujet, objectif, planning, cadrage, Design System, tests
+  utilisateurs), consulté sans modification, avec lien vers la source.
+
 ## 2.2.0 — 2026-10-27
 
 - **Type** : minor (interface, aucune donnée ni API modifiée)
