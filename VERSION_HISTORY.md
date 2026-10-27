@@ -5,6 +5,26 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.18.0 — 2026-10-27
+
+- **Type** : minor (nouvelle interface parallèle `/v3` sur la branche
+  `v3-dashboard` ; la version actuelle `/` reste inchangée ; aucune API ni
+  donnée modifiée)
+- **Fichiers** : `v3.html`, `app/v3/tokens.css`, `app/v3/v3.css`,
+  `app/v3/ui.tsx`, `app/v3/App.tsx`, `app/v3/Dashboard.tsx`,
+  `app/v3/main.tsx`, `app/client/VolcanoGL.tsx` (option `still`),
+  `app/server/http.ts` (route `/v3`, type `woff2`), `vite.config.ts`
+  (deux entrées), `tests/e2e/studio.spec.ts`
+- **Résumé** : itération v3, étape 1 : page Dashboard seule, reconstruite
+  de zéro sur le DS fourni (tokens shadcn/create `:root` et `.dark`, repris
+  tels quels en oklch). Composants selon l’anatomie du DS (Card, Button,
+  Badge, Progress, ToggleGroup). Indicateurs (tâches, échéance, période,
+  jalons et retards), activité du volcan selon les dates avec paliers,
+  rendu animé ou léger (image fixe), tâches par statut, frise des jalons
+  cliquable pour prévisualiser une date (verticale sur mobile). Navigation
+  repliable, autres pages annoncées et désactivées, thème sombre ou clair
+  mémorisé, lien vers la version actuelle.
+
 ## 2.17.0 — 2026-10-27
 
 - **Type** : minor (refonte visuelle du chrome ; aucune API, donnée ni token

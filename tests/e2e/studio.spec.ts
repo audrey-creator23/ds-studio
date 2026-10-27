@@ -863,3 +863,41 @@ test('bulle Claude : toutes les pages, contexte, clavier, glisser, position mém
     page.getByRole('heading', { name: 'Contexte & Assistant' }),
   ).toBeVisible();
 });
+
+test('v3 : dashboard séparé, frise, rendu léger, thème, version actuelle intacte', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/v3');
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(page.getByRole('progressbar').first()).toBeVisible();
+  // Frise : prévisualiser la fin du projet, puis revenir à aujourd'hui.
+  await page.getByRole('button', { name: /^Fin du DS/ }).click();
+  await expect(
+    page.getByRole('img', { name: 'Volcan, intensité 100 % : Éruption' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Revenir à aujourd’hui' }).click();
+  // Rendu léger mémorisé.
+  await page.getByRole('button', { name: 'Léger' }).click();
+  await expect(page.getByRole('button', { name: 'Léger' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  // Thème clair mémorisé.
+  await page.getByRole('button', { name: 'Thème sombre' }).click();
+  await page.reload();
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+  await expect(page.getByRole('button', { name: 'Léger' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  // Autres pages annoncées mais désactivées ; la version actuelle reste là.
+  await expect(
+    page.locator('.sidebar a', { hasText: 'Accueil' }),
+  ).toHaveAttribute('aria-disabled', 'true');
+  await page.getByRole('link', { name: 'Version actuelle' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Tableau de bord' }),
+  ).toBeVisible();
+});

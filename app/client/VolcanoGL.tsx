@@ -183,13 +183,20 @@ export function webglAvailable() {
 export default function VolcanoGL({
   activity,
   onFail,
+  still = false,
 }: {
   activity: number;
   onFail: () => void;
+  // Version légère : une seule image, aucune boucle d'animation.
+  still?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const level = useRef(activity);
   level.current = activity;
+  const frozenProp = useRef(still);
+  frozenProp.current = still;
+  const refresh = useRef<() => void>(() => {});
+  useEffect(() => refresh.current(), [still]);
   const draw = useRef<() => void>(() => {});
   useEffect(() => draw.current(), [activity]);
   useEffect(() => {
@@ -262,7 +269,8 @@ export default function VolcanoGL({
       render(frozen);
     };
     const update = () => {
-      const should = visible && !document.hidden && !still.matches;
+      const should =
+        visible && !document.hidden && !still.matches && !frozenProp.current;
       if (should && !running) {
         running = true;
         frame = requestAnimationFrame(loop);
@@ -279,6 +287,7 @@ export default function VolcanoGL({
     io.observe(el);
     const ro = new ResizeObserver(() => !running && render(frozen));
     ro.observe(el);
+    refresh.current = update;
     document.addEventListener('visibilitychange', update);
     still.addEventListener('change', update);
     const lost = (e: Event) => {
@@ -296,6 +305,7 @@ export default function VolcanoGL({
       still.removeEventListener('change', update);
       el.removeEventListener('webglcontextlost', lost);
       draw.current = () => {};
+      refresh.current = () => {};
       gl.deleteProgram(program);
       gl.deleteBuffer(buffer);
     };

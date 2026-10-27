@@ -1,0 +1,6 @@
+import { createRoot } from 'react-dom/client';
+import App from './App.js';
+import './tokens.css';
+import './v3.css';
+
+createRoot(document.getElementById('root')!).render(<App />);

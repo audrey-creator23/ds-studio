@@ -521,6 +521,7 @@ export async function createStudioServer(options: {
       if (vite) {
         const allowed = [
           '/app/client/',
+          '/app/v3/',
           '/app/shared/',
           '/node_modules/',
           '/@vite/',
@@ -529,6 +530,7 @@ export async function createStudioServer(options: {
         if (
           url.pathname !== '/' &&
           url.pathname !== '/index.html' &&
+          url.pathname !== '/v3.html' &&
           !allowed.some((prefix) => url.pathname.startsWith(prefix))
         )
           throw new StudioError('Source privée non distribuée.', 403);
@@ -543,6 +545,9 @@ export async function createStudioServer(options: {
         file = path.join(root, 'dist', pathname);
       else if (pathname === '/' || pathname === '/index.html')
         file = path.join(root, 'dist', 'index.html');
+      // Itération v3, servie à côté de la version actuelle.
+      else if (pathname === '/v3' || pathname === '/v3.html')
+        file = path.join(root, 'dist', 'v3.html');
       else throw new StudioError('Fichier introuvable.', 404);
       const data = await fs.readFile(file);
       const ext = path.extname(file);
@@ -554,6 +559,7 @@ export async function createStudioServer(options: {
             '.js': 'text/javascript; charset=utf-8',
             '.css': 'text/css; charset=utf-8',
             '.svg': 'image/svg+xml',
+            '.woff2': 'font/woff2',
           } as Record<string, string>
         )[ext] ?? 'application/octet-stream',
       );
