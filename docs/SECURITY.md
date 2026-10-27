@@ -89,3 +89,11 @@ Limites : 8 000 tokens par réponse, 20 messages de mémoire, 8 000 caractères 
 question, une réponse à la fois. Modèle au choix parmi une liste fermée
 (`claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`), mémorisé dans
 `.ds-studio/assistant.json` ; repli serveur activé pour Opus et Sonnet seulement.
+
+Composition de page (onglet **Composer une page**) : chaque demande envoie à
+Anthropic la composition actuelle (JSON) et 10 messages récents, sans documents ni
+brief. Réponse en sortie structurée (schéma JSON), revalidée et normalisée côté
+serveur : seuls les blocs existants sont acceptés. Ce n’est qu’une proposition,
+jamais enregistrée par le serveur ; les tokens ne sont jamais modifiés. Pages
+enregistrées dans `.ds-studio/compositions.json` (30 maximum). Le compositeur
+simulé (`DS_STUDIO_FAKE_COMPOSER=1`) n’est activé que par le serveur des tests e2e.

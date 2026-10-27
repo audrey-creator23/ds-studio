@@ -20,8 +20,17 @@ import {
   assistantLimits,
   describeAssistantError,
   type Assistant,
+  type Composer,
 } from '../../connectors/agents/claude.js';
 import { ChatStore, buildContext } from './assistant.js';
+import { CompositionStore } from './compositions.js';
+import {
+  compositionSchema,
+  composeSystem,
+  composeTurn,
+  describeChanges,
+  normalizeComposition,
+} from '../shared/composition.js';
 import type { RecordInfo } from '../../scripts/runtime.mjs';
 
 export async function createStudioServer(options: {
@@ -29,6 +38,7 @@ export async function createStudioServer(options: {
   store: Store;
   agent?: AgentAdapter;
   assistant?: Assistant;
+  composer?: Composer;
   dev?: boolean;
   control?: { record: RecordInfo; stop: () => void };
 }) {
@@ -42,6 +52,8 @@ export async function createStudioServer(options: {
   const tasks = new TaskStore(store.directory);
   const chat = new ChatStore(store.directory);
   const assistant = options.assistant ?? new ClaudeAssistant(root);
+  const composer = options.composer ?? new ClaudeAssistant(root);
+  const compositions = new CompositionStore(store.directory);
   let chatBusy = false;
   const csrf = randomBytes(32).toString('hex');
   let busy = false;
@@ -141,6 +153,12 @@ export async function createStudioServer(options: {
               messages: await chat.read(),
             });
           }
+          if (url.pathname === '/api/compositions')
+            return send(200, {
+              compositions: await compositions.read(),
+              composer: await composer.status(),
+              model: await chat.model(),
+            });
           if (url.pathname === '/api/state') return send(200, store.snapshot());
           if (url.pathname === '/api/export')
             return send(200, store.snapshot().tokens);
@@ -269,6 +287,105 @@ export async function createStudioServer(options: {
             return send(200, { message: reply.message, proposal });
           } finally {
             busy = false;
+            active.delete(controller);
+            res.off('close', cancel);
+          }
+        }
+        if (url.pathname === '/api/compositions') {
+          const b = z
+            .object({ composition: compositionSchema })
+            .strict()
+            .parse(body);
+          return send(200, {
+            compositions: await compositions.save(b.composition),
+          });
+        }
+        if (url.pathname === '/api/compositions/delete') {
+          const b = z
+            .object({ id: z.string().max(32) })
+            .strict()
+            .parse(body);
+          return send(200, { compositions: await compositions.remove(b.id) });
+        }
+        if (url.pathname === '/api/compose') {
+          const b = z
+            .object({
+              message: z.string().trim().min(1).max(4000),
+              composition: compositionSchema,
+              history: z
+                .array(
+                  z
+                    .object({
+                      role: z.enum(['user', 'assistant']),
+                      text: z.string().max(4000),
+                    })
+                    .strict(),
+                )
+                .max(10),
+            })
+            .strict()
+            .parse(body);
+          if (!(await composer.status()).available)
+            throw new StudioError(
+              'Claude indisponible : clé API Anthropic non configurée.',
+              503,
+            );
+          if (chatBusy)
+            throw new StudioError('Une réponse de Claude est en cours.', 429);
+          chatBusy = true;
+          const controller = new AbortController();
+          active.add(controller);
+          const cancel = () => controller.abort();
+          res.once('close', cancel);
+          try {
+            const history = [...b.history];
+            while (history[0]?.role === 'assistant') history.shift();
+            const result = await composer.compose(
+              composeSystem(),
+              [
+                ...history,
+                {
+                  role: 'user',
+                  text: composeTurn(b.composition, b.message),
+                },
+              ],
+              controller.signal,
+              await chat.model(),
+            );
+            if (!result.output)
+              throw new StudioError(
+                result.stopReason === 'refusal'
+                  ? 'Claude a décliné cette demande.'
+                  : result.stopReason === 'max_tokens'
+                    ? 'Réponse trop longue : simplifiez la demande.'
+                    : 'Réponse de Claude illisible. Reformulez la demande.',
+                502,
+              );
+            // Proposition seulement : rien n'est enregistré ici.
+            const proposal = result.output.needsInput
+              ? null
+              : normalizeComposition(
+                  {
+                    ...b.composition,
+                    sections: result.output.sections,
+                  },
+                  b.composition,
+                )!;
+            const changes = proposal
+              ? describeChanges(b.composition, proposal)
+              : [];
+            return send(200, {
+              reply: result.output.reply.slice(0, 2000),
+              question: result.output.needsInput,
+              proposal: changes.length ? proposal : null,
+              changes,
+              usage: result.usage,
+            });
+          } catch (e) {
+            if (e instanceof StudioError) throw e;
+            throw new StudioError(describeAssistantError(e), 502);
+          } finally {
+            chatBusy = false;
             active.delete(controller);
             res.off('close', cancel);
           }

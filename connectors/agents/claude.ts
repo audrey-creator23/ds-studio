@@ -1,7 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
 import path from 'node:path';
 import { parseEnv } from 'node:util';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { readPrivate } from '../../app/server/files.js';
+import {
+  composeOutputSchema,
+  type ComposeOutput,
+} from '../../app/shared/composition.js';
 
 // Assistant Claude en lecture seule : aucun outil, aucune écriture. La clé reste
 // côté serveur (variable d'environnement ou .env ignoré par Git), jamais renvoyée.
@@ -45,6 +50,21 @@ export interface Assistant {
   ): AsyncGenerator<AssistantEvent>;
 }
 
+// Composition de page : sortie JSON structurée, validée ensuite côté serveur.
+export interface Composer {
+  status(): Promise<{ available: boolean; detail: string }>;
+  compose(
+    system: string,
+    turns: ChatTurn[],
+    signal: AbortSignal,
+    model: ClaudeModel,
+  ): Promise<{
+    output: ComposeOutput | null;
+    stopReason: string | null;
+    usage: { input: number; output: number };
+  }>;
+}
+
 export async function readApiKey(root: string) {
   if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
   try {
@@ -55,7 +75,7 @@ export async function readApiKey(root: string) {
   }
 }
 
-export class ClaudeAssistant implements Assistant {
+export class ClaudeAssistant implements Assistant, Composer {
   constructor(
     private root: string,
     private client?: Anthropic,
@@ -111,15 +131,60 @@ export class ClaudeAssistant implements Assistant {
     yield {
       type: 'done',
       stopReason: final.stop_reason,
-      usage: {
-        input:
-          final.usage.input_tokens +
-          (final.usage.cache_read_input_tokens ?? 0) +
-          (final.usage.cache_creation_input_tokens ?? 0),
-        output: final.usage.output_tokens,
-      },
+      usage: usageOf(final.usage),
     } as const;
   }
+  async compose(
+    system: string,
+    turns: ChatTurn[],
+    signal: AbortSignal,
+    model: ClaudeModel,
+  ) {
+    const client =
+      this.client ??
+      new Anthropic({ apiKey: await readApiKey(this.root), maxRetries: 1 });
+    const stream = client.messages.stream(
+      {
+        model,
+        max_tokens: assistantLimits.maxOutputTokens,
+        output_config: {
+          effort: 'medium',
+          format: zodOutputFormat(composeOutputSchema),
+        },
+        system: [
+          { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
+        ],
+        messages: turns.map((t) => ({ role: t.role, content: t.text })),
+      },
+      { signal },
+    );
+    const final = await stream.finalMessage();
+    const text = final.content
+      .map((b) => (b.type === 'text' ? b.text : ''))
+      .join('');
+    let output: ComposeOutput | null = null;
+    try {
+      const parsed = composeOutputSchema.safeParse(JSON.parse(text));
+      if (parsed.success) output = parsed.data;
+    } catch {
+      /* Réponse tronquée ou refus : traité par l'appelant. */
+    }
+    return {
+      output,
+      stopReason: final.stop_reason,
+      usage: usageOf(final.usage),
+    };
+  }
+}
+
+function usageOf(usage: Anthropic.Usage) {
+  return {
+    input:
+      usage.input_tokens +
+      (usage.cache_read_input_tokens ?? 0) +
+      (usage.cache_creation_input_tokens ?? 0),
+    output: usage.output_tokens,
+  };
 }
 
 // Messages d'erreur lisibles, sans détail technique ni secret.

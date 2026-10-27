@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Tokens } from '../../shared/model.js';
 import type { ComponentConfig } from './componentSpecs.js';
+import type { Composition } from '../../shared/composition.js';
 
 // Aperçu réel : l'iframe charge les vrais composants React du projet et
 // reçoit les tokens du brouillon par postMessage (même origine uniquement).
@@ -27,6 +28,7 @@ export default function Simulator({
   config,
   screen,
   onScreen,
+  compose,
 }: {
   draftTokens: Tokens;
   savedTokens: Tokens;
@@ -34,6 +36,15 @@ export default function Simulator({
   config: ComponentConfig;
   screen: Screen;
   onScreen: (s: Screen) => void;
+  // Mode composition : la page construite remplace les écrans d'exemple.
+  compose?: {
+    draft: Composition;
+    saved?: Composition;
+    proposal: boolean;
+    dirty: boolean;
+    selected?: string;
+    onSelect: (id: string) => void;
+  };
 }) {
   const [size, setSize] = useState<{ w: number; h: number }>({
     w: 393,
@@ -43,6 +54,7 @@ export default function Simulator({
   const [zoom, setZoom] = useState<'fit' | number>('fit');
   const [version, setVersion] = useState<'draft' | 'saved'>('draft');
   const [space, setSpace] = useState({ w: 600, h: 700 });
+  const [interact, setInteract] = useState(false);
   const stage = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   useLayoutEffect(() => {
@@ -59,25 +71,43 @@ export default function Simulator({
       ? Math.min(1, (space.w - 24) / size.w, (space.h - 24) / size.h)
       : zoom;
   const tokens = version === 'draft' ? draftTokens : savedTokens;
+  const composition = compose
+    ? version === 'draft'
+      ? compose.draft
+      : (compose.saved ?? { ...compose.draft, sections: [] })
+    : undefined;
+  const selected = compose?.selected;
+  const onSelect = compose?.onSelect;
   // Envoi à l'iframe à chaque changement, et à sa demande quand elle est prête.
   useEffect(() => {
     const send = () =>
       frame.current?.contentWindow?.postMessage(
-        { type: 'ds-preview', tokens, screen, config },
+        {
+          type: 'ds-preview',
+          tokens,
+          screen,
+          config,
+          composition,
+          selected,
+          interact,
+        },
         location.origin,
       );
     send();
-    const onReady = (e: MessageEvent) => {
+    const onMessage = (e: MessageEvent) => {
       if (
-        e.origin === location.origin &&
-        e.source === frame.current?.contentWindow &&
-        e.data?.type === 'ds-preview-ready'
+        e.origin !== location.origin ||
+        e.source !== frame.current?.contentWindow
       )
-        send();
+        return;
+      if (e.data?.type === 'ds-preview-ready') send();
+      if (e.data?.type === 'ds-select' && typeof e.data.id === 'string')
+        onSelect?.(e.data.id);
     };
-    addEventListener('message', onReady);
-    return () => removeEventListener('message', onReady);
-  }, [tokens, screen, config]);
+    addEventListener('message', onMessage);
+    return () => removeEventListener('message', onMessage);
+  }, [tokens, screen, config, composition, selected, interact, onSelect]);
+  const changed = compose ? compose.proposal || compose.dirty : draftCount > 0;
   function choose(id: string) {
     setDevice(id);
     const d = devices.find((x) => x.id === id);
@@ -152,7 +182,9 @@ export default function Simulator({
             aria-pressed={version === 'draft'}
             onClick={() => setVersion('draft')}
           >
-            Brouillon{draftCount ? ` · ${draftCount}` : ''}
+            {compose?.proposal
+              ? 'Proposition'
+              : `Brouillon${!compose && draftCount ? ` · ${draftCount}` : ''}`}
           </button>
           <button
             type="button"
@@ -164,19 +196,42 @@ export default function Simulator({
         </div>
       </div>
       <div className="sim-toolbar">
-        <label className="field">
-          Écran
-          <select
-            value={screen}
-            onChange={(e) => onScreen(e.target.value as Screen)}
+        {compose ? (
+          <div
+            className="sim-version"
+            role="group"
+            aria-label="Clic dans l’aperçu"
           >
-            {screens.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <button
+              type="button"
+              aria-pressed={!interact}
+              onClick={() => setInteract(false)}
+            >
+              Sélection
+            </button>
+            <button
+              type="button"
+              aria-pressed={interact}
+              onClick={() => setInteract(true)}
+            >
+              Interaction
+            </button>
+          </div>
+        ) : (
+          <label className="field">
+            Écran
+            <select
+              value={screen}
+              onChange={(e) => onScreen(e.target.value as Screen)}
+            >
+              {screens.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="field">
           Appareil
           <select value={device} onChange={(e) => choose(e.target.value)}>
@@ -238,6 +293,13 @@ export default function Simulator({
           ? `mise en page mobile (< ${layoutBreakpoint} px)`
           : `mise en page large (≥ ${layoutBreakpoint} px)`}
         {version === 'saved' && ' · version enregistrée'}
+        {compose?.proposal &&
+          version === 'draft' &&
+          ' · proposition de Claude, non appliquée'}
+        {compose &&
+          version === 'saved' &&
+          !compose.saved &&
+          ' · page jamais enregistrée'}
       </p>
       <ol className="sim-breakpoints" aria-label="Points de rupture">
         {breakpoints.map((b) => (
@@ -256,13 +318,13 @@ export default function Simulator({
       </ol>
       <div className="sim-stage" ref={stage}>
         <div
-          className={`sim-frame${version === 'draft' && draftCount ? ' is-draft' : ''}`}
+          className={`sim-frame${version === 'draft' && changed ? ' is-draft' : ''}`}
           style={{ width: size.w * scale, height: size.h * scale }}
         >
           <iframe
             ref={frame}
-            title="Aperçu responsive"
-            src={`/?preview=1&scenario=${screen === 'components' ? 'cards' : screen}`}
+            title={compose ? 'Aperçu de la page' : 'Aperçu responsive'}
+            src={`/?preview=1&scenario=${compose ? 'compose' : screen === 'components' ? 'cards' : screen}`}
             width={size.w}
             height={size.h}
             style={{ transform: `scale(${scale})` }}

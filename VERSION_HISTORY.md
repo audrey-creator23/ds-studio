@@ -5,6 +5,32 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.14.0 — 2026-10-27
+
+- **Type** : minor (nouvelles routes locales `/api/compositions`,
+  `/api/compositions/delete`, `/api/compose` ; nouveau fichier privé
+  `.ds-studio/compositions.json` ; tokens et données existantes inchangés)
+- **Fichiers** : `app/shared/composition.ts`, `app/server/compositions.ts`,
+  `app/server/http.ts`, `app/server/index.ts`, `connectors/agents/claude.ts`,
+  `connectors/agents/fakeComposer.ts`, `app/client/design/ComposeWorkspace.tsx`,
+  `app/client/design/Library.tsx`, `app/client/design/Structure.tsx`,
+  `app/client/design/ComposeChat.tsx`, `app/client/design/CompositionView.tsx`,
+  `app/client/design/useComposition.ts`, `app/client/design/Simulator.tsx`,
+  `app/client/App.tsx`, `app/client/styles.css`, `scripts/e2e-server.mjs`,
+  `tests/composition.test.ts`, `tests/e2e/studio.spec.ts`, `README.md`,
+  `docs/SECURITY.md`
+- **Résumé** : page Design repensée en atelier de composition (onglet par
+  défaut), l’éditeur de tokens restant dans l’onglet « Tokens du DS ».
+  Bibliothèque des composants existants (Lisière et Studio) par catégorie,
+  avec recherche, aperçu et variantes. Sections Flex/Grid responsives (pile,
+  rangée, grille 1 à 4 colonnes, espacements `space.*`, repli sur une colonne
+  sous 560 px). Structure réorganisable (boutons, glisser-déposer), sélection
+  dans l’aperçu et inspecteur (variante, taille, texte, colonnes, lignes,
+  largeur, position). Chat Claude en sortie structurée : proposition
+  prévisualisée, à appliquer ou refuser ; question seulement si une information
+  essentielle manque. Annuler / rétablir, brouillon conservé, pages enregistrées
+  séparément des tokens.
+
 ## 2.13.0 — 2026-10-27
 
 - **Type** : minor (nouvelle route locale `/api/assistant/model`, champ

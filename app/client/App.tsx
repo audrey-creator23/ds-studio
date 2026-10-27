@@ -1,5 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ComponentSheet, Scenario } from './DesignSystem.js';
+import { CompositionView } from './design/CompositionView.js';
+import { useComposition } from './design/useComposition.js';
+import ComposeWorkspace from './design/ComposeWorkspace.js';
+import {
+  normalizeComposition,
+  type Composition,
+} from '../shared/composition.js';
 import ProjectBrief from './ProjectBrief.js';
 import Sidebar, {
   pageHeadings,
@@ -91,6 +98,9 @@ export function Preview() {
     tokens: Tokens;
     screen: string;
     config: ComponentConfig;
+    composition?: Composition;
+    selected?: string;
+    interact: boolean;
   }>();
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
@@ -106,6 +116,12 @@ export function Preview() {
           tokens: tokens.data,
           screen: String(e.data.screen),
           config: normalizeConfig(e.data.config),
+          composition: e.data.composition
+            ? normalizeComposition(e.data.composition)
+            : undefined,
+          selected:
+            typeof e.data.selected === 'string' ? e.data.selected : undefined,
+          interact: e.data.interact === true,
         });
     };
     addEventListener('message', onMessage);
@@ -119,6 +135,20 @@ export function Preview() {
     'cards';
   const tokens = live?.tokens ?? state?.tokens;
   if (!tokens) return <p role="alert">{error || 'Chargement du scénario…'}</p>;
+  if (live?.composition)
+    return (
+      <CompositionView
+        tokens={tokens}
+        composition={live.composition}
+        selected={live.selected}
+        interact={live.interact}
+        onSelect={(id) =>
+          parent.postMessage({ type: 'ds-select', id }, location.origin)
+        }
+      />
+    );
+  if (scenario === 'compose')
+    return <p role="status">Chargement de la composition…</p>;
   return scenario === 'components' ? (
     <ComponentSheet tokens={tokens} config={live?.config ?? defaultConfig} />
   ) : (
@@ -131,6 +161,21 @@ export default function App() {
   const design = useDesignDraft(state?.tokens);
   const [config, setConfigState] = useState<ComponentConfig>(loadConfig);
   const [screen, setScreen] = useState<Screen>('cards');
+  const composition = useComposition();
+  // Composer une page (par défaut) ou modifier les tokens du DS global.
+  const [mode, setMode] = useState<'compose' | 'tokens'>(() =>
+    new URLSearchParams(location.search).get('mode') === 'tokens'
+      ? 'tokens'
+      : 'compose',
+  );
+  const [panel, setPanel] = useState<'library' | 'structure'>('library');
+  const selectFromPreview = useCallback(
+    (id: string) => {
+      composition.select(id);
+      setPanel('structure');
+    },
+    [composition.select],
+  );
   function setConfig(next: ComponentConfig) {
     setConfigState(next);
     setScreen('components');
@@ -167,6 +212,9 @@ export default function App() {
   useEffect(() => {
     const url = new URL(location.href);
     url.searchParams.set('vue', pageSlugs[page]);
+    if (page === 'workshop' && mode === 'tokens')
+      url.searchParams.set('mode', 'tokens');
+    else url.searchParams.delete('mode');
     history.replaceState(null, '', url);
     if (firstPage.current) {
       firstPage.current = false;
@@ -174,7 +222,7 @@ export default function App() {
     }
     if (page !== 'workshop')
       document.getElementById(pageHeadings[page])?.focus();
-  }, [page]);
+  }, [page, mode]);
   const dialog = useRef<HTMLDialogElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -370,9 +418,10 @@ export default function App() {
         className="skip-link"
         href="#ds-title"
         onClick={(e) => {
-          if (page === 'workshop') return;
+          if (page === 'workshop' && mode === 'tokens') return;
           e.preventDefault();
           setPage('workshop');
+          setMode('tokens');
           requestAnimationFrame(() =>
             document.getElementById('ds-title')?.focus(),
           );
@@ -409,7 +458,27 @@ export default function App() {
                 <p className="page-eyebrow">Lisière · Design System</p>
                 <h1>Design</h1>
               </div>
-              <div className="design-io">
+              <div
+                className="design-modes"
+                role="group"
+                aria-label="Mode de la page Design"
+              >
+                <button
+                  type="button"
+                  aria-pressed={mode === 'compose'}
+                  onClick={() => setMode('compose')}
+                >
+                  Composer une page
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={mode === 'tokens'}
+                  onClick={() => setMode('tokens')}
+                >
+                  Tokens du DS
+                </button>
+              </div>
+              <div className="design-io" hidden={mode !== 'tokens'}>
                 <button onClick={() => void perform(exportTokens)}>
                   Exporter les tokens
                 </button>
@@ -493,24 +562,36 @@ export default function App() {
                 </ol>
               </section>
             )}
-            <div className="design-layout">
-              <TokenEditor
-                draft={design}
-                saved={state.tokens}
+            {page === 'workshop' && mode === 'compose' && (
+              <ComposeWorkspace
+                c={composition}
+                tokens={state.tokens}
+                panel={panel}
+                onPanel={setPanel}
+                onSelect={selectFromPreview}
                 config={config}
-                onConfig={setConfig}
-                onSave={() => void saveDesign()}
-                saving={saving}
               />
-              <Simulator
-                draftTokens={design.preview ?? state.tokens}
-                savedTokens={state.tokens}
-                draftCount={Object.keys(design.values).length}
-                config={config}
-                screen={screen}
-                onScreen={setScreen}
-              />
-            </div>
+            )}
+            {mode === 'tokens' && (
+              <div className="design-layout">
+                <TokenEditor
+                  draft={design}
+                  saved={state.tokens}
+                  config={config}
+                  onConfig={setConfig}
+                  onSave={() => void saveDesign()}
+                  saving={saving}
+                />
+                <Simulator
+                  draftTokens={design.preview ?? state.tokens}
+                  savedTokens={state.tokens}
+                  draftCount={Object.keys(design.values).length}
+                  config={config}
+                  screen={screen}
+                  onScreen={setScreen}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

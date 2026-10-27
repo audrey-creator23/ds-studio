@@ -8,7 +8,7 @@ const save = (page: Page) =>
 test('boucle centrale : brouillon en direct, diff, validation, recharge, annulation sélective', async ({
   page,
 }) => {
-  await page.goto('/?vue=design');
+  await page.goto('/?vue=design&mode=tokens');
   await expect(
     page.getByRole('heading', { name: 'Design', exact: true }),
   ).toBeVisible();
@@ -64,7 +64,7 @@ test('simulateur : appareils, largeur personnalisée, glisser, interactions', as
   page,
 }) => {
   await page.setViewportSize({ width: 1600, height: 1100 });
-  await page.goto('/?vue=design');
+  await page.goto('/?vue=design&mode=tokens');
   const frame = page.frameLocator('iframe');
   const iframe = page.locator('iframe');
   for (const [device, width] of [
@@ -138,7 +138,7 @@ test('simulateur : appareils, largeur personnalisée, glisser, interactions', as
 test('composants : variante, taille et états réels dans l’aperçu', async ({
   page,
 }) => {
-  await page.goto('/?vue=design');
+  await page.goto('/?vue=design&mode=tokens');
   await page
     .getByRole('combobox', { name: 'Composant', exact: true })
     .selectOption('button');
@@ -172,7 +172,7 @@ test('composants : variante, taille et états réels dans l’aperçu', async ({
 test('entrée couleur invalide sans mutation et clavier du diff', async ({
   page,
 }) => {
-  await page.goto('/?vue=design');
+  await page.goto('/?vue=design&mode=tokens');
   await token(page, 'color.brand').fill('red');
   await expect(page.getByRole('alert').first()).toContainText(
     'Couleur attendue',
@@ -193,7 +193,7 @@ test('entrée couleur invalide sans mutation et clavier du diff', async ({
 test('export navigateur, import valide avec diff, fichier invalide sans écriture', async ({
   page,
 }) => {
-  await page.goto('/?vue=design');
+  await page.goto('/?vue=design&mode=tokens');
   await expect(
     page.getByRole('heading', { name: 'Tokens', exact: true }),
   ).toBeVisible();
@@ -233,7 +233,7 @@ test('export navigateur, import valide avec diff, fichier invalide sans écritur
 test('contraste du brouillon immédiat sans modifier les composants enregistrés', async ({
   page,
 }) => {
-  await page.goto('/?vue=design');
+  await page.goto('/?vue=design&mode=tokens');
   await token(page, 'color.brand').fill('#FFFFFF');
   await expect(page.getByText('Contraste marque / texte')).toContainText(
     '1.00:1',
@@ -279,7 +279,7 @@ test('brief privé et Codex conservés sur la page Assistant', async ({
 test('recherche, brouillon récupéré après recharge, annuler et rétablir', async ({
   page,
 }) => {
-  await page.goto('/?vue=design');
+  await page.goto('/?vue=design&mode=tokens');
   const before = await (await page.request.get('/api/state')).json();
   await page.getByLabel('Rechercher un token').fill('space');
   await expect(page.locator('.token-row')).toHaveCount(3);
@@ -312,11 +312,11 @@ test('conflit multi-onglets visible dans le diff, aucune perte de données', asy
   page,
   context,
 }) => {
-  await page.goto('/?vue=design');
+  await page.goto('/?vue=design&mode=tokens');
   await token(page, 'color.brand').fill('#223355');
   await save(page);
   const other = await context.newPage();
-  await other.goto('/?vue=design');
+  await other.goto('/?vue=design&mode=tokens');
   await token(other, 'color.brand').fill('#664422');
   await save(other);
   await other.getByRole('button', { name: 'Valider et enregistrer' }).click();
@@ -337,7 +337,7 @@ test('conflit multi-onglets visible dans le diff, aucune perte de données', asy
 test('capacité de session périmée simulée sans rejeu ambigu', async ({
   page,
 }) => {
-  await page.goto('/?vue=design');
+  await page.goto('/?vue=design&mode=tokens');
   await page.getByRole('heading', { name: 'Tokens', exact: true }).waitFor();
   const boot = await (await page.request.get('/api/bootstrap')).json();
   // Un seul refus certain avant mutation, comme une capacité périmée après restart.
@@ -375,7 +375,8 @@ test('clavier, mobile 375 px et absence de stockage navigateur', async ({
   });
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/?vue=design');
-  await page.getByRole('heading', { name: 'Tokens', exact: true }).waitFor();
+  // Le lien d'évitement ouvre l'onglet Tokens depuis la composition.
+  await page.getByRole('heading', { name: 'Claude', exact: true }).waitFor();
   await page.keyboard.press('Tab');
   await expect(
     page.getByRole('link', { name: 'Aller aux tokens' }),
@@ -425,8 +426,9 @@ test('brief : page Bento sur un écran, toggles fermés, statuts persistants', a
   await expect(page.getByText('Validé par le prof · 1')).toBeVisible();
   await page.getByRole('button', { name: 'Design', exact: true }).click();
   await expect(page.locator('.workshop')).toBeVisible();
+  // La page Design s'ouvre sur la composition.
   await expect(
-    page.getByRole('heading', { name: 'Tokens', exact: true }),
+    page.getByRole('heading', { name: 'Claude', exact: true }),
   ).toBeVisible();
 });
 
@@ -643,4 +645,154 @@ test('accueil : page par défaut, CTA Notion, aucune donnée en double, navigati
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+const pageFrame = (page: Page) =>
+  page.frameLocator('iframe[title="Aperçu de la page"]');
+
+test('composition : bibliothèque, sélection dans l’aperçu, inspecteur, ordre, annuler, enregistrer', async ({
+  page,
+}) => {
+  await page.goto('/?vue=design');
+  const frame = pageFrame(page);
+  const title = frame.getByRole('heading', {
+    name: 'De petites idées. De vrais liens.',
+  });
+  await expect(title).toBeVisible();
+  // Bibliothèque : recherche puis ajout dans la section ciblée.
+  await page.getByLabel('Rechercher un composant').fill('badge');
+  await expect(
+    page.getByRole('button', { name: 'Ajouter Bouton' }),
+  ).toHaveCount(0);
+  await page
+    .getByRole('combobox', { name: 'Variante Badge' })
+    .selectOption('success');
+  await page.getByRole('button', { name: 'Ajouter Badge' }).click();
+  await page.getByRole('button', { name: 'Structure', exact: true }).click();
+  await page.getByLabel('Texte', { exact: true }).fill('Nouveau');
+  const badge = frame.locator('.ds-badge.success', { hasText: 'Nouveau' });
+  await expect(badge).toBeVisible();
+  // Sélection dans l'aperçu → propriétés du titre.
+  await title.click();
+  await expect(page.getByLabel('Propriétés : Titre')).toBeVisible();
+  await page
+    .getByRole('combobox', { name: 'Variante', exact: true })
+    .selectOption('section');
+  await expect(
+    frame.getByRole('heading', { level: 2, name: /De petites idées/ }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Annuler', exact: true }).click();
+  await expect(
+    frame.getByRole('heading', { level: 1, name: /De petites idées/ }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Rétablir', exact: true }).click();
+  await expect(
+    frame.getByRole('heading', { level: 2, name: /De petites idées/ }),
+  ).toBeVisible();
+  // Réorganisation : le badge remonte en tête de la section Ateliers.
+  await page.getByRole('button', { name: /Badge · Nouveau/ }).click();
+  await page.getByRole('button', { name: '↑ Avant' }).click();
+  await page.getByRole('button', { name: '↑ Avant' }).click();
+  const order = () =>
+    frame
+      .locator('section[aria-label="Ateliers"] .cmp-item')
+      .evaluateAll((els) => els.map((e) => e.textContent?.slice(0, 7)));
+  await expect.poll(order).toEqual(['Nouveau', 'ATELIER', 'ATELIER']);
+  // Grille responsive : 3 colonnes en desktop, 1 colonne sur iPhone.
+  await page.getByRole('button', { name: /^Ateliers/ }).click();
+  await page
+    .getByRole('combobox', { name: 'Colonnes', exact: true })
+    .selectOption('3');
+  const columns = () =>
+    frame
+      .locator('section[aria-label="Ateliers"] .cmp-section-body')
+      .evaluate(
+        (el) => getComputedStyle(el).gridTemplateColumns.split(' ').length,
+      );
+  await expect.poll(columns).toBe(1);
+  await page
+    .getByRole('combobox', { name: 'Appareil', exact: true })
+    .selectOption('desktop');
+  await expect.poll(columns).toBe(3);
+  // Mode interaction : les composants réagissent au lieu d'être sélectionnés.
+  await page.getByRole('button', { name: 'Interaction', exact: true }).click();
+  await frame.getByRole('button', { name: 'Favoris', exact: true }).click();
+  await expect(
+    frame.getByText('Vos ateliers favoris apparaîtront ici.'),
+  ).toBeVisible();
+  // Validation : page enregistrée à part, tokens inchangés.
+  await page.getByLabel('Nom', { exact: true }).fill('Accueil test');
+  await page.getByRole('button', { name: 'Enregistrer la page' }).click();
+  await expect(
+    page.getByText('Page « Accueil test » enregistrée'),
+  ).toBeVisible();
+  await expect(page.getByText(/· enregistrée$/)).toBeVisible();
+  const api = await (await page.request.get('/api/compositions')).json();
+  expect(api.compositions.map((c: { name: string }) => c.name)).toContain(
+    'Accueil test',
+  );
+  const before = (await (await page.request.get('/api/state')).json()).revision;
+  await page.reload();
+  await expect(
+    frame.locator('.ds-badge.success', { hasText: 'Nouveau' }),
+  ).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Page' })).toContainText(
+    'Accueil test',
+  );
+  expect((await (await page.request.get('/api/state')).json()).revision).toBe(
+    before,
+  );
+});
+
+test('composition : Claude propose, l’aperçu montre, l’utilisatrice valide', async ({
+  page,
+}) => {
+  const revision = async () =>
+    (await (await page.request.get('/api/state')).json()).revision;
+  const before = await revision();
+  await page.goto('/?vue=design');
+  const frame = pageFrame(page);
+  await page.getByRole('button', { name: /grande card à gauche/ }).click();
+  await page.getByRole('button', { name: 'Composer', exact: true }).click();
+  const proposal = page.getByRole('region', { name: 'Proposition de Claude' });
+  await expect(proposal).toContainText('Ajout : Carte atelier');
+  await expect(frame.getByText('Première idée')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Proposition' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Enregistrer la page' }),
+  ).toBeDisabled();
+  await proposal.getByRole('button', { name: 'Refuser' }).click();
+  await expect(frame.getByText('Première idée')).toHaveCount(0);
+  await page
+    .getByLabel('Décrire la page à Claude')
+    .fill('Place une grande card à gauche, trois petites à droite.');
+  await page.getByLabel('Décrire la page à Claude').press('Enter');
+  await proposal
+    .getByRole('button', { name: 'Appliquer au brouillon' })
+    .click();
+  await expect(frame.getByText('Première idée')).toBeVisible();
+  // Grande carte à gauche sur 3 lignes, petites cartes empilées à droite.
+  await page
+    .getByRole('combobox', { name: 'Appareil', exact: true })
+    .selectOption('desktop');
+  const box = (text: string) =>
+    frame.locator('.cmp-item', { hasText: text }).first().boundingBox();
+  await expect
+    .poll(
+      async () =>
+        (await box('Troisième idée'))!.x > (await box('Faire moins'))!.x,
+    )
+    .toBe(true);
+  const big = (await frame.locator('[data-id="grande"]').boundingBox())!;
+  const third = (await box('Troisième idée'))!;
+  expect(third.y).toBeGreaterThan(big.y);
+  expect(third.y).toBeLessThan(big.y + big.height);
+  await page.getByRole('button', { name: 'Annuler', exact: true }).click();
+  await expect(frame.getByText('Première idée')).toHaveCount(0);
+  // Question seulement si une information essentielle manque.
+  await page.getByLabel('Décrire la page à Claude').fill('Fais une page');
+  await page.getByRole('button', { name: 'Composer', exact: true }).click();
+  await expect(page.getByText('Quel est l’objectif principal')).toBeVisible();
+  await expect(proposal).toHaveCount(0);
+  expect(await revision()).toBe(before);
 });

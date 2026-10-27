@@ -5,6 +5,7 @@ import { tokensSchema } from '../shared/model.js';
 import { Store } from './store.js';
 import { createStudioServer } from './http.js';
 import { acquireLease } from '../../scripts/runtime.mjs';
+import { fakeComposer } from '../../connectors/agents/fakeComposer.js';
 
 const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -45,6 +46,9 @@ try {
     root,
     store,
     dev: process.argv.includes('--dev'),
+    // Uniquement pour le serveur de tests e2e : jamais en usage normal.
+    composer:
+      process.env.DS_STUDIO_FAKE_COMPOSER === '1' ? fakeComposer : undefined,
     control: {
       record: lease.record,
       stop: () => {

@@ -84,8 +84,11 @@ contenant des espaces est accepté. N’utilisez ni `sudo` ni installation de se
 
 ## Votre première boucle, en deux minutes
 
-1. L’outil s’ouvre sur l’**Accueil**. Ouvrez **Design** (menu ou `?vue=design`).
-2. Dans **Couleurs**, remplacez `color.brand` par `#8A3B20` : l’aperçu se met à jour
+1. L’outil s’ouvre sur l’**Accueil**. Ouvrez **Design** (menu ou `?vue=design`) :
+   l’onglet **Composer une page** assemble une page avec les composants existants
+   (bibliothèque, chat Claude, aperçu). Claude propose, vous appliquez, puis
+   **Enregistrer la page** (fichier `.ds-studio/compositions.json`, tokens inchangés).
+2. Onglet **Tokens du DS** (`?vue=design&mode=tokens`) : dans **Couleurs**, remplacez `color.brand` par `#8A3B20` : l’aperçu se met à jour
    immédiatement, rien n’est écrit sur disque (brouillon, annuler / rétablir).
 3. Cliquez **Enregistrer** : le diff montre l’ancienne et la nouvelle valeur.
    **Valider et enregistrer** écrit la révision ; « Enregistré » montre la version sur disque.
