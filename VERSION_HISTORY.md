@@ -5,6 +5,61 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.34.1 — 2026-10-28
+
+- **Type** : patch (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/studio/Device.tsx`, `app/v3/v3.css`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : Aperçu « Ajuster » coupé ou défilant. Causes : décalage du
+  socle MacBook (40 px) non mis à l’échelle → débordement horizontal ;
+  hauteur de la scène dictée par le contenu (ligne de grille auto, et
+  `flex: 1` annulant les 70vh en mise en page empilée) → échelle calculée
+  sur une hauteur fausse, appareil coupé. Corrections : décalage ×
+  échelle, ligne de grille `minmax(0, 1fr)`, hauteur fixe en empilé,
+  centrage par marges automatiques (zoom manuel : défilement jusqu’à
+  tous les bords). Échelle `min(largeur, hauteur)` inchangée, recalculée
+  au redimensionnement, à l’appareil, à la rotation et aux dimensions.
+  Test e2e : 4 appareils × rotation × 3 tailles de fenêtre, redimension,
+  zoom 100 %.
+
+## 2.34.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; champ facultatif `update` de
+  la scène Figma, compatible)
+- **Fichiers** : `app/v3/Studio.tsx`, `app/v3/studio/useFigmaSync.ts`
+  (nouveau), `app/v3/studio/ExportPanel.tsx`, `app/v3/v3.css`,
+  `app/shared/figmaScene.ts`, `figma-plugin/code.ts`, `figma-plugin/ui.html`,
+  `figma-plugin/README.md`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Barre de l’aperçu : bouton carré « Actualiser Figma »
+  (`refresh-cw`) qui envoie l’écran en mise à jour explicite (remplacé à
+  sa place par le plugin, sans doublon ni confirmation) ; plugin fermé →
+  fichier cible ouvert au clic et action restante indiquée (Figma ne
+  lance aucun plugin depuis l’extérieur), import dès l’ouverture du
+  plugin. États : envoi, synchronisation (icône qui tourne, `aria-busy`),
+  confirmation attendue, erreur ; « Figma synchronisé » seulement après
+  le compte rendu du plugin. Envoi et suivi factorisés (`useFigmaSync`),
+  partagés avec l’onglet Export. Pivoter et Versions en boutons carrés
+  icônes seules (`rotate-cw`, `history`) avec info-bulle et
+  `aria-label` ; Enregistrer déplacé tout à droite après Versions, même
+  ligne. Plugin v2.34 (à relancer dans Figma).
+
+## 2.33.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/studio/ExportPanel.tsx`, `app/client/App.tsx`,
+  `app/v3/v3.css`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Export PNG/JPEG à fond noir et textes illisibles : la
+  capture reprenait l’aperçu en thème sombre. Les images sont désormais
+  rendues dans une copie invisible de l’aperçu, toujours en thème clair,
+  sans sélection, aux mêmes dimensions (×2), fond opaque de l’écran DS ;
+  l’aperçu visible et le thème de travail ne changent pas (aucun flash).
+  Format PNG : case « Sans fond (transparent) », décochée par défaut,
+  qui retire seulement le fond de l’écran (fonds des composants, textes
+  et ombres conservés) ; masquée et réinitialisée pour les autres
+  formats. Rendu attendu après chargement des polices. HTML, TSX et
+  Figma inchangés. Test e2e : décodage réel des PNG opaque et
+  transparent et du JPEG depuis un aperçu sombre.
+
 ## 2.32.0 — 2026-10-28
 
 - **Type** : minor (branche `v3-dashboard`)

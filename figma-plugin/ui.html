@@ -160,7 +160,7 @@
         }
         busy = true;
         const scene = await call('scene');
-        importScene(scene, auto.includes(scene.screenId));
+        importScene(scene, scene.update === true || auto.includes(scene.screenId));
       }
     } catch (e) {
       busy = false;

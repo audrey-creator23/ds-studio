@@ -157,6 +157,11 @@ export function Preview() {
           location.origin,
         );
       try {
+        // Rendu stable avant capture : polices chargées, deux images peintes.
+        await document.fonts.ready;
+        await new Promise((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(r)),
+        );
         const page = document.querySelector<HTMLElement>('.cmp-page');
         if (!page) throw new Error('Aucun écran à exporter.');
         if (e.data.format === 'html') {
@@ -167,11 +172,19 @@ export function Preview() {
           return reply({ data: html });
         }
         const { toJpeg, toPng } = await import('html-to-image');
+        // PNG transparent : seul le fond de l'écran est retiré ; les fonds
+        // des sections et composants restent. Sinon fond opaque de l'écran.
+        const clear = e.data.format === 'png' && e.data.transparent === true;
         const options = {
           pixelRatio: 2,
           width: page.scrollWidth,
           height: page.scrollHeight,
-          backgroundColor: getComputedStyle(document.body).backgroundColor,
+          backgroundColor: clear
+            ? undefined
+            : ([page, document.body]
+                .map((el) => getComputedStyle(el).backgroundColor)
+                .find((c) => c !== 'rgba(0, 0, 0, 0)') ?? '#ffffff'),
+          style: clear ? { background: 'transparent' } : undefined,
         };
         reply({
           data:

@@ -1,11 +1,11 @@
-import { useEffect, useState, type RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import { figmaTarget } from '../../shared/figmaTarget.js';
 import type { Composition } from '../../shared/composition.js';
 import { Button } from '../ui.js';
 import { exportReact } from './exportReact.js';
-import { buildScene } from './figmaScene.js';
-import { request } from '../../client/api.js';
+import { useFigmaSync } from './useFigmaSync.js';
 import type { Tokens } from '../../shared/model.js';
+import { defaultConfig } from '../../client/design/componentSpecs.js';
 
 // Export réel de l'écran, partagé par l'onglet Export et le bouton
 // « Enregistrer ». Images et HTML : rendus par l'iframe d'aperçu elle-même
@@ -35,9 +35,64 @@ const slug = (s: string) =>
     .replace(/\s+/g, '-')
     .toLowerCase() || 'ecran';
 
+// Images : rendues dans une copie invisible de l'aperçu, toujours en thème
+// clair et sans sélection, aux mêmes dimensions. L'aperçu visible et le
+// thème de travail ne changent pas (aucun flash).
+async function fromLightCopy(
+  frame: HTMLIFrameElement | null,
+  composition: Composition,
+  tokens: Tokens,
+  format: 'png' | 'jpeg',
+  transparent: boolean,
+) {
+  if (!frame) throw new Error('Aperçu indisponible.');
+  const copy = document.createElement('iframe');
+  copy.setAttribute('aria-hidden', 'true');
+  copy.tabIndex = -1;
+  copy.style.cssText = `position:fixed;left:-100000px;top:0;border:0;pointer-events:none;width:${frame.clientWidth}px;height:${frame.clientHeight}px`;
+  const ready = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('L’aperçu n’a pas répondu.')),
+      20000,
+    );
+    const onReady = (e: MessageEvent) => {
+      if (
+        e.source !== copy.contentWindow ||
+        e.data?.type !== 'ds-preview-ready'
+      )
+        return;
+      clearTimeout(timer);
+      removeEventListener('message', onReady);
+      resolve();
+    };
+    addEventListener('message', onReady);
+  });
+  copy.src = frame.src;
+  document.body.append(copy);
+  try {
+    await ready;
+    copy.contentWindow!.postMessage(
+      {
+        type: 'ds-preview',
+        tokens,
+        screen: 'compose',
+        config: defaultConfig,
+        composition,
+        interact: false,
+        scheme: 'light',
+      },
+      location.origin,
+    );
+    return await fromPreview(copy, format, transparent);
+  } finally {
+    copy.remove();
+  }
+}
+
 function fromPreview(
   frame: HTMLIFrameElement | null,
   format: 'png' | 'jpeg' | 'html',
+  transparent = false,
 ) {
   return new Promise<string>((resolve, reject) => {
     if (!frame?.contentWindow) return reject(new Error('Aperçu indisponible.'));
@@ -55,7 +110,7 @@ function fromPreview(
     }
     addEventListener('message', onResult);
     frame.contentWindow.postMessage(
-      { type: 'ds-export', id, format },
+      { type: 'ds-export', id, format, transparent },
       location.origin,
     );
   });
@@ -79,90 +134,26 @@ export default function ExportPanel({
   meta?: { device: string; scheme: 'light' | 'dark'; tokens?: Tokens };
 }) {
   const [format, setFormat] = useState<Format>('png');
+  // PNG seulement ; décochée par défaut et à chaque changement de format.
+  const [transparent, setTransparent] = useState(false);
   const [state, setState] = useState<
     { kind: 'idle' } | { kind: 'busy' } | { kind: 'ok' | 'error'; text: string }
   >({ kind: 'idle' });
   const name = slug(composition.name);
-  // Suivi réel après un envoi Figma : plugin connecté, importé, erreur.
-  const [figma, setFigma] = useState<{ since: string; screenId: string }>();
-  // Plugin ouvert dans Figma ? Lu dès que le format Figma est choisi, pour
-  // ouvrir le fichier cible au clic (sans blocage de fenêtre) s'il est fermé.
-  const [pluginOpen, setPluginOpen] = useState<boolean>();
-  useEffect(() => {
-    if (format !== 'figma') return;
-    request<{ connected: boolean }>('figma/status').then(
-      (s) => setPluginOpen(s.connected),
-      () => setPluginOpen(false),
-    );
-  }, [format]);
-  const [live, setLive] = useState<string>();
-  useEffect(() => {
-    if (!figma) return;
-    let stop = false;
-    const started = Date.now();
-    const tick = async () => {
-      try {
-        const s = await request<{
-          connected: boolean;
-          last: {
-            state: string;
-            screenId?: string;
-            message?: string;
-            at: string;
-          } | null;
-        }>('figma/status');
-        const fresh = s.last && s.last.at >= figma.since ? s.last : undefined;
-        if (fresh?.state === 'imported') {
-          setLive(`Importé dans Figma (${fresh.message ?? 'calques créés'}).`);
-          return;
-        }
-        if (fresh?.state === 'error') {
-          setLive(`Erreur dans Figma : ${fresh.message}`);
-          return;
-        }
-        setLive(
-          fresh?.state === 'waiting'
-            ? 'Dans Figma : confirmez le remplacement de l’écran existant.'
-            : s.connected
-              ? 'Plugin connecté : import en cours…'
-              : 'Fichier Figma ouvert : lancez DS-Studio Bridge (bouton « Importer depuis DS-Studio » du panneau de droite, ou ⌥⌘P), l’import se fait seul.',
-        );
-      } catch {
-        setLive('Statut Figma indisponible.');
-      }
-      if (!stop && Date.now() - started < 120_000) setTimeout(tick, 2000);
-    };
-    void tick();
-    return () => {
-      stop = true;
-    };
-  }, [figma]);
+  // Envoi et suivi réel de l'import Figma (partagés avec la barre d'aperçu).
+  const figma = useFigmaSync();
+  const [sent, setSent] = useState(false);
   async function run() {
-    // Au clic même (geste utilisateur) : fichier cible ouvert si le plugin
-    // n'y tourne pas déjà. Figma ne lance jamais un plugin tout seul.
-    if (format === 'figma' && !pluginOpen)
-      window.open(figmaTarget.url, '_blank', 'noopener');
     setState({ kind: 'busy' });
     try {
       const f = formats.find((x) => x.id === format)!;
       if (format === 'figma') {
-        const doc = frameRef.current?.contentDocument;
-        if (!doc) throw new Error('Aperçu indisponible.');
-        const scene = buildScene(doc, composition, {
-          device: meta?.device ?? 'screen',
-          scheme: meta?.scheme ?? 'light',
-          tokens: meta?.tokens,
-        });
-        const r = await request<{
-          pairing: string;
-          nodes: number;
-          warnings: string[];
-        }>('figma/scene', { scene });
+        const r = await figma.send(frameRef, composition, meta);
         setState({
           kind: 'ok',
           text: `Envoyé : ${r.nodes} calques${r.warnings.length ? `, ${r.warnings.length} point(s) signalé(s)` : ''}. Code d’appairage (une seule fois dans le plugin) : ${r.pairing}`,
         });
-        setFigma({ since: scene.createdAt, screenId: scene.screenId });
+        setSent(true);
         return;
       }
       if (format === 'tsx') {
@@ -173,7 +164,16 @@ export default function ExportPanel({
         download(`${name}.tsx`, url);
         URL.revokeObjectURL(url);
       } else {
-        const data = await fromPreview(frameRef.current, format);
+        const data =
+          format !== 'html' && meta?.tokens
+            ? await fromLightCopy(
+                frameRef.current,
+                composition,
+                meta.tokens,
+                format,
+                format === 'png' && transparent,
+              )
+            : await fromPreview(frameRef.current, format);
         if (format === 'html') {
           const url = URL.createObjectURL(
             new Blob([data], { type: 'text/html' }),
@@ -209,7 +209,10 @@ export default function ExportPanel({
               name="export-format"
               value={f.id}
               checked={format === f.id}
-              onChange={() => setFormat(f.id)}
+              onChange={() => {
+                setFormat(f.id);
+                setTransparent(false);
+              }}
             />
             <span>{f.label}</span>
             {f.id === 'figma' && (
@@ -221,9 +224,19 @@ export default function ExportPanel({
           </label>
         ))}
       </fieldset>
-      {figma && (
+      {format === 'png' && (
+        <label className="export-check">
+          <input
+            type="checkbox"
+            checked={transparent}
+            onChange={(e) => setTransparent(e.target.checked)}
+          />
+          Sans fond (transparent)
+        </label>
+      )}
+      {sent && (
         <p className="figma-live" role="status">
-          {live ?? 'Connexion au plugin…'}{' '}
+          {figma.text || 'Connexion au plugin…'}{' '}
           <a href={figmaTarget.url} target="_blank" rel="noreferrer">
             Ouvrir le fichier Figma
             <span className="sr-only"> (nouvel onglet)</span>
@@ -231,7 +244,9 @@ export default function ExportPanel({
         </p>
       )}
       <p className="muted small">
-        Rendu de l’écran « {composition.name} » tel qu’affiché ({size}).
+        {format === 'png' || format === 'jpeg'
+          ? `Rendu de l’écran « ${composition.name} » en thème clair (${size}).`
+          : `Rendu de l’écran « ${composition.name} » tel qu’affiché (${size}).`}
       </p>
       <div className="row">
         <span

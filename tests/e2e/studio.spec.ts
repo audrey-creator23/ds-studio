@@ -1840,3 +1840,237 @@ test('v3 : calques, cases de sélection multiple et actions groupées', async ({
   await page.keyboard.press('Escape');
   await expect(page.locator('.tree-check[aria-checked="true"]')).toHaveCount(0);
 });
+
+test('v3 : export image en thème clair, PNG sans fond, aperçu inchangé', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=design');
+  const preview = page.locator('iframe[title="Aperçu de l’écran"]');
+  const frame = page.frameLocator('iframe[title="Aperçu de l’écran"]');
+  await expect(frame.locator('.cmp-section')).toHaveCount(1);
+  // Composants imbriqués dans la section : bouton et carte.
+  for (const block of [
+    { kind: 'button', variant: 'primary' },
+    { kind: 'card', variant: 'standard' },
+  ])
+    await frame
+      .locator('.cmp-section > .cmp-section-body')
+      .first()
+      .evaluate((el, block) => {
+        const dt = new DataTransfer();
+        dt.setData('application/x-ds-block', JSON.stringify(block));
+        const r = el.getBoundingClientRect();
+        for (const type of ['dragover', 'drop'])
+          el.dispatchEvent(
+            new DragEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              dataTransfer: dt,
+              clientX: r.left + 4,
+              clientY: r.bottom - 2,
+            }),
+          );
+      }, block);
+  await expect(frame.locator('.cmp-item')).toHaveCount(2);
+  // Aperçu de travail en sombre : l'export doit rester en clair.
+  await expect(frame.locator('body')).toHaveClass(/preview-dark/);
+  const width = await preview.evaluate((el) => (el as HTMLElement).clientWidth);
+  // Décodage réel du fichier : taille, pixel du coin (fond de l'écran),
+  // part de pixels opaques (composants conservés).
+  const inspect = async (file: string, type: string) => {
+    const { readFile } = await import('node:fs/promises');
+    const src = `data:${type};base64,${(await readFile(file)).toString('base64')}`;
+    return page.evaluate(async (src) => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      const ctx = c.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(0, 0, c.width, c.height).data;
+      let opaque = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] === 255) opaque++;
+      return {
+        w: img.width,
+        corner: [...d.slice(0, 4)],
+        opaque: opaque / (d.length / 4),
+      };
+    }, src);
+  };
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Télécharger l’écran' });
+  const check = dialog.getByRole('checkbox', {
+    name: 'Sans fond (transparent)',
+  });
+  await dialog.getByRole('radio', { name: 'Image PNG' }).check();
+  await expect(check).not.toBeChecked();
+  const exportAs = async (type: string) => {
+    const download = page.waitForEvent('download');
+    await dialog.getByRole('button', { name: 'Valider' }).click();
+    return inspect((await (await download).path())!, type);
+  };
+  // PNG opaque : fond clair, dimensions exactes (×2).
+  let r = await exportAs('image/png');
+  expect(r.w).toBe(width * 2);
+  expect(r.corner[3]).toBe(255);
+  expect(Math.min(...r.corner.slice(0, 3))).toBeGreaterThan(200);
+  // PNG sans fond : coin transparent, composants opaques conservés.
+  await check.check();
+  r = await exportAs('image/png');
+  expect(r.corner[3]).toBe(0);
+  expect(r.opaque).toBeGreaterThan(0.01);
+  // JPEG : option masquée et réinitialisée, fond clair opaque.
+  await dialog.getByRole('radio', { name: 'Image JPEG' }).check();
+  await expect(check).toHaveCount(0);
+  r = await exportAs('image/jpeg');
+  expect(Math.min(...r.corner.slice(0, 3))).toBeGreaterThan(200);
+  await dialog.getByRole('radio', { name: 'Image PNG' }).check();
+  await expect(check).not.toBeChecked();
+  // Aperçu visible jamais modifié, copie de rendu retirée.
+  await expect(frame.locator('body')).toHaveClass(/preview-dark/);
+  await expect(page.locator('iframe')).toHaveCount(
+    await page.locator('iframe[title]').count(),
+  );
+});
+
+test('v3 : barre d’aperçu, icônes seules et « Actualiser Figma »', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=design');
+  const bar = page.locator('.preview-bar');
+  const refresh = bar.getByRole('button', { name: 'Actualiser Figma' });
+  const rotate = bar.getByRole('button', { name: /Pivoter/ });
+  const versions = bar.getByRole('button', { name: /Versions/ });
+  const save = bar.getByRole('button', { name: 'Enregistrer' });
+  // Icônes seules, carrés identiques ; Enregistrer tout à droite, une ligne.
+  for (const b of [refresh, rotate, versions]) {
+    await expect(b).toHaveText('');
+    await expect(b).toHaveAttribute('title', /.+/);
+    const box = (await b.boundingBox())!;
+    expect([box.width, box.height]).toEqual([32, 32]);
+  }
+  await expect(bar.locator('> *').last()).toHaveText('Enregistrer');
+  const y = async (l: typeof save) => {
+    const b = (await l.boundingBox())!;
+    return b.y + b.height / 2;
+  };
+  expect(await y(save)).toBe(await y(versions));
+  expect(await y(save)).toBe(
+    await y(bar.getByRole('button', { name: 'iPad' })),
+  );
+  expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
+  await versions.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', {
+    name: '10 dernières modifications',
+  });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Fermer' }).click();
+  // Actualiser : écran envoyé en mise à jour explicite, succès seulement
+  // après le compte rendu du plugin.
+  await page
+    .context()
+    .route('https://www.figma.com/**', (r) =>
+      r.fulfill({ status: 200, body: '' }),
+    );
+  // Réponse acceptée (le client rejoue seul après validation de session).
+  const sent = page.waitForResponse(
+    (r) => r.url().endsWith('/api/figma/scene') && r.ok(),
+  );
+  await refresh.click();
+  const { pairing } = await (await sent).json();
+  const status = page.locator('.studio-status');
+  await expect(status).not.toContainText('Importé');
+  await expect(
+    bar.getByRole('button', { name: /Synchronisation Figma/ }),
+  ).toHaveAttribute('aria-busy', 'true');
+  const scene = await (
+    await page.request.get('/api/figma/scene', {
+      headers: { Origin: 'null', 'X-DS-Figma': pairing },
+    })
+  ).json();
+  expect(scene.update).toBe(true);
+  await page.request.post('/api/figma/status', {
+    headers: {
+      Origin: 'null',
+      'X-DS-Figma': pairing,
+      'Content-Type': 'application/json',
+    },
+    data: { state: 'imported', screenId: scene.screenId, message: '3 calques' },
+  });
+  await expect(status).toContainText('Importé dans Figma (3 calques)');
+  await expect(
+    bar.getByRole('button', { name: 'Figma synchronisé' }),
+  ).toBeVisible();
+});
+
+test('v3 : « Ajuster » montre l’écran entier, sans défilement, centré', async ({
+  page,
+}) => {
+  const devicesGroup = page.getByRole('group', { name: 'Appareil' });
+  // Appareil entier (cadre et socle compris) visible et centré, aucun
+  // défilement dans la scène ni sur la page.
+  const fits = () =>
+    page.evaluate(() => {
+      const stage = document.querySelector('.device-stage')!;
+      const s = stage.getBoundingClientRect();
+      const d = document
+        .querySelector('.device-scaler')!
+        .getBoundingClientRect();
+      const doc = document.documentElement;
+      return (
+        stage.scrollWidth <= stage.clientWidth &&
+        stage.scrollHeight <= stage.clientHeight &&
+        doc.scrollWidth <= doc.clientWidth &&
+        d.left >= s.left + 15 &&
+        d.right <= s.right - 15 &&
+        d.top >= s.top + 15 &&
+        d.bottom <= s.bottom - 15 &&
+        Math.abs(d.left - s.left - (s.right - d.right)) <= 2 &&
+        Math.abs(d.top - s.top - (s.bottom - d.bottom)) <= 2
+      );
+    });
+  for (const [width, height] of [
+    [1920, 1080],
+    [1440, 900],
+    [1024, 700],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/?vue=design');
+    for (const name of ['Mobile', 'iPad', 'MacBook', 'Screen']) {
+      await devicesGroup.getByRole('button', { name }).click();
+      await expect.poll(fits, { message: `${name} ${width}` }).toBe(true);
+      if (name !== 'MacBook') {
+        await page.getByRole('button', { name: /Pivoter/ }).click();
+        await expect.poll(fits, { message: `${name} pivoté` }).toBe(true);
+        await page.getByRole('button', { name: /Pivoter/ }).click();
+      }
+    }
+  }
+  // Recalcul au redimensionnement de la fenêtre.
+  await page.setViewportSize({ width: 1300, height: 760 });
+  await expect.poll(fits).toBe(true);
+  // Zoom manuel 100 % : défilement possible, bord gauche atteignable, page
+  // sans débordement horizontal.
+  await devicesGroup.getByRole('button', { name: 'MacBook' }).click();
+  await page.getByRole('combobox', { name: 'Zoom' }).selectOption('1');
+  const manual = await page.evaluate(() => {
+    const stage = document.querySelector('.device-stage')!;
+    const d = document.querySelector('.device-scaler')!.getBoundingClientRect();
+    const doc = document.documentElement;
+    return {
+      scrolls: stage.scrollWidth > stage.clientWidth,
+      leftVisible: d.left >= stage.getBoundingClientRect().left,
+      page: doc.scrollWidth <= doc.clientWidth,
+    };
+  });
+  expect(manual).toEqual({ scrolls: true, leftVisible: true, page: true });
+  await page.getByRole('combobox', { name: 'Zoom' }).selectOption('fit');
+  await expect.poll(fits).toBe(true);
+});

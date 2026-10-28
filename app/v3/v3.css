@@ -1414,6 +1414,9 @@ button.timeline-item:focus-visible {
   display: grid;
   flex: 1;
   grid-template-columns: minmax(0, 1fr) auto;
+  /* Hauteur imposée à la scène (jamais celle du contenu) : « Ajuster »
+     mesure la place réelle, même en mise en page empilée. */
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -1492,14 +1495,17 @@ button.timeline-item:focus-visible {
 .device-stage {
   display: grid;
   min-width: 0;
+  min-height: 0;
   height: 100%;
   overflow: auto;
-  place-items: center;
   padding: 16px;
 }
+/* Centré par marges automatiques : si le zoom manuel dépasse, le
+   défilement atteint tous les bords (aucune partie inaccessible). */
 .device-scaler {
   position: relative;
   flex: none;
+  margin: auto;
 }
 .device {
   position: absolute;
@@ -1694,6 +1700,19 @@ button.timeline-item:focus-visible {
   grid-column: 2;
   color: var(--muted-foreground);
 }
+.export-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  cursor: pointer;
+}
+.export-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--selected);
+}
 .alert-text {
   color: var(--destructive);
   font-size: 12px;
@@ -1804,7 +1823,9 @@ button.timeline-item:focus-visible {
     width: auto;
     max-height: 420px;
   }
+  /* Hauteur fixe (sinon flex: 1 suit le contenu et « Ajuster » coupe). */
   .preview-area {
+    flex: none;
     height: 70vh;
   }
 }
@@ -2889,4 +2910,34 @@ button.timeline-item[aria-pressed='true']:hover,
 .tree-check:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+/* Boutons icônes de la barre d'aperçu : même fond que le zoom. */
+.preview-bar .button[data-variant='outline'] {
+  background: transparent;
+}
+.dark .preview-bar .button[data-variant='outline'] {
+  background: color-mix(in oklch, var(--input) 30%, transparent);
+}
+.preview-bar .button[data-variant='outline']:hover {
+  background: var(--accent);
+}
+/* « Actualiser Figma » : rotation pendant la synchronisation, erreur
+   signalée par la bordure et l'icône (texte dans la ligne de statut). */
+.figma-sync[aria-busy='true'] svg {
+  animation: figma-spin 1s linear infinite;
+}
+@keyframes figma-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .figma-sync[aria-busy='true'] svg {
+    animation: none;
+  }
+}
+.figma-sync[data-state='error'] {
+  border-color: var(--destructive);
+  color: var(--destructive);
 }

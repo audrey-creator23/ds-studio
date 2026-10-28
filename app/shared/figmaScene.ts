@@ -115,6 +115,9 @@ export const sceneSchema = z.object({
   device: z.string().max(20),
   scheme: z.enum(['light', 'dark']),
   createdAt: z.string().datetime(),
+  // Mise à jour demandée explicitement (bouton « Actualiser Figma ») :
+  // l'écran existant est remplacé à sa place, sans doublon ni question.
+  update: z.boolean().optional(),
   root: sceneNodeSchema,
   tokens: z
     .array(

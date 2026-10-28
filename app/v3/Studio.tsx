@@ -7,6 +7,7 @@ import {
   Library,
   MessageCircle,
   Plus,
+  RefreshCw,
   RotateCw,
   Save,
   X,
@@ -54,6 +55,7 @@ import LibraryPanel from './studio/LibraryPanel.js';
 import LayersPanel from './studio/LayersPanel.js';
 import PropsBar from './studio/PropsBar.js';
 import ExportPanel from './studio/ExportPanel.js';
+import { useFigmaSync } from './studio/useFigmaSync.js';
 import Device, { devices, type DeviceId, type View } from './studio/Device.js';
 import ColorDialog from './studio/ColorDialog.js';
 import { ContrastPopover, useContrastAudit } from './studio/ContrastAudit.js';
@@ -391,6 +393,18 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
   );
   const size = `${view.w} × ${view.h}`;
   const device = devices[view.device];
+  // « Actualiser Figma » : met à jour l'écran dans le fichier cible.
+  const figmaSync = useFigmaSync();
+  const figmaMeta = { device: view.device, scheme, tokens };
+  const figmaBusy = ['busy', 'waiting', 'closed'].includes(figmaSync.state);
+  const figmaLabel =
+    figmaSync.state === 'imported'
+      ? 'Figma synchronisé'
+      : figmaSync.state === 'error'
+        ? `Actualiser Figma (erreur : ${figmaSync.text})`
+        : figmaBusy
+          ? 'Synchronisation Figma en cours…'
+          : 'Actualiser Figma';
 
   return (
     <div className="studio">
@@ -506,9 +520,6 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
                 </button>
               ))}
             </div>
-            <Button size="sm" onClick={() => setSaving(true)}>
-              <Save size={14} aria-hidden="true" /> Enregistrer
-            </Button>
             <span className="bar-spacer" />
             <select
               className="input input-sm"
@@ -527,25 +538,48 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
               <option value="1">100 %</option>
             </select>
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
+              size="icon"
+              className="figma-sync"
+              data-state={figmaSync.state}
+              title={figmaLabel}
+              aria-label={figmaLabel}
+              aria-busy={figmaBusy}
+              onClick={() => {
+                if (!figmaBusy)
+                  figmaSync
+                    .send(frame, c.draft, figmaMeta, true)
+                    .catch(() => undefined);
+              }}
+            >
+              <RefreshCw size={16} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
               title="Pivoter : portrait / paysage"
+              aria-label="Pivoter : portrait / paysage"
               disabled={!device.rotate}
               onClick={() => patchView({ w: view.h, h: view.w })}
             >
-              <RotateCw size={14} aria-hidden="true" /> Pivoter
+              <RotateCw size={16} aria-hidden="true" />
             </Button>
             <Button
-              variant="ghost"
-              size="sm"
-              title="10 dernières modifications"
+              variant="outline"
+              size="icon"
+              title="Versions : 10 dernières modifications"
+              aria-label="Versions : 10 dernières modifications"
               onClick={() => setShowVersions(true)}
             >
-              <History size={14} aria-hidden="true" /> Versions
+              <History size={16} aria-hidden="true" />
+            </Button>
+            <Button size="sm" onClick={() => setSaving(true)}>
+              <Save size={14} aria-hidden="true" /> Enregistrer
             </Button>
           </div>
           <p className="studio-status" role="status">
             {c.error ||
+              (figmaSync.state !== 'idle' && figmaSync.text) ||
               (auditing
                 ? `Contraste WCAG 2.2 AA : ${fails ? `${fails} non conforme${fails > 1 ? 's' : ''}` : 'aucun écart'}${unknown ? ` · ${unknown} non calculable${unknown > 1 ? 's' : ''}` : ''} · cliquez un contour pour le détail`
                 : c.proposal
@@ -742,7 +776,7 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
               frameRef={frame}
               size={size}
               onName={c.rename}
-              meta={{ device: view.device, scheme, tokens }}
+              meta={figmaMeta}
             />
           </div>
         </div>

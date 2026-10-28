@@ -29,12 +29,15 @@ une action reste nécessaire par session Figma, puis tout est automatique.
 2. Figma : cliquez **Importer depuis DS-Studio** dans le panneau de droite
    (rien de sélectionné), ou ⌥⌘P (relancer le dernier plugin). Le plugin
    importe aussitôt le dernier envoi, sans code ni clic.
-3. Laissez le plugin ouvert : chaque nouvel envoi s’importe en 3 s.
+3. Laissez le plugin ouvert : chaque nouvel envoi s’importe en 3 s. Le
+   bouton **Actualiser Figma** (barre de l’aperçu) met à jour l’écran à sa
+   place, sans doublon ni confirmation ; succès affiché seulement après le
+   compte rendu du plugin.
 4. Premier remplacement d’un écran : confirmation, avec l’option « mettre à
    jour cet écran automatiquement » (cochée). Seul son cadre est remplacé.
 5. Première utilisation seulement : code d’appairage affiché par DS-Studio,
    mémorisé ensuite dans Figma. La version du plugin est affichée à côté
-   du titre (v2.32).
+   du titre (v2.34).
 
 ## Ce qui est repris
 

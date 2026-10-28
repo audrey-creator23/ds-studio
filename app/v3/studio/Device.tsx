@@ -182,7 +182,9 @@ export default function Device({
           style={{
             transform: `scale(${scale})`,
             padding: bezel,
-            marginLeft: base ? 40 : 0,
+            // Socle du MacBook (40 px de chaque côté) : décalage mis à
+            // l'échelle comme le cadre, sinon débordement horizontal.
+            left: base ? 40 * scale : 0,
           }}
         >
           <div

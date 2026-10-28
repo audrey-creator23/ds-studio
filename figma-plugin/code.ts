@@ -26,7 +26,7 @@ Promise.all([
   ]) =>
     figma.ui.postMessage({
       type: 'init',
-      version: '2.32',
+      version: '2.34',
       code: code ?? '',
       last: last ?? '',
       auto: auto ?? [],
