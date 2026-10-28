@@ -2074,3 +2074,108 @@ test('v3 : « Ajuster » montre l’écran entier, sans défilement, centré', a
   await page.getByRole('combobox', { name: 'Zoom' }).selectOption('fit');
   await expect.poll(fits).toBe(true);
 });
+
+test('v3 : card Preview, padding de la card gauche, icône Pivoter, chat déplaçable', async ({
+  page,
+}) => {
+  const layout = () =>
+    page.evaluate(() => {
+      const el = (s: string) => document.querySelector(s)!;
+      const box = (s: string) => el(s).getBoundingClientRect();
+      const css = (s: string) => getComputedStyle(el(s));
+      const card = box('.preview-card');
+      const left = css('.side-panel');
+      const right = css('.preview-card');
+      const sides = (c: CSSStyleDeclaration) =>
+        [c.paddingTop, c.paddingRight, c.paddingBottom, c.paddingLeft].join();
+      const inset = parseFloat(right.paddingTop) + 1;
+      const doc = document.documentElement;
+      return {
+        samePadding: sides(left) === sides(right),
+        sameGap: left.rowGap === right.rowGap,
+        uniform: new Set(sides(right).split(',')).size === 1,
+        // Barre en haut, onglets en bas, au padding exact.
+        top: Math.round(box('.preview-bar').top - card.top - inset),
+        bottom: Math.round(card.bottom - box('.screens').bottom - inset),
+        ordered:
+          box('.preview-bar').bottom <= box('.preview-area').top &&
+          box('.preview-area').bottom <= box('.screens').top,
+        outside: !el('.bubble').closest('.preview-card'),
+        overflow: doc.scrollWidth > doc.clientWidth,
+      };
+    });
+  for (const [width, height] of [
+    [1920, 1080],
+    [1440, 900],
+    [1200, 700],
+    [768, 1024],
+    [375, 800],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/?vue=design');
+    await page.locator('.preview-bar').waitFor();
+    expect(await layout(), `${width}`).toEqual({
+      samePadding: true,
+      sameGap: true,
+      uniform: true,
+      top: 0,
+      bottom: 0,
+      ordered: true,
+      outside: true,
+      overflow: false,
+    });
+  }
+  // Pivoter : silhouette de l'appareil actif, orientée comme l'aperçu.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=design');
+  const rotate = page.getByRole('button', { name: 'Pivoter', exact: true });
+  const icon = rotate.locator('svg');
+  for (const [name, id] of [
+    ['Mobile', 'mobile'],
+    ['iPad', 'tablet'],
+    ['MacBook', 'laptop'],
+    ['Screen', 'screen'],
+  ]) {
+    await page
+      .getByRole('group', { name: 'Appareil' })
+      .getByRole('button', { name })
+      .click();
+    await expect(icon).toHaveAttribute('data-device', id);
+    await expect(rotate).toHaveText('');
+    if (id === 'laptop') {
+      await expect(rotate).toBeDisabled();
+      continue;
+    }
+    await expect(icon).not.toHaveAttribute('data-turned', 'true');
+    await rotate.click();
+    await expect(icon).toHaveAttribute('data-turned', 'true');
+    await rotate.click();
+  }
+  // Chat : flottant, en bas à droite par défaut ; glisser ne l'ouvre pas,
+  // la position est mémorisée ; clic et clavier l'ouvrent / le déplacent.
+  const bubble = page.getByRole('button', { name: 'Ouvrir le chat Claude' });
+  let b = (await bubble.boundingBox())!;
+  expect([1440 - b.x - b.width, 900 - b.y - b.height]).toEqual([20, 20]);
+  await page.mouse.move(b.x + 24, b.y + 24);
+  await page.mouse.down();
+  await page.mouse.move(b.x - 200, b.y - 300, { steps: 6 });
+  await page.mouse.up();
+  await expect(page.getByRole('dialog', { name: 'Chat Claude' })).toHaveCount(
+    0,
+  );
+  b = (await bubble.boundingBox())!;
+  expect([Math.round(b.x), Math.round(b.y)]).toEqual([1148, 508]);
+  await page.reload();
+  b = (await bubble.boundingBox())!;
+  expect([Math.round(b.x), Math.round(b.y)]).toEqual([1148, 508]);
+  await bubble.focus();
+  await page.keyboard.press('Alt+ArrowLeft');
+  await expect.poll(async () => (await bubble.boundingBox())!.x).toBe(1132);
+  await bubble.click();
+  const dialog = page.getByRole('dialog', { name: 'Chat Claude' });
+  await expect(dialog).toBeVisible();
+  // Fenêtre ancrée au bouton, entièrement visible.
+  const d = (await dialog.boundingBox())!;
+  expect(d.y).toBeGreaterThanOrEqual(0);
+  expect(d.y + d.height).toBeLessThanOrEqual(508 - 11);
+});

@@ -5,6 +5,55 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.35.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/studio/RotateIcon.tsx` (nouveau), `app/v3/Bubble.tsx`,
+  `app/v3/Studio.tsx`, `app/v3/v3.css`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Pivoter : icône dessinée au trait Lucide, silhouette de
+  l’appareil actif (Mobile, iPad, MacBook, Screen) dans son orientation
+  courante + flèche courbe ; bouton carré, info-bulle et `aria-label`
+  « Pivoter ». Chat : retiré de la card (annule le logement de la
+  2.34.3), bouton flottant au-dessus, déplaçable dans toute la fenêtre
+  (glisser souris/tactile, Alt + flèches), position mémorisée et
+  ramenée dans la fenêtre au redimensionnement, bas droite par défaut ;
+  glisser n’ouvre pas, clic ou Entrée ouvre ; fenêtre du chat ancrée au
+  bouton. Card Preview : padding (12 px, 4 côtés) et gaps (10 px)
+  identiques à la card gauche, barre en haut, onglets en bas sans marge
+  négative. Test e2e : 5 tailles, 4 appareils et rotation, glisser,
+  persistance, clavier.
+
+## 2.34.3 — 2026-10-28
+
+- **Type** : patch (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/Bubble.tsx`, `app/v3/Studio.tsx`, `app/v3/v3.css`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : Card Preview (seule modifiée) : padding irrégulier
+  (8 px, onglets collés au bas par marge négative) et bouton Chat coincé
+  dans le coin. Remplace l’encoche de la 2.34.2. Padding uniforme
+  `--gap` (12 px) sur les 4 côtés, mêmes gaps entre barre, statut,
+  aperçu et pied. Pied de card : onglets + emplacement `ChatDock` où le
+  bouton Chat global est rendu dans le flux (portail), 24 px libres de
+  chaque côté (bordure, aperçu, onglets), à toutes les tailles ; ailleurs
+  le bouton reste fixe en bas à droite. Fenêtre du chat ouverte au-dessus
+  du bouton. Test e2e : 5 tailles (375 → 1920 px), padding identique,
+  24 px mesurés, aucun débordement, chat ouvrable.
+
+## 2.34.2 — 2026-10-28
+
+- **Type** : patch (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/v3.css`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Card Preview (seule modifiée) : le bouton Chat recouvrait
+  son coin bas droit et l’aperçu. Encoche circulaire réelle (masque CSS,
+  6 px autour du bouton) bordée d’un liseré comme la card ; bande
+  d’onglets de 62 px réservée sous l’aperçu, dont la zone défilante
+  s’arrête avant l’encoche (marge, pas padding) ; espacements internes
+  réguliers (8 px). Bureau seulement (≥ 1101 px, card ancrée au bas de la
+  fenêtre) ; mobile et tablette inchangés. Dimensions de la card
+  conservées. Test e2e : 3 tailles d’écran, aucun recouvrement de
+  l’aperçu ni des onglets visibles, bouton dans le coin, mobile sans
+  débordement.
+
 ## 2.34.1 — 2026-10-28
 
 - **Type** : patch (branche `v3-dashboard`)

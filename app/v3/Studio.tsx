@@ -8,7 +8,6 @@ import {
   MessageCircle,
   Plus,
   RefreshCw,
-  RotateCw,
   Save,
   X,
 } from 'lucide-react';
@@ -56,6 +55,7 @@ import LayersPanel from './studio/LayersPanel.js';
 import PropsBar from './studio/PropsBar.js';
 import ExportPanel from './studio/ExportPanel.js';
 import { useFigmaSync } from './studio/useFigmaSync.js';
+import RotateIcon from './studio/RotateIcon.js';
 import Device, { devices, type DeviceId, type View } from './studio/Device.js';
 import ColorDialog from './studio/ColorDialog.js';
 import { ContrastPopover, useContrastAudit } from './studio/ContrastAudit.js';
@@ -557,12 +557,12 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
             <Button
               variant="outline"
               size="icon"
-              title="Pivoter : portrait / paysage"
-              aria-label="Pivoter : portrait / paysage"
+              title="Pivoter"
+              aria-label="Pivoter"
               disabled={!device.rotate}
               onClick={() => patchView({ w: view.h, h: view.w })}
             >
-              <RotateCw size={16} aria-hidden="true" />
+              <RotateIcon device={view.device} landscape={view.w > view.h} />
             </Button>
             <Button
               variant="outline"

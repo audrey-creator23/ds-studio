@@ -2941,3 +2941,17 @@ button.timeline-item[aria-pressed='true']:hover,
   border-color: var(--destructive);
   color: var(--destructive);
 }
+
+/* Card Preview : padding et gaps identiques à la card gauche (.panel),
+   sur les 4 côtés ; onglets en bas, sans marge négative. Le bouton Chat
+   flotte au-dessus (fixe, déplaçable), jamais dans la card. */
+.preview-col.preview-card {
+  gap: 10px;
+  padding: 12px;
+}
+.preview-card .screens {
+  margin: 0;
+}
+.bubble {
+  touch-action: none;
+}
