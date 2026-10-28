@@ -38,8 +38,9 @@ export default function StudioChat({ c }: { c: CompositionState }) {
   return (
     <section className="chat-panel" aria-label="Chat avec Claude">
       {offline && (
-        <p className="key-alert" role="status" title={c.composer?.detail}>
-          <TriangleAlert size={13} aria-hidden="true" /> Clé API non connectée
+        <p className="key-alert" role="status">
+          <TriangleAlert size={13} aria-hidden="true" />{' '}
+          {c.composer?.detail ?? 'Claude non connecté'}
         </p>
       )}
       <div className="thread" ref={log} aria-live="polite">
@@ -50,7 +51,12 @@ export default function StudioChat({ c }: { c: CompositionState }) {
         ))}
         {chat.pending && (
           <p className="msg" data-role="assistant" role="status">
-            <span className="typing" aria-hidden="true" /> Claude compose…
+            {chat.live.reply || (
+              <>
+                <span className="typing" aria-hidden="true" />{' '}
+                {chat.live.status ?? 'Claude compose…'}
+              </>
+            )}
           </p>
         )}
         {c.proposal && (

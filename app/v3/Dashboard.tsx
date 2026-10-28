@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ListChecks, Network, PenTool, StickyNote } from 'lucide-react';
 import { useTasks } from '../client/useTasks.js';
 import { levelOf } from '../client/Volcano.js';
 import VolcanoGL, { webglAvailable } from '../client/VolcanoGL.js';
@@ -10,7 +11,7 @@ import {
   timeProgress,
   today,
 } from '../shared/brief.js';
-import Timeline, { short } from './Timeline.js';
+import Timeline from './Timeline.js';
 import {
   renduAcquired,
   stepDone,
@@ -34,7 +35,38 @@ import {
 // checklist des Étapes du PFE), jamais les dates.
 const start = milestones[0].date;
 const end = milestones[milestones.length - 1].date;
-const renduLink = (step: string) => `?vue=brief#etape-${step}`;
+// Accès rapide : une teinte de la palette officielle par espace (texte
+// encre dessus, ≥ 6:1), tuile entière cliquable vers la vraie route.
+const spaces = [
+  {
+    id: 'design',
+    title: 'Design',
+    text: 'Créer mes interfaces',
+    icon: PenTool,
+    color: '1',
+  },
+  {
+    id: 'brief',
+    title: 'Étapes du PFE',
+    text: 'Suivre mon avancement',
+    icon: ListChecks,
+    color: '3',
+  },
+  {
+    id: 'schemas',
+    title: 'Mes schémas',
+    text: 'Organiser mes recherches',
+    icon: Network,
+    color: '5',
+  },
+  {
+    id: 'notes',
+    title: 'Mes notes',
+    text: 'Retrouver mes idées et rappels',
+    icon: StickyNote,
+    color: '7',
+  },
+] as const;
 const numeric = (d: string) =>
   new Date(d + 'T00:00:00').toLocaleDateString('fr-FR');
 
@@ -203,38 +235,23 @@ export default function Dashboard() {
 
         <Card className="tasks">
           <CardHeader>
-            <CardTitle>Rendus</CardTitle>
+            <CardTitle>Accès rapide</CardTitle>
             <CardDescription>
-              {done} validé{done > 1 ? 's' : ''} sur {rendus.length} · selon le
-              statut de chaque étape
+              Retrouvez vos espaces de travail en un clic.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="stack-bar" aria-hidden="true">
-              <span data-status="done" style={{ flexGrow: done }} />
-              <span
-                data-status="todo"
-                style={{ flexGrow: rendus.length - done }}
-              />
-            </div>
-            <ol className="rendus" aria-label="Rendus du PFE">
-              {rendus.map((r, i) => (
-                <li key={r.id} data-done={ok[i] || undefined}>
-                  <a href={renduLink(r.step)}>
-                    <span className="rendu-n">{i + 1}</span>
-                    <span className="rendu-title">{r.title}</span>
-                    <small>{r.date ? short(r.date) : 'Non fixée'}</small>
-                    <Badge variant={ok[i] ? 'secondary' : 'outline'}>
-                      {ok[i]
-                        ? 'Validé'
-                        : stepDone(renduStatus[i])
-                          ? 'Remis'
-                          : 'À réaliser'}
-                    </Badge>
+            <ul className="launcher" aria-label="Espaces de travail">
+              {spaces.map(({ id, title, text, icon: Icon, color }) => (
+                <li key={id}>
+                  <a href={`?vue=${id}`} data-color={color}>
+                    <Icon size={22} strokeWidth={1.75} aria-hidden="true" />
+                    <strong>{title}</strong>
+                    <span>{text}</span>
                   </a>
                 </li>
               ))}
-            </ol>
+            </ul>
           </CardContent>
         </Card>
       </div>

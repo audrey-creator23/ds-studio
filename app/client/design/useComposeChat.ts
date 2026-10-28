@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { request } from '../api.js';
+import { requestStream } from '../api.js';
 import type { Composition } from '../../shared/composition.js';
 import type { CompositionState } from './useComposition.js';
 
@@ -10,6 +10,8 @@ export function useComposeChat(c: CompositionState) {
   const { turns, setTurns } = c;
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
+  // Avancement en direct : statut puis début de la réponse de Claude.
+  const [live, setLive] = useState<{ status?: string; reply?: string }>({});
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   async function send(text = draft.trim(), context = '') {
@@ -20,7 +22,8 @@ export function useComposeChat(c: CompositionState) {
     controller.current = abort;
     setTurns((t) => [...t, { role: 'user', text }]);
     try {
-      const r = await request<{
+      setLive({});
+      const r = await requestStream<{
         reply: string;
         question: boolean;
         proposal: Composition | null;
@@ -35,6 +38,11 @@ export function useComposeChat(c: CompositionState) {
             text: text.slice(0, 4000),
           })),
         },
+        (l) =>
+          setLive((v) => ({
+            status: typeof l.status === 'string' ? l.status : v.status,
+            reply: typeof l.reply === 'string' ? l.reply : v.reply,
+          })),
         abort.signal,
       );
       setDraft('');
@@ -56,6 +64,7 @@ export function useComposeChat(c: CompositionState) {
       );
     } finally {
       setPending(false);
+      setLive({});
       controller.current = null;
     }
   }
@@ -63,6 +72,7 @@ export function useComposeChat(c: CompositionState) {
     draft,
     setDraft,
     pending,
+    live,
     send,
     stop: () => controller.current?.abort(),
     available: c.composer?.available ?? false,

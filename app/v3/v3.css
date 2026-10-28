@@ -41,6 +41,11 @@
   --selected: #000000;
   --selected-foreground: #ffffff;
   --selected-ring: transparent;
+  /* Accents décoratifs (repères, séparateurs, guides) : palette atténuée,
+     jamais porteuse d'information seule ni d'état actif. */
+  --deco-warm: color-mix(in oklab, var(--accent-1) 55%, transparent);
+  --deco-mid: color-mix(in oklab, var(--accent-5) 45%, transparent);
+  --deco-hot: color-mix(in oklab, var(--accent-9) 40%, transparent);
 }
 .dark {
   color-scheme: dark;
@@ -462,17 +467,6 @@ button {
   place-items: center;
   color: oklch(0.708 0 0);
 }
-.stack-bar {
-  display: flex;
-  gap: 3px;
-  height: 10px;
-  overflow: hidden;
-  border-radius: 999px;
-}
-.stack-bar span {
-  flex-basis: 0;
-  min-width: 0;
-}
 [data-status='todo'] {
   --status: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
 }
@@ -484,9 +478,6 @@ button {
 }
 [data-status='validated'] {
   --status: var(--foreground);
-}
-.stack-bar span {
-  background: var(--status);
 }
 .legend {
   display: grid;
@@ -1907,59 +1898,60 @@ button.timeline-item:focus-visible {
   flex: 1;
   flex-direction: column;
 }
-/* Les 5 rendus se répartissent sur la hauteur disponible ; colonnes
-   numéro / titre / date / badge alignées d'une ligne à l'autre. */
-.rendus {
-  display: flex;
+/* Accès rapide : grille 2 × 2 qui remplit la carte ; tuiles aux teintes
+   de la palette officielle, texte et icône encre (≥ 6:1). */
+.launcher {
+  display: grid;
   flex: 1;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 2px;
-  margin: 22px 0 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 10px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
-.rendus a {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 4.5em 6.5em;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
-  border-radius: var(--radius-md);
-  color: inherit;
-  text-decoration: none;
-}
-.rendus a:hover {
-  background: var(--accent);
-}
-.rendus small {
-  color: var(--muted-foreground);
-  font-size: 12px;
-  text-align: right;
-  white-space: nowrap;
-}
-.rendus .badge {
-  justify-self: end;
-}
-.rendu-title {
-  overflow-wrap: anywhere;
-}
-.rendu-n {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent-7);
+.launcher a {
+  display: flex;
+  height: 100%;
+  min-height: 96px;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--swatch);
   color: var(--accent-ink);
-  font-size: 12px;
+  text-decoration: none;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.launcher svg {
+  margin-bottom: auto;
+}
+.launcher strong {
+  font-size: 15px;
   font-weight: 600;
 }
-.rendus li[data-done] .rendu-n {
-  background: var(--accent-1);
+.launcher span {
+  font-size: 13px;
+  line-height: 1.3;
 }
-.rendus li[data-done] .rendu-title {
-  color: var(--muted-foreground);
+.launcher a:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md, 0 6px 16px rgb(0 0 0 / 0.18));
+}
+.launcher a:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .launcher a {
+    transition: none;
+  }
+  .launcher a:hover {
+    transform: none;
+  }
 }
 
 /* Bibliothèque : chips (filtre union), galerie de vrais composants. */
@@ -2206,80 +2198,6 @@ button.timeline-item:focus-visible {
   align-items: start;
   gap: var(--gap);
 }
-.note {
-  gap: 10px;
-  padding: 12px 14px;
-  border-top: 4px solid var(--swatch);
-}
-.note-head {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.note-colors {
-  display: flex;
-  flex: 1;
-  gap: 4px;
-}
-.note-text {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: var(--muted);
-  color: var(--foreground);
-  font: inherit;
-  resize: vertical;
-}
-.note-text:focus-visible {
-  border-color: var(--ring);
-}
-.note-reminder {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-.note-foot {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: auto;
-}
-.note-read {
-  margin: 0;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-/* Note validée : fond plein de la teinte (palette officielle), texte et
-   icônes encre #0A0A0A (≥ 6:1 sur #FABC3C → #F55536, clair et sombre). */
-.note[data-state='done'] {
-  border-color: transparent;
-  background: var(--swatch);
-  color: var(--accent-ink);
-}
-.note[data-state='done'] .button,
-.note[data-state='done'] .muted {
-  color: var(--accent-ink);
-}
-.note[data-state='done'] .button:hover,
-.note[data-state='done'] .button[aria-pressed='true'] {
-  background: rgb(0 0 0 / 0.12);
-  color: var(--accent-ink);
-}
-.note[data-state='done'] .button:focus-visible {
-  outline: 2px solid var(--accent-ink);
-  outline-offset: 1px;
-}
-.note[data-state='done'] .input {
-  border-color: rgb(0 0 0 / 0.25);
-  background: rgb(255 255 255 / 0.55);
-  color: var(--accent-ink);
-  color-scheme: light;
-}
-.note[data-state='done'] .button[data-variant='outline'] {
-  border-color: rgb(0 0 0 / 0.3);
-  background: transparent;
-}
 .notes-empty {
   padding: 24px;
   text-align: center;
@@ -2479,6 +2397,57 @@ button.timeline-item:focus-visible {
 .screens .screen-new {
   color: var(--muted-foreground);
 }
+/* Onglet d'écran : repère couleur (point) et croix au survol / focus, dans
+   un espace toujours réservé (aucun décalage). */
+.screen-tab {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+.screen-tab > [role='tab'] {
+  gap: 6px;
+  padding-right: 26px;
+}
+.screen-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--swatch);
+}
+.screens .screen-close {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.15s;
+}
+.screen-tab:hover .screen-close,
+.screen-tab:focus-within .screen-close {
+  opacity: 1;
+}
+.screen-tab:has([aria-selected='true']) .screen-close {
+  color: var(--selected-foreground);
+}
+.screens .screen-close:hover {
+  background: color-mix(in oklab, currentColor 18%, transparent);
+}
+@media (hover: none) {
+  .screens .screen-close {
+    opacity: 0.7;
+  }
+}
 
 .props-count {
   color: var(--muted-foreground);
@@ -2578,4 +2547,346 @@ button.timeline-item[aria-pressed='true']:hover,
   box-shadow:
     var(--focus),
     inset 0 0 0 1px var(--selected-ring);
+}
+
+/* Outils de l'écran (couleur, contraste), en tête de la barre. */
+.props-global {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.color-dialog {
+  width: min(360px, calc(100vw - 32px));
+}
+.color-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+.color-preview {
+  flex: none;
+  width: 72px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: repeating-conic-gradient(#d4d4d4 0 25%, #fff 0 50%) 0 0 / 12px
+    12px;
+}
+.color-preview span {
+  display: block;
+  height: 100%;
+}
+.color-fields {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+}
+.color-input {
+  width: 100%;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md);
+  background: none;
+  cursor: pointer;
+}
+.contrast-pop {
+  position: fixed;
+  z-index: 25;
+  display: grid;
+  gap: 8px;
+  width: 290px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--popover, var(--card));
+  color: var(--popover-foreground, var(--foreground));
+  box-shadow: var(--shadow-lg, 0 10px 30px rgb(0 0 0 / 0.25));
+}
+.contrast-pop .panel-head strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--destructive);
+}
+.contrast-pop p {
+  margin: 0;
+}
+.contrast-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.contrast-compare figure {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.contrast-compare span {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 18px;
+  font-weight: 600;
+}
+.contrast-compare figcaption {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.tree-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+/* Design : accents de repérage (jaune = outils, orange = structure,
+   rouge = repère d'état informatif). Composants de l'aperçu, couleurs
+   sémantiques et état actif (noir/blanc) inchangés. */
+.studio .props-global,
+.studio .props-align {
+  border-bottom-color: var(--deco-warm);
+}
+.studio .tree-section > ol::before {
+  border-left-color: var(--deco-mid);
+}
+.studio .tree-group > ol::before {
+  border-left-color: var(--deco-warm);
+}
+.studio .splitter:hover::after,
+.studio .splitter:focus-visible::after {
+  background: var(--accent-5);
+}
+.studio .chip:not([aria-pressed='true']):hover {
+  border-color: var(--accent-3);
+}
+.studio .studio-status::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--deco-hot);
+  vertical-align: 1px;
+}
+.studio .screens {
+  border-top-color: var(--deco-warm);
+}
+
+/* Mes notes : Post-it. Papier de la teinte choisie (palette officielle),
+   encre #0A0A0A (≥ 6:1), marges généreuses, relief et ruban discrets. */
+.note {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 200px;
+  padding: 26px 22px 20px;
+  border-radius: 2px 2px 14px 2px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.22), transparent 38%),
+    var(--swatch);
+  color: var(--accent-ink);
+  box-shadow:
+    0 1px 1px rgb(0 0 0 / 0.08),
+    0 8px 18px -8px rgb(0 0 0 / 0.35);
+  transform: rotate(-0.6deg);
+  transition: box-shadow 0.2s;
+}
+.notes-board > :nth-child(even) {
+  transform: rotate(0.5deg);
+}
+.note:hover,
+.note:focus-within {
+  box-shadow:
+    0 1px 1px rgb(0 0 0 / 0.08),
+    0 14px 26px -10px rgb(0 0 0 / 0.4);
+}
+.note:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
+/* Coin légèrement corné. */
+.note::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 0 0 14px 0;
+  background: linear-gradient(135deg, transparent 50%, rgb(0 0 0 / 0.12) 50%);
+  pointer-events: none;
+}
+.note-tape {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 64px;
+  height: 18px;
+  background: rgb(255 255 255 / 0.55);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  transform: translateX(-50%) rotate(-2deg);
+}
+.note-read {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.note-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: auto 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+/* Actions : superposées en haut à droite, visibles au survol / focus. */
+.note-tools {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.note:hover .note-tools,
+.note:focus-within .note-tools {
+  opacity: 1;
+  pointer-events: auto;
+}
+.note-tool {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+.note-tool:hover,
+.note-tool[aria-pressed='true'] {
+  background: rgb(0 0 0 / 0.1);
+}
+.note-tool:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 1px;
+}
+/* Édition : même papier ; champs translucides, encre. */
+.note-colors {
+  display: flex;
+  gap: 6px;
+}
+.note-text {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgb(0 0 0 / 0.2);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.45);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.note-text:focus-visible,
+.note-date:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 1px;
+}
+.note-reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.note-date {
+  padding: 4px 6px;
+  border: 1px solid rgb(0 0 0 / 0.25);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.45);
+  color: var(--accent-ink);
+  color-scheme: light;
+  font: inherit;
+  font-size: 12px;
+}
+.note-link {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.note-link:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.note-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .note,
+  .note-tools {
+    transition: none;
+  }
+}
+.figma-live {
+  margin: 0;
+  font-size: 12px;
+}
+.figma-live a {
+  color: inherit;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+/* Calques : case de sélection multiple (actif = noir/blanc centralisé). */
+.tree-check {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  padding: 0;
+  border: 1.5px solid var(--muted-foreground);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--selected-foreground);
+  cursor: pointer;
+}
+.tree-check[aria-checked='true'] {
+  border-color: var(--selected);
+  background: var(--selected);
+  box-shadow: inset 0 0 0 1px var(--selected-ring);
+}
+.tree-check:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }

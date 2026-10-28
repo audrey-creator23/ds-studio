@@ -50,6 +50,8 @@ export interface Assistant {
   ): AsyncGenerator<AssistantEvent>;
 }
 
+// Avancement d'une composition : statut et début de la réponse.
+export type ComposeProgress = { status?: string; reply?: string };
 // Composition de page : sortie JSON structurée, validée ensuite côté serveur.
 export interface Composer {
   status(): Promise<{ available: boolean; detail: string }>;
@@ -58,6 +60,7 @@ export interface Composer {
     turns: ChatTurn[],
     signal: AbortSignal,
     model: ClaudeModel,
+    onProgress?: (p: ComposeProgress) => void,
   ): Promise<{
     output: ComposeOutput | null;
     stopReason: string | null;
@@ -203,5 +206,8 @@ export function describeAssistantError(error: unknown) {
     return 'Connexion à l’API Anthropic impossible. Vérifiez Internet.';
   if (error instanceof Anthropic.APIError)
     return `Service Anthropic indisponible (${error.status ?? 'erreur'}). Réessayez plus tard.`;
+  // Passerelle Claude Code : messages déjà rédigés pour l'utilisatrice.
+  if (error instanceof Error && error.name === 'ClaudeCliError')
+    return error.message;
   return 'Erreur inattendue de l’assistant.';
 }

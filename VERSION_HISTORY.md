@@ -5,6 +5,160 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.32.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `figma-plugin/manifest.json`, `figma-plugin/code.ts`,
+  `figma-plugin/ui.html`, `figma-plugin/README.md`,
+  `app/v3/studio/ExportPanel.tsx`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Export Figma sans import automatique, causes : Figma ne
+  lance jamais un plugin à l’ouverture d’un fichier (limite de l’API) ;
+  chaque réexport d’un écran déjà importé attendait une confirmation.
+  Corrections conformes à l’API : bouton « Importer depuis DS-Studio »
+  dans le panneau de droite du fichier cible (Relaunch), import immédiat
+  au lancement sans code ni clic, option mémorisée « mettre à jour cet
+  écran automatiquement » (seul son cadre est remplacé), version affichée
+  dans le plugin ; côté DS-Studio, l’export ouvre le fichier cible au clic
+  quand le plugin est fermé et indique l’action restante.
+
+## 2.31.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; `move`, `remove` et
+  `duplicate` acceptent un ou plusieurs éléments, compatibles avec
+  l’existant)
+- **Fichiers** : `app/client/design/useComposition.ts`, `app/v3/Studio.tsx`,
+  `app/v3/studio/LayersPanel.tsx`, `app/v3/studio/PropsBar.tsx`,
+  `app/v3/v3.css`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Calques : vraies cases de sélection multiple
+  (`role="checkbox"`, `aria-checked`, Espace / Entrée, focus visible ;
+  cochée en noir/blanc) à la place des carrés décoratifs ; clic sur la
+  case = ajout ou retrait sans sélection simple. Clic sur le nom =
+  sélection simple, ⌘/Ctrl + clic = ajout/retrait, Maj + clic = plage
+  entre éléments frères ; jamais un parent avec son enfant, sans doublon ;
+  Échap désélectionne. Sélection synchronisée avec l’aperçu et la barre
+  d’outils : aligner, grouper, monter, descendre, dupliquer, supprimer
+  (confirmation), chacun en une seule étape ⌘Z / ⇧⌘Z.
+
+## 2.30.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; nouvelles routes
+  `/api/figma/scene/meta` et `/api/figma/status` (plugin : origine null +
+  code d’appairage ; DS-Studio : lecture du statut) ; fichier cible
+  `app/shared/figmaTarget.ts`)
+- **Fichiers** : `figma-plugin/importer.ts`, `figma-plugin/code.ts`,
+  `figma-plugin/ui.html`, `figma-plugin/README.md`,
+  `app/v3/studio/figmaScene.ts`, `app/v3/studio/ExportPanel.tsx`,
+  `app/server/http.ts`, `app/server/figmaBridge.ts`,
+  `app/shared/figmaTarget.ts` (nouveau), `app/v3/v3.css`, `package.json`,
+  `tests/figmaPlugin.test.ts`, `tests/e2e/studio.spec.ts`
+- **Résumé** :
+  - Erreur `set_layoutSizingHorizontal` corrigée : Hug/Fill/Fixed appliqués
+    seulement aux enfants d’Auto Layout ou aux frames Auto Layout ;
+    validation de la scène avant tout ajout, import tout ou rien (cadre
+    partiel retiré), calque fautif nommé. Export réel « Test 1 » rejoué :
+    38 calques construits sans erreur (24 frames, 14 textes).
+  - Rendu complet : l’import s’arrêtait au premier nœud fautif (écran
+    presque vide). Sérialisation complétée : blocs à un seul enfant en
+    Auto Layout, cases à cocher et boutons radio vectoriels (plus de texte
+    « on »), éléments de taille nulle ignorés, contrôle de fidélité (si
+    l’Auto Layout déplaçait un enfant de plus de 1,5 px, positions exactes
+    conservées).
+  - Flux automatique vers « DS-Studio — Mes maquettes » (page 1) : code
+    mémorisé dans Figma, plugin ouvert qui détecte chaque envoi et importe
+    seul, confirmation avant remplacement, statuts réels dans DS-Studio,
+    lien vers le fichier ; refus d’importer dans un autre fichier. Plugin
+    minifié.
+
+## 2.29.1 — 2026-10-28
+
+- **Type** : patch (branche `v3-dashboard`)
+- **Fichiers** : `figma-plugin/manifest.json`, `figma-plugin/ui.html`,
+  `figma-plugin/README.md`, `app/server/http.ts`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Plugin DS-Studio Bridge installable : Figma refusait
+  `devAllowedDomains: http://127.0.0.1:4310` (adresses IP non admises, seul
+  `localhost` est documenté) ; manifeste et interface passent à
+  `http://localhost:4310`. Le serveur (toujours lié à 127.0.0.1) admet
+  l’hôte `localhost` uniquement pour la lecture du plugin
+  (`/api/figma/scene`, origine null, code d’appairage) ; toute autre route
+  reste refusée. Plugin reconstruit (`dist/code.js` à jour).
+
+## 2.29.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; données inchangées ; couleurs
+  de repère des écrans en stockage local `ds-v3-screen-colors`)
+- **Fichiers** : `app/client/design/useComposition.ts` (`deleteScreen`),
+  `app/v3/Studio.tsx`, `app/v3/Notes.tsx`, `app/v3/v3.css`,
+  `connectors/agents/claudeCli.ts`, `CLAUDE.md`,
+  `docs/COMPONENT_GUIDELINES.md` (nouveau), `docs/CREATIVE_PROCESS.md`
+  (nouveau), `tests/claudeCli.test.ts`, `tests/e2e/studio.spec.ts`
+- **Résumé** :
+  - Chat Claude : échange réel validé via Claude Code (session claude.ai).
+    Deux causes d’échec corrigées : CLI 2.1.201 trop ancien pour le modèle
+    (mis à jour en 2.1.312 avec `claude update`, message dédié ajouté) et
+    schéma JSON refusé par le CLI (référence `$schema` retirée).
+  - Design · écrans : croix au survol ou au focus (espace réservé, sans
+    décalage), touche Suppr, confirmation, écran voisin ouvert, dernier
+    écran protégé, historique et repère nettoyés ; point de couleur cyclique
+    (#FABC3C → #F55536) par écran, conservé après rechargement ; onglet
+    actif toujours noir/blanc.
+  - Design · accents : tokens `--deco-*` (palette atténuée) sur séparateurs
+    de la barre d’outils, guides des calques, poignée, survol des chips,
+    repère du statut, liseré des onglets ; composants de l’aperçu,
+    couleurs sémantiques et états actifs inchangés.
+  - Mes notes : style Post-it (papier teinté, encre, ruban si épinglée, coin
+    corné, ombre) ; lecture par défaut sans bouton, actions au survol ou au
+    focus superposées sans décalage ; édition au crayon (couleur, texte,
+    rappel), « Valider » en bas à droite.
+  - Guides : `CLAUDE.md` (règles d’économie de contexte et d’accord avant
+    skills) et deux guides lus selon la tâche.
+
+## 2.28.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; modèle de composition étendu
+  de façon rétrocompatible : `background` facultatif (#RRGGBB ou
+  #RRGGBBAA) sur l’écran, les sections et les blocs ; contrat `Composer`
+  avec avancement facultatif ; nouvelles routes `/api/figma/scene` ;
+  agent launchd facultatif)
+- **Fichiers** : `app/shared/composition.ts`, `app/shared/figmaScene.ts`
+  (nouveau), `app/client/api.ts`, `app/client/design/CompositionView.tsx`,
+  `app/client/design/useComposition.ts`, `app/client/design/useComposeChat.ts`,
+  `app/server/http.ts`, `app/server/figmaBridge.ts` (nouveau),
+  `connectors/agents/claude.ts`, `connectors/agents/claudeCli.ts` (nouveau),
+  `app/v3/Dashboard.tsx`, `app/v3/Studio.tsx`, `app/v3/v3.css`,
+  `app/v3/studio/*` (ColorDialog, ContrastAudit, contrast, figmaScene :
+  nouveaux ; ExportPanel, LayersPanel, PropsBar, StudioChat, exportReact),
+  `figma-plugin/*` (nouveau), `scripts/service.mjs` (nouveau),
+  `package.json`, `.claude/launch.json`, `tests/*` (contrast, claudeCli,
+  figmaPlugin : nouveaux ; studio.spec)
+- **Résumé** :
+  - Design · Couleur : sélecteur, HEX et opacité, aperçu en direct,
+    Valider / Annuler ; sans sélection le fond de l’écran (Échap
+    désélectionne), sinon celui des éléments sélectionnés ; une étape
+    d’annulation, pastille dans les Calques, repris dans les exports.
+  - Design · Contraste : audit WCAG 2.2 AA à la demande sur le rendu réel
+    (fonds imbriqués, transparence, opacité, clair/sombre) ; texte 4,5:1,
+    grand texte et composants 3:1 ; contour rouge temporaire, pointillé
+    orange si non calculable ; popover ratio actuel / requis, « Corriger »
+    propose le fond le plus proche conforme (avant / après), appliqué
+    seulement sur demande ; couleurs du DS signalées, jamais modifiées.
+  - Dashboard : carte « Accès rapide » (2 × 2 : Design, Étapes du PFE, Mes
+    schémas, Mes notes ; teintes de la palette, tuile entière cliquable) à
+    la place de la liste des rendus, toujours suivis par les KPI et les
+    Étapes du PFE.
+  - Serveur autonome : `npm run service -- install | start | stop | restart
+    | status | logs | uninstall` (agent launchd utilisateur, 127.0.0.1
+    seulement, redémarrage après arrêt anormal, journaux dans
+    ~/Library/Logs/DS-Studio, pas de doublon) ; l’aperçu de Claude Code
+    s’y rattache sans lancer de second serveur.
+  - Chat Claude : sans clé API, passerelle vers Claude Code installé
+    (`claude -p`, session ouverte par l’utilisatrice avec `claude auth
+    login`) ; réponse en direct, statuts, erreurs lisibles ; aucun outil,
+    aucune clé ni cookie manipulés. Clé API inchangée si présente.
+  - Figma : export « Figma » réel depuis Enregistrer + plugin DS-Studio
+    Bridge (`figma-plugin/`, guide dans son README) : calques éditables,
+    Auto Layout imbriqué, instances des maîtres du fichier, variables des
+    tokens, remplacement confirmé sans doublon, écarts listés.
+
 ## 2.27.1 — 2026-10-28
 
 - **Type** : patch (branche `v3-dashboard` ; règle des rendus : acquis

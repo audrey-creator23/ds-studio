@@ -42,6 +42,65 @@ export async function request<T>(
     throw new Error(result.error ?? 'Le serveur ne répond pas.');
   return result;
 }
+// Réponse en flux NDJSON : chaque ligne d'avancement est transmise à
+// onLine ; renvoie la ligne finale { type: 'done' } (erreur sinon).
+export async function requestStream<T>(
+  url: string,
+  body: unknown,
+  onLine: (line: Record<string, unknown>) => void,
+  signal?: AbortSignal,
+  retrySession = true,
+): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/${url}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/x-ndjson',
+        'X-DS-Studio': csrf,
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (e) {
+    if (signal?.aborted) throw e;
+    throw new Error('Serveur local inaccessible.');
+  }
+  if (!(response.headers.get('Content-Type') ?? '').includes('ndjson')) {
+    const result = await response.json();
+    if (
+      response.status === 403 &&
+      retrySession &&
+      result.error?.startsWith('Validation de session manquante')
+    ) {
+      await bootstrap();
+      return requestStream<T>(url, body, onLine, signal, false);
+    }
+    if (!response.ok)
+      throw new Error(result.error ?? 'Le serveur ne répond pas.');
+    return result;
+  }
+  const reader = response
+    .body!.pipeThrough(new TextDecoderStream())
+    .getReader();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value;
+    const lines = buffer.split('\n');
+    buffer = lines.pop()!;
+    for (const raw of lines) {
+      if (!raw.trim()) continue;
+      const line = JSON.parse(raw) as Record<string, unknown>;
+      if (line.type === 'done') return line as T;
+      if (line.type === 'error') throw new Error(String(line.error));
+      onLine(line);
+    }
+  }
+  throw new Error('Réponse interrompue.');
+}
 export async function bootstrap() {
   const b = await request<Bootstrap>('bootstrap');
   csrf = b.csrf;

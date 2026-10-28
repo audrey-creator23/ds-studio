@@ -373,11 +373,14 @@ export default function PropsBar({
   c,
   multi = [],
   onGrouped,
+  extra,
 }: {
   c: CompositionState;
   // Sélection multiple (Maj / ⌘ + clic) : action « Grouper ».
   multi?: string[];
   onGrouped?: () => void;
+  // Outils globaux (couleur, contraste), en tête de barre en permanence.
+  extra?: ReactNode;
 }) {
   const [open, setOpen] = useState<string>();
   const root = useRef<HTMLDivElement>(null);
@@ -423,6 +426,7 @@ export default function PropsBar({
         className="props-bar"
         aria-label={`Propriétés : ${multi.length} éléments`}
       >
+        {extra}
         <span
           className="props-count"
           title={`${multi.length} éléments sélectionnés`}
@@ -441,11 +445,44 @@ export default function PropsBar({
         >
           <Group size={16} strokeWidth={1.75} aria-hidden="true" />
         </button>
+        {(
+          [
+            ['Monter la sélection', ArrowUp, () => c.move(multi, -1)],
+            ['Descendre la sélection', ArrowDown, () => c.move(multi, 1)],
+            ['Dupliquer la sélection', Copy, () => c.duplicate(multi)],
+            [
+              'Supprimer la sélection',
+              Trash2,
+              () => {
+                if (
+                  confirm(
+                    `Supprimer ${multi.length} éléments ? Annulable avec ⌘Z.`,
+                  )
+                ) {
+                  c.remove(multi);
+                  onGrouped?.();
+                }
+              },
+            ],
+          ] as const
+        ).map(([label, Icon, run]) => (
+          <button
+            key={label}
+            type="button"
+            className="props-btn"
+            aria-label={label}
+            title={label}
+            onClick={run}
+          >
+            <Icon size={16} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        ))}
       </aside>
     );
   if (!section && !item)
     return (
       <aside className="props-bar" aria-label="Propriétés">
+        {extra}
         <span
           className="props-empty"
           title="Sélectionnez un élément dans l’écran ou les calques"
@@ -518,6 +555,7 @@ export default function PropsBar({
       ref={root}
       aria-label={`Propriétés : ${section ? `section ${section.name}` : blockSpecs[item!.kind].label}`}
     >
+      {extra}
       {item && <AlignTools c={c} ids={[item.id]} />}
       {tools.map((t) => {
         const Icon = t.icon;

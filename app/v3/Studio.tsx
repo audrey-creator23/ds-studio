@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   History,
   Layers,
+  Palette,
+  ScanEye,
   Library,
   MessageCircle,
   Plus,
@@ -9,6 +11,32 @@ import {
   Save,
   X,
 } from 'lucide-react';
+const screenColorKey = 'ds-v3-screen-colors';
+export type SelectMode = 'single' | 'toggle' | 'range';
+// Arbre de la composition : ancêtres et frères d'un élément.
+function treeOf(c: Composition) {
+  const parent = new Map<string, string | undefined>();
+  const kids = new Map<string | undefined, string[]>([[undefined, []]]);
+  const add = (id: string, p?: string) => {
+    parent.set(id, p);
+    kids.set(p, [...(kids.get(p) ?? []), id]);
+  };
+  for (const s of c.sections) {
+    add(s.id);
+    for (const i of s.items) {
+      add(i.id, s.id);
+      for (const x of i.children ?? []) add(x.id, i.id);
+    }
+  }
+  return {
+    ancestors(id: string) {
+      const out: string[] = [];
+      for (let p = parent.get(id); p; p = parent.get(p)) out.push(p);
+      return out;
+    },
+    siblings: (id: string) => kids.get(parent.get(id)) ?? [],
+  };
+}
 import { getState } from '../client/api.js';
 import { useComposition } from '../client/design/useComposition.js';
 import type { DropEvent } from '../client/design/CompositionView.js';
@@ -16,6 +44,7 @@ import type { Tokens } from '../shared/model.js';
 import {
   emptyComposition,
   normalizeComposition,
+  paint,
   type BlockKind,
   type Composition,
 } from '../shared/composition.js';
@@ -26,6 +55,8 @@ import LayersPanel from './studio/LayersPanel.js';
 import PropsBar from './studio/PropsBar.js';
 import ExportPanel from './studio/ExportPanel.js';
 import Device, { devices, type DeviceId, type View } from './studio/Device.js';
+import ColorDialog from './studio/ColorDialog.js';
+import { ContrastPopover, useContrastAudit } from './studio/ContrastAudit.js';
 
 // Mon espace Design : un seul état (useComposition) pour Claude, la
 // bibliothèque, les calques, la barre de propriétés et l'aperçu. Chaque
@@ -127,6 +158,8 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
 
   // ⌘Z / Ctrl+Z annule ; ⇧⌘Z / Ctrl+Y rétablit (hors champs de saisie ;
   // relayés aussi depuis l'aperçu).
+  const deselect = useRef(() => c.select(undefined));
+  deselect.current = () => c.select(undefined);
   const undo = useRef(c.undo);
   const redo = useRef(c.redo);
   undo.current = c.undo;
@@ -136,6 +169,16 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
       key === 'undo' ? undo.current() : redo.current();
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
+      // Échap (hors champ et hors dialogue) : plus de sélection, les outils
+      // globaux (couleur) visent alors l'écran.
+      if (
+        e.key === 'Escape' &&
+        !t.closest('input, textarea, select, [role="dialog"]') &&
+        !document.querySelector('[role="dialog"]')
+      ) {
+        deselect.current();
+        return;
+      }
       if (
         !(e.metaKey || e.ctrlKey) ||
         t.closest('input, textarea, select, [contenteditable="true"]')
@@ -157,23 +200,59 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
     };
   }, []);
 
-  // Sélection multiple : Maj / ⌘ + clic dans l'aperçu ou les calques.
+  // Sélection : clic = simple ; ⌘/Ctrl + clic ou case des calques =
+  // ajout / retrait ; Maj + clic = plage entre éléments frères. Jamais un
+  // parent avec son enfant (hiérarchie respectée), jamais de doublon.
   const [multi, setMulti] = useState<string[]>([]);
   const selectId = c.select;
   const selected = c.selected;
+  const draft = c.draft;
   const select = useCallback(
-    (id: string, additive?: boolean) => {
-      if (additive && selected) {
-        setMulti((m) => {
-          const base = m.length ? m : [selected];
-          return base.includes(id)
-            ? base.filter((x) => x !== id)
-            : [...base, id];
-        });
-      } else setMulti([]);
-      selectId(id);
+    (id: string, mode: boolean | SelectMode = 'single') => {
+      const m: SelectMode =
+        mode === true ? 'toggle' : mode === false ? 'single' : mode;
+      const tree = treeOf(draft);
+      const base = multi.length ? multi : selected ? [selected] : [];
+      const related = (x: string) =>
+        x !== id &&
+        (tree.ancestors(id).includes(x) || tree.ancestors(x).includes(id));
+      let next: string[];
+      if (m === 'single') next = [id];
+      else if (m === 'toggle')
+        next = base.includes(id)
+          ? base.filter((x) => x !== id)
+          : [...base.filter((x) => !related(x)), id];
+      else {
+        const anchor = selected ?? id;
+        const sibs = tree.siblings(id);
+        const [from, to] = [sibs.indexOf(anchor), sibs.indexOf(id)].sort(
+          (x, y) => x - y,
+        );
+        const span = from < 0 ? [id] : sibs.slice(from, to + 1);
+        next = [
+          ...new Set([
+            ...base.filter(
+              (x) =>
+                !span.some(
+                  (y) =>
+                    x !== y &&
+                    (tree.ancestors(y).includes(x) ||
+                      tree.ancestors(x).includes(y)),
+                ),
+            ),
+            ...span,
+          ]),
+        ];
+      }
+      if (!next.length) {
+        setMulti([]);
+        selectId(undefined);
+        return;
+      }
+      setMulti(next.length > 1 ? next : []);
+      selectId(next.includes(id) ? id : next[next.length - 1]);
     },
-    [selected, selectId],
+    [selected, selectId, multi, draft],
   );
   useEffect(() => {
     if (!c.selected) setMulti([]);
@@ -198,6 +277,41 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
   const screens = c.saved.some((s) => s.id === c.draft.id)
     ? c.saved
     : [c.draft, ...c.saved];
+  // Couleur de repère par écran : attribuée à la création, dans l'ordre de
+  // la palette, conservée après réordre et rechargement.
+  const [screenColors, setScreenColors] = useState(() =>
+    stored(screenColorKey, {} as Record<string, string>),
+  );
+  useEffect(() => {
+    const missing = screens.filter((s) => !screenColors[s.id]);
+    if (!missing.length) return;
+    const next = { ...screenColors };
+    let n = stored(`${screenColorKey}-next`, { n: 0 }).n;
+    for (const s of missing) next[s.id] = String((n++ % 5) * 2 + 1);
+    persist(`${screenColorKey}-next`, { n });
+    setScreenColors(next);
+    persist(screenColorKey, next);
+  }, [screens.map((s) => s.id).join()]);
+  const colorOf = (id: string) => screenColors[id] ?? '1';
+  // Suppression : confirmation, écran voisin ouvert, dernier écran gardé.
+  async function removeScreen(id: string, name: string) {
+    if (screens.length < 2) return;
+    if (
+      !confirm(`Supprimer l’écran « ${name} » ? Cette action est définitive.`)
+    )
+      return;
+    const i = screens.findIndex((s) => s.id === id);
+    const neighbor = screens[i + 1] ?? screens[i - 1];
+    if (!(await c.deleteScreen(id, neighbor?.id))) return;
+    const all = stored(historyKey, {} as Record<string, Version[]>);
+    delete all[id];
+    persist(historyKey, all);
+    const colors = { ...screenColors };
+    delete colors[id];
+    setScreenColors(colors);
+    persist(screenColorKey, colors);
+    setMulti([]);
+  }
   const screenName = (s: Composition, i: number) =>
     defaultNames.includes(s.name) ? `Écran ${i + 1}` : s.name;
 
@@ -212,7 +326,69 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
       ),
     }));
   };
-  const shown = c.proposal?.composition ?? c.draft;
+  // Couleur : cible = sélection (simple ou multiple), sinon l'écran ;
+  // aperçu en direct, enregistré seulement par « Valider ».
+  const [coloring, setColoring] = useState<{
+    ids: string[];
+    label: string;
+    initial?: string;
+  }>();
+  const [live, setLive] = useState<{ color?: string }>();
+  function openColor() {
+    const ids = multi.length > 1 ? multi : c.selected ? [c.selected] : [];
+    const first = ids[0];
+    const node = first
+      ? (c.draft.sections.find((s) => s.id === first) ??
+        c.draft.sections
+          .flatMap((s) => s.items.flatMap((i) => [i, ...(i.children ?? [])]))
+          .find((i) => i.id === first))
+      : c.draft;
+    setColoring({
+      ids,
+      label: !ids.length
+        ? 'écran'
+        : ids.length > 1
+          ? `${ids.length} éléments`
+          : 'sélection',
+      initial: node?.background,
+    });
+    setLive(undefined);
+  }
+  const base = c.proposal?.composition ?? c.draft;
+  const shown = coloring && live ? paint(base, coloring.ids, live.color) : base;
+  // Contraste : audit WCAG à la demande, corrections jamais automatiques.
+  const [auditing, setAuditing] = useState(false);
+  const contrast = useContrastAudit(frame, auditing, view.device);
+  const fails = contrast.issues.filter((i) => i.ratio !== undefined).length;
+  const unknown = contrast.issues.length - fails;
+  const globalTools = (
+    <div className="props-global" role="group" aria-label="Outils de l’écran">
+      <button
+        type="button"
+        className="props-btn"
+        aria-label="Couleur de fond"
+        title={
+          multi.length > 1 || c.selected
+            ? 'Couleur de fond de la sélection'
+            : 'Couleur de fond de l’écran'
+        }
+        disabled={!!c.proposal}
+        onClick={openColor}
+      >
+        <Palette size={16} strokeWidth={1.75} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className="props-btn"
+        aria-label="Audit de contraste"
+        title="Audit de contraste WCAG 2.2 AA"
+        aria-pressed={auditing}
+        onClick={() => setAuditing(!auditing)}
+      >
+        <ScanEye size={16} strokeWidth={1.75} aria-hidden="true" />
+      </button>
+    </div>
+  );
   const size = `${view.w} × ${view.h}`;
   const device = devices[view.device];
 
@@ -370,11 +546,13 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
           </div>
           <p className="studio-status" role="status">
             {c.error ||
-              (c.proposal
-                ? 'Proposition de Claude affichée : appliquez ou refusez dans l’onglet Claude.'
-                : c.dirty
-                  ? 'Modifications en cours d’enregistrement…'
-                  : 'Écran enregistré · ⌘Z annuler · ⇧⌘Z rétablir')}
+              (auditing
+                ? `Contraste WCAG 2.2 AA : ${fails ? `${fails} non conforme${fails > 1 ? 's' : ''}` : 'aucun écart'}${unknown ? ` · ${unknown} non calculable${unknown > 1 ? 's' : ''}` : ''} · cliquez un contour pour le détail`
+                : c.proposal
+                  ? 'Proposition de Claude affichée : appliquez ou refusez dans l’onglet Claude.'
+                  : c.dirty
+                    ? 'Modifications en cours d’enregistrement…'
+                    : 'Écran enregistré · ⌘Z annuler · ⇧⌘Z rétablir')}
           </p>
           <div className="preview-area">
             {c.proposal && <span className="preview-flag">Proposition</span>}
@@ -390,19 +568,52 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
               onDrop={onDrop}
               frameRef={frame}
             />
-            <PropsBar c={c} multi={multi} onGrouped={() => setMulti([])} />
+            <PropsBar
+              c={c}
+              multi={multi}
+              onGrouped={() => setMulti([])}
+              extra={globalTools}
+            />
           </div>
           <div className="screens" role="tablist" aria-label="Écrans">
             {screens.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={s.id === c.draft.id}
-                onClick={() => s.id !== c.draft.id && void switchTo(s.id)}
-              >
-                {screenName(s, i)}
-              </button>
+              <span key={s.id} className="screen-tab" role="presentation">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={s.id === c.draft.id}
+                  aria-keyshortcuts={screens.length > 1 ? 'Delete' : undefined}
+                  onClick={() => s.id !== c.draft.id && void switchTo(s.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Delete' || e.key === 'Backspace') {
+                      e.preventDefault();
+                      void removeScreen(s.id, screenName(s, i));
+                    }
+                  }}
+                >
+                  <span
+                    className="screen-dot"
+                    data-color={colorOf(s.id)}
+                    aria-hidden="true"
+                  />
+                  {screenName(s, i)}
+                </button>
+                {screens.length > 1 && (
+                  <button
+                    type="button"
+                    className="screen-close"
+                    tabIndex={-1}
+                    aria-label={`Supprimer l’écran ${screenName(s, i)}`}
+                    title="Supprimer l’écran"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void removeScreen(s.id, screenName(s, i));
+                    }}
+                  >
+                    <X size={12} aria-hidden="true" />
+                  </button>
+                )}
+              </span>
             ))}
             <button
               type="button"
@@ -416,6 +627,33 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
         </section>
       </div>
 
+      {coloring && (
+        <ColorDialog
+          target={coloring.label}
+          initial={coloring.initial}
+          onLive={(color) => setLive({ color })}
+          onCancel={() => {
+            setColoring(undefined);
+            setLive(undefined);
+          }}
+          onConfirm={(color) => {
+            c.paint(coloring.ids, color);
+            setColoring(undefined);
+            setLive(undefined);
+          }}
+        />
+      )}
+      {contrast.picked && (
+        <ContrastPopover
+          key={contrast.picked.issue.el.outerHTML.slice(0, 80)}
+          picked={contrast.picked}
+          onClose={() => contrast.setPicked(undefined)}
+          onApply={(owner, color) => {
+            c.paint(owner ? [owner] : [], color);
+            contrast.setPicked(undefined);
+          }}
+        />
+      )}
       {showVersions && (
         <div className="dialog-backdrop" onClick={() => setShowVersions(false)}>
           <div
@@ -504,6 +742,7 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
               frameRef={frame}
               size={size}
               onName={c.rename}
+              meta={{ device: view.device, scheme, tokens }}
             />
           </div>
         </div>

@@ -323,6 +323,12 @@ export const layoutLabels: Record<Layout, string> = {
 };
 
 const id = z.string().regex(/^[a-z0-9-]{1,32}$/);
+// Fond choisi par l'utilisatrice : #rrggbb ou #rrggbbaa (transparence).
+const hexColor = z.string().regex(/^#[0-9a-f]{6}([0-9a-f]{2})?$/);
+const asHex = (v: unknown) =>
+  typeof v === 'string' && /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(v)
+    ? { background: v.toLowerCase() }
+    : {};
 // Réglages Auto Layout d'un conteneur imbriqué (la direction est sa variante).
 export const boxSchema = z
   .object({
@@ -345,6 +351,7 @@ const leafSchema = z
     width: z.enum(widths),
     // Nom de calque choisi par l'utilisatrice (facultatif).
     label: z.string().max(40).optional(),
+    background: hexColor.optional(),
     alignX: z.enum(selfAligns).optional(),
     alignY: z.enum(selfAligns).optional(),
   })
@@ -366,6 +373,7 @@ export const sectionSchema = z
     justify: z.enum(justifies).default('start'),
     padding: z.enum(spaces).default('none'),
     margin: z.enum(spaces).default('none'),
+    background: hexColor.optional(),
     items: z.array(itemSchema).max(16),
   })
   .strict();
@@ -374,6 +382,7 @@ export const compositionSchema = z
     id,
     name: z.string().trim().min(1).max(60),
     sections: z.array(sectionSchema).max(12),
+    background: hexColor.optional(),
     updatedAt: z.string().datetime().optional(),
   })
   .strict();
@@ -486,6 +495,7 @@ export function normalizeComposition(
           ...(typeof i.label === 'string' && i.label.trim()
             ? { label: i.label.trim().slice(0, 40) }
             : {}),
+          ...asHex(i.background),
           ...(selfAligns.includes(i.alignX as never)
             ? { alignX: i.alignX }
             : {}),
@@ -525,6 +535,7 @@ export function normalizeComposition(
         justify: pick(justifies, s.justify, 'start'),
         padding: pick(spaces, s.padding, 'none'),
         margin: pick(spaces, s.margin, 'none'),
+        ...asHex(s.background),
         items,
       },
     ];
@@ -539,7 +550,30 @@ export function normalizeComposition(
         ? v.name.trim().slice(0, 60)
         : (fallback?.name ?? 'Nouvelle page'),
     sections,
+    ...asHex(v.background),
   });
+}
+
+// Fond : sans cible, l'écran ; sinon chaque section ou bloc ciblé. Couleur
+// vide = retour au fond du DS. Fonction pure (aperçu en direct et
+// historique partagent le même calcul).
+export function paint(c: Composition, ids: string[], color?: string) {
+  const set = <T extends { background?: string }>(o: T): T => {
+    const { background: _, ...rest } = o;
+    return (color ? { ...rest, background: color } : rest) as T;
+  };
+  if (!ids.length) return set(c);
+  const leaf = (i: Item): Item => ({
+    ...(ids.includes(i.id) ? set(i) : i),
+    ...(i.children ? { children: i.children.map(leaf) } : {}),
+  });
+  return {
+    ...c,
+    sections: c.sections.map((s) => ({
+      ...(ids.includes(s.id) ? set(s) : s),
+      items: s.items.map(leaf),
+    })),
+  };
 }
 
 // Résumé lisible d'une proposition : ce qui est ajouté, retiré, déplacé ou
@@ -599,6 +633,7 @@ const outputLeaf = z.object({
   label: z.string().optional(),
   alignX: z.enum(selfAligns).optional(),
   alignY: z.enum(selfAligns).optional(),
+  background: z.string().optional(),
   id: z.string(),
   kind: z.enum(blockKinds),
   variant: z.string(),
@@ -624,6 +659,7 @@ export const composeOutputSchema = z.object({
       justify: z.enum(justifies),
       padding: z.enum(spaces),
       margin: z.enum(spaces),
+      background: z.string().optional(),
       items: z.array(
         outputLeaf.extend({
           box: z

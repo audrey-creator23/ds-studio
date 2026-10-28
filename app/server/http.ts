@@ -24,8 +24,13 @@ import {
   type Assistant,
   type Composer,
 } from '../../connectors/agents/claude.js';
+import {
+  AutoComposer,
+  ClaudeCliComposer,
+} from '../../connectors/agents/claudeCli.js';
 import { ChatStore, buildContext } from './assistant.js';
 import { CompositionStore } from './compositions.js';
+import { FigmaBridge } from './figmaBridge.js';
 import {
   compositionSchema,
   composeSystem,
@@ -65,8 +70,15 @@ export async function createStudioServer(options: {
   const userData = new UserDataStore(store.directory);
   const chat = new ChatStore(store.directory);
   const assistant = options.assistant ?? new ClaudeAssistant(root);
-  const composer = options.composer ?? new ClaudeAssistant(root);
+  // Clé API si présente, sinon Claude Code installé (session de l'utilisatrice).
+  const composer =
+    options.composer ??
+    new AutoComposer(
+      new ClaudeAssistant(root),
+      new ClaudeCliComposer(store.directory),
+    );
   const compositions = new CompositionStore(store.directory);
+  const figmaBridge = new FigmaBridge(store.directory);
   let chatBusy = false;
   const csrf = randomBytes(32).toString('hex');
   let busy = false;
@@ -101,11 +113,69 @@ export async function createStudioServer(options: {
       `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'${options.dev ? ' ws://127.0.0.1:*' : ''}; frame-src 'self' blob: https://embed.figma.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'`,
     );
     try {
-      if (req.headers.host !== `127.0.0.1:${port}`)
+      // Figma n'accepte que « localhost » dans le manifeste du plugin : cet
+      // hôte est admis pour la seule route du plugin (origine null + code).
+      const pluginPath = new URL(req.url ?? '/', origin).pathname;
+      const pluginRead =
+        req.headers.origin === 'null' &&
+        [
+          '/api/figma/scene',
+          '/api/figma/scene/meta',
+          '/api/figma/status',
+        ].includes(pluginPath);
+      if (
+        req.headers.host !== `127.0.0.1:${port}` &&
+        !(pluginRead && req.headers.host === `localhost:${port}`)
+      )
         throw new StudioError(
           'Hôte refusé. Utilisez l’adresse 127.0.0.1 affichée au démarrage.',
           403,
         );
+      // Plugin Figma (iframe isolée, origine « null »), avec le code
+      // d'appairage privé : lecture de la dernière scène (ou de son en-tête,
+      // interrogé en continu) et compte rendu d'import. Rien d'autre.
+      if (pluginRead) {
+        res.setHeader('Access-Control-Allow-Origin', 'null');
+        res.setHeader(
+          'Access-Control-Allow-Headers',
+          'X-DS-Figma, Content-Type',
+        );
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+        res.setHeader('Vary', 'Origin');
+        if (req.method === 'OPTIONS') return void res.writeHead(204).end();
+        if (!(await figmaBridge.accept(req.headers['x-ds-figma'])))
+          throw new StudioError('Code d’appairage DS-Studio incorrect.', 401);
+        figmaBridge.seen();
+        if (pluginPath === '/api/figma/status') {
+          if (req.method !== 'POST')
+            throw new StudioError('Méthode non autorisée.', 405);
+          let raw = '';
+          for await (const chunk of req) {
+            raw += chunk;
+            if (raw.length > 4000)
+              throw new StudioError('Requête trop volumineuse.', 413);
+          }
+          return send(200, figmaBridge.report(JSON.parse(raw || '{}')));
+        }
+        if (req.method !== 'GET')
+          throw new StudioError('Méthode non autorisée.', 405);
+        if (pluginPath === '/api/figma/scene/meta') {
+          const s = await figmaBridge.get();
+          return send(
+            200,
+            s
+              ? { screenId: s.screenId, name: s.name, createdAt: s.createdAt }
+              : null,
+          );
+        }
+        const scene = await figmaBridge.get();
+        if (!scene)
+          throw new StudioError(
+            'Aucun écran envoyé : dans DS-Studio, Enregistrer → Figma.',
+            404,
+          );
+        return send(200, scene);
+      }
       if (req.headers.origin && req.headers.origin !== origin)
         throw new StudioError('Origine non autorisée.', 403);
       if (req.headers['sec-fetch-site'] === 'cross-site')
@@ -175,6 +245,8 @@ export async function createStudioServer(options: {
               model: await chat.model(),
             });
           if (url.pathname === '/api/state') return send(200, store.snapshot());
+          if (url.pathname === '/api/figma/status')
+            return send(200, await figmaBridge.status());
           if (url.pathname === '/api/export')
             return send(200, store.snapshot().tokens);
           throw new StudioError('Route inconnue.', 404);
@@ -192,7 +264,9 @@ export async function createStudioServer(options: {
         let size = 0;
         for await (const chunk of req) {
           size += chunk.length;
-          if (size > 128_000)
+          if (
+            size > (url.pathname === '/api/figma/scene' ? 4_000_000 : 128_000)
+          )
             throw new StudioError('Requête trop volumineuse.', 413);
           chunks.push(chunk);
         }
@@ -326,6 +400,16 @@ export async function createStudioServer(options: {
             .parse(body);
           return send(200, { compositions: await compositions.remove(b.id) });
         }
+        if (url.pathname === '/api/figma/scene') {
+          const scene = await figmaBridge.put(
+            z.object({ scene: z.unknown() }).strict().parse(body).scene,
+          );
+          return send(200, {
+            pairing: await figmaBridge.pairing(),
+            nodes: JSON.stringify(scene.root).match(/"type":/g)?.length ?? 0,
+            warnings: scene.warnings,
+          });
+        }
         if (url.pathname === '/api/compose') {
           const b = z
             .object({
@@ -344,11 +428,8 @@ export async function createStudioServer(options: {
             })
             .strict()
             .parse(body);
-          if (!(await composer.status()).available)
-            throw new StudioError(
-              'Claude indisponible : clé API Anthropic non configurée.',
-              503,
-            );
+          const ready = await composer.status();
+          if (!ready.available) throw new StudioError(ready.detail, 503);
           if (chatBusy)
             throw new StudioError('Une réponse de Claude est en cours.', 429);
           chatBusy = true;
@@ -356,6 +437,18 @@ export async function createStudioServer(options: {
           active.add(controller);
           const cancel = () => controller.abort();
           res.once('close', cancel);
+          // Flux NDJSON si le client le demande : statuts et début de réponse
+          // en direct, puis le résultat ({ type: 'done' }) ou l'erreur.
+          const streaming = (req.headers.accept ?? '').includes(
+            'application/x-ndjson',
+          );
+          const line = (v: unknown) => {
+            if (!res.headersSent)
+              res.writeHead(200, {
+                'Content-Type': 'application/x-ndjson; charset=utf-8',
+              });
+            if (!res.destroyed) res.write(JSON.stringify(v) + '\n');
+          };
           try {
             const history = [...b.history];
             while (history[0]?.role === 'assistant') history.shift();
@@ -370,6 +463,7 @@ export async function createStudioServer(options: {
               ],
               controller.signal,
               await chat.model(),
+              streaming ? (p) => line({ type: 'progress', ...p }) : undefined,
             );
             if (!result.output)
               throw new StudioError(
@@ -393,16 +487,24 @@ export async function createStudioServer(options: {
             const changes = proposal
               ? describeChanges(b.composition, proposal)
               : [];
-            return send(200, {
+            const payload = {
               reply: result.output.reply.slice(0, 2000),
               question: result.output.needsInput,
               proposal: changes.length ? proposal : null,
               changes,
               usage: result.usage,
-            });
+            };
+            if (!streaming) return send(200, payload);
+            line({ type: 'done', ...payload });
+            return void res.end();
           } catch (e) {
-            if (e instanceof StudioError) throw e;
-            throw new StudioError(describeAssistantError(e), 502);
+            const error =
+              e instanceof StudioError
+                ? e
+                : new StudioError(describeAssistantError(e), 502);
+            if (!streaming) throw error;
+            line({ type: 'error', error: error.message });
+            return void res.end();
           } finally {
             chatBusy = false;
             active.delete(controller);

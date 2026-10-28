@@ -5,6 +5,7 @@ import {
   newItem,
   newSection,
   normalizeComposition,
+  paint,
   type BlockKind,
   type Composition,
   type Item,
@@ -92,6 +93,43 @@ export interface Proposal {
   changes: string[];
   reply: string;
 }
+
+// Déplacement d'un élément d'un cran (au bord d'une section : section
+// voisine) ; appliqué tel quel à chaque élément d'une sélection multiple.
+function moveOne(c: Composition, id: string, delta: -1 | 1) {
+  const si = c.sections.findIndex((s) => s.id === id);
+  if (si >= 0) {
+    const to = si + delta;
+    if (to < 0 || to >= c.sections.length) return c;
+    const [s] = c.sections.splice(si, 1);
+    c.sections.splice(to, 0, s);
+    return c;
+  }
+  const found = findItem(c, id);
+  if (!found) return c;
+  const to = found.index + delta;
+  const sectionIndex = c.sections.indexOf(found.section);
+  const items = found.list;
+  if (to >= 0 && to < items.length) {
+    items.splice(found.index, 1);
+    items.splice(to, 0, found.item);
+  } else if (!found.group) {
+    // Au bord d'une section : passe dans la section voisine.
+    const next = c.sections[sectionIndex + delta];
+    if (!next || next.items.length >= 16) return c;
+    items.splice(found.index, 1);
+    if (delta < 0) next.items.push(found.item);
+    else next.items.unshift(found.item);
+  }
+  return c;
+}
+// Ordre d'affichage des éléments (sections, blocs, enfants).
+const order = (c: Composition) =>
+  c.sections.flatMap((s) => [
+    s.id,
+    ...s.items.flatMap((i) => [i.id, ...(i.children ?? []).map((x) => x.id)]),
+  ]);
+const asList = (ids: string | string[]) => (Array.isArray(ids) ? ids : [ids]);
 
 export function useComposition({
   draftKey = defaultDraftKey,
@@ -240,6 +278,10 @@ export function useComposition({
         return c;
       });
     },
+    // Fond de l'écran (sans cible) ou des éléments : une étape d'annulation.
+    paint(ids: string[], color?: string) {
+      update((c) => paint(c, ids, color));
+    },
     // Même réglage sur plusieurs blocs : une seule étape d'annulation.
     patchItems(ids: string[], patch: Partial<Item>) {
       update((c) => {
@@ -260,32 +302,14 @@ export function useComposition({
     },
     // Réorganisation : l'ordre dans la structure est l'ordre visuel, la mise
     // en page responsive reste celle de la section.
-    move(id: string, delta: -1 | 1) {
+    // Un id ou plusieurs (sélection multiple) : une seule étape d'annulation.
+    move(ids: string | string[], delta: -1 | 1) {
       update((c) => {
-        const si = c.sections.findIndex((s) => s.id === id);
-        if (si >= 0) {
-          const to = si + delta;
-          if (to < 0 || to >= c.sections.length) return c;
-          const [s] = c.sections.splice(si, 1);
-          c.sections.splice(to, 0, s);
-          return c;
-        }
-        const found = findItem(c, id);
-        if (!found) return c;
-        const to = found.index + delta;
-        const sectionIndex = c.sections.indexOf(found.section);
-        const items = found.list;
-        if (to >= 0 && to < items.length) {
-          items.splice(found.index, 1);
-          items.splice(to, 0, found.item);
-        } else if (!found.group) {
-          // Au bord d'une section : passe dans la section voisine.
-          const next = c.sections[sectionIndex + delta];
-          if (!next || next.items.length >= 16) return c;
-          items.splice(found.index, 1);
-          if (delta < 0) next.items.push(found.item);
-          else next.items.unshift(found.item);
-        }
+        const pos = order(c);
+        const list = [...new Set(asList(ids))].sort(
+          (x, y) => (pos.indexOf(x) - pos.indexOf(y)) * -delta,
+        );
+        for (const id of list) moveOne(c, id, delta);
         return c;
       });
     },
@@ -307,17 +331,21 @@ export function useComposition({
         return c;
       });
     },
-    remove(id: string) {
+    remove(ids: string | string[]) {
+      const gone = new Set(asList(ids));
       update((c) => {
         c.sections = c.sections
-          .filter((s) => s.id !== id)
+          .filter((s) => !gone.has(s.id))
           .map((s) => ({
             ...s,
             items: s.items
-              .filter((i) => i.id !== id)
+              .filter((i) => !gone.has(i.id))
               .map((i) =>
                 i.children
-                  ? { ...i, children: i.children.filter((x) => x.id !== id) }
+                  ? {
+                      ...i,
+                      children: i.children.filter((x) => !gone.has(x.id)),
+                    }
                   : i,
               ),
           }));
@@ -325,18 +353,25 @@ export function useComposition({
       });
       setSelected(undefined);
     },
-    duplicate(id: string) {
+    duplicate(ids: string | string[]) {
       update((c) => {
-        const found = findItem(c, id);
-        if (found && found.list.length < 16)
-          found.list.splice(found.index + 1, 0, {
-            ...structuredClone(found.item),
-            id: newItem(found.item.kind).id,
-            children: found.item.children?.map((x) => ({
-              ...x,
-              id: newItem(x.kind).id,
-            })),
-          });
+        const pos = order(c);
+        // Du dernier au premier : les positions restent justes.
+        const list = [...new Set(asList(ids))].sort(
+          (x, y) => pos.indexOf(y) - pos.indexOf(x),
+        );
+        for (const id of list) {
+          const found = findItem(c, id);
+          if (found && found.list.length < 16)
+            found.list.splice(found.index + 1, 0, {
+              ...structuredClone(found.item),
+              id: newItem(found.item.kind).id,
+              children: found.item.children?.map((x) => ({
+                ...x,
+                id: newItem(x.kind).id,
+              })),
+            });
+        }
         return c;
       });
     },
@@ -423,6 +458,29 @@ export function useComposition({
     },
     revert() {
       if (savedVersion) replace(normalizeComposition(savedVersion)!);
+    },
+    // Supprime un écran enregistré ; s'il est ouvert, ouvre `next` (voisin).
+    async deleteScreen(id: string, next?: string) {
+      setError('');
+      try {
+        let list = saved;
+        if (saved.some((x) => x.id === id)) {
+          const r = await request<{ compositions: Composition[] }>(
+            'compositions/delete',
+            { id },
+          );
+          list = r.compositions;
+          setSaved(list);
+        }
+        if (id === draft.id) {
+          const target = list.find((x) => x.id === next) ?? list[0];
+          replace(target ? normalizeComposition(target)! : emptyComposition());
+        }
+        return true;
+      } catch (e) {
+        setError((e as Error).message);
+        return false;
+      }
     },
     async deletePage() {
       setError('');

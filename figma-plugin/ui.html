@@ -1,0 +1,263 @@
+<!-- Interface du plugin DS-Studio Bridge : lit l'écran envoyé par DS-Studio
+     (serveur local 127.0.0.1:4310, code d'appairage), puis demande au fil
+     principal de créer les calques. Couleurs du thème Figma (clair/sombre). -->
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  body {
+    margin: 0;
+    padding: 14px;
+    font:
+      12px/1.45 Inter,
+      system-ui,
+      sans-serif;
+    color: var(--figma-color-text, #111);
+    background: var(--figma-color-bg, #fff);
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 14px;
+  }
+  p {
+    margin: 0 0 10px;
+    color: var(--figma-color-text-secondary, #555);
+  }
+  label {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  input {
+    padding: 7px 8px;
+    border: 1px solid var(--figma-color-border, #ccc);
+    border-radius: 6px;
+    background: var(--figma-color-bg, #fff);
+    color: inherit;
+    font: inherit;
+    letter-spacing: 0.05em;
+  }
+  button {
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--figma-color-bg-brand, #0d99ff);
+    color: var(--figma-color-text-onbrand, #fff);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.secondary {
+    border: 1px solid var(--figma-color-border, #ccc);
+    background: transparent;
+    color: inherit;
+  }
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--figma-color-border-brand-strong, #0d99ff);
+    outline-offset: 2px;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .box {
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid var(--figma-color-border, #ddd);
+    border-radius: 8px;
+  }
+  h1 small {
+    font-weight: 400;
+    color: var(--figma-color-text-secondary, #555);
+  }
+  label.check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 10px;
+    font-weight: 400;
+  }
+  .error {
+    color: var(--figma-color-text-danger, #c00);
+  }
+  ul {
+    margin: 6px 0 0;
+    padding-left: 16px;
+  }
+</style>
+<h1>DS-Studio Bridge <small id="version"></small></h1>
+<p id="where">Connexion…</p>
+<div id="pair" hidden>
+  <label>
+    Code d’appairage DS-Studio (une seule fois)
+    <input id="code" placeholder="XXXX-XXXX-XXXX" autocomplete="off" />
+  </label>
+  <button id="connect">Connecter</button>
+</div>
+<p id="state" role="status" aria-live="polite"></p>
+<div id="out" aria-live="polite"></div>
+<script>
+  // Surveille DS-Studio (localhost:4310) toutes les 3 s tant que le plugin
+  // est ouvert ; un nouvel export est importé seul dans le fichier cible,
+  // avec confirmation avant tout remplacement. Statut renvoyé à DS-Studio.
+  const api = 'http://localhost:4310/api/figma/';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) =>
+    String(s).replace(
+      /[&<>"]/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+    );
+  const post = (m) => parent.postMessage({ pluginMessage: m }, '*');
+  let code = '';
+  let last = '';
+  let target = false;
+  let busy = false;
+  let timer;
+  // Écrans à mettre à jour sans redemander (choix mémorisé dans Figma).
+  let auto = [];
+  const state = (t, error) => {
+    $('state').textContent = t;
+    $('state').className = error ? 'error' : '';
+  };
+  const call = async (path, body) => {
+    const r = await fetch(api + path, {
+      method: body ? 'POST' : 'GET',
+      headers: body
+        ? { 'X-DS-Figma': code, 'Content-Type': 'application/json' }
+        : { 'X-DS-Figma': code },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await r.json();
+    if (!r.ok)
+      throw Object.assign(
+        new Error(data.error || 'DS-Studio a refusé la demande.'),
+        { status: r.status },
+      );
+    return data;
+  };
+  const tell = (body) => call('status', body).catch(() => undefined);
+  async function poll() {
+    if (busy) return;
+    try {
+      const meta = await call('scene/meta');
+      state(
+        `Connecté à DS-Studio${meta ? ` · dernier envoi « ${meta.name} »` : ''}.`,
+      );
+      if (meta && meta.createdAt !== last) {
+        if (!target) {
+          state(
+            `Nouvel écran « ${meta.name} » en attente : ouvrez le fichier cible.`,
+            true,
+          );
+          return;
+        }
+        busy = true;
+        const scene = await call('scene');
+        importScene(scene, auto.includes(scene.screenId));
+      }
+    } catch (e) {
+      busy = false;
+      if (e.status === 401) {
+        clearInterval(timer);
+        $('pair').hidden = false;
+        state(
+          'Code d’appairage refusé : saisissez celui affiché par DS-Studio.',
+          true,
+        );
+      } else
+        state(
+          'DS-Studio injoignable : vérifiez qu’il tourne (npm run service -- status).',
+          true,
+        );
+    }
+  }
+  function importScene(scene, replace) {
+    $('out').innerHTML = '';
+    state(`Import de « ${scene.name} »…`);
+    post({ type: 'import', scene, replace });
+  }
+  function start() {
+    $('pair').hidden = true;
+    clearInterval(timer);
+    poll();
+    timer = setInterval(poll, 3000);
+  }
+  $('connect').onclick = () => {
+    code = $('code').value.trim().toUpperCase();
+    post({ type: 'save-pairing', code });
+    start();
+  };
+  onmessage = (e) => {
+    const m = e.data.pluginMessage;
+    if (!m) return;
+    if (m.type === 'init') {
+      code = m.code;
+      last = m.last;
+      auto = m.auto;
+      target = m.target;
+      $('version').textContent = `v${m.version}`;
+      $('where').innerHTML = target
+        ? `Fichier cible ouvert : <strong>${esc(m.fileName)}</strong>. Les envois de DS-Studio s’importent ici automatiquement.`
+        : `Fichier ouvert : <strong>${esc(m.fileName)}</strong>. L’import se fait seulement dans « ${esc(m.targetName)} ». <button class="secondary" id="open">Ouvrir le fichier cible</button>`;
+      if (!target) $('open').onclick = () => post({ type: 'open-target' });
+      if (code) start();
+      else $('pair').hidden = false;
+    }
+    if (m.type === 'error') {
+      busy = false;
+      state(m.error, true);
+      tell({ state: 'error', message: m.error.slice(0, 400) });
+    }
+    if (m.type === 'report') {
+      const r = m.report;
+      if (r.needsConfirm) {
+        state('Confirmation requise.');
+        $('out').innerHTML =
+          `<div class="box" role="alertdialog" aria-label="Confirmer le remplacement">
+          <p>« ${esc(r.needsConfirm.name)} » existe déjà. Le remplacer à la même position ? Les autres éléments du fichier ne changent pas.</p>
+          <label class="check"><input type="checkbox" id="always" checked /> Mettre à jour cet écran automatiquement aux prochains envois</label>
+          <div class="row"><button id="yes">Remplacer</button><button class="secondary" id="no">Ignorer cet envoi</button></div></div>`;
+        tell({
+          state: 'waiting',
+          screenId: m.scene.screenId,
+          message: 'Remplacement à confirmer dans Figma.',
+        });
+        $('yes').onclick = () => {
+          if ($('always').checked && !auto.includes(m.scene.screenId)) {
+            auto = [...auto, m.scene.screenId];
+            post({ type: 'save-auto', auto });
+          }
+          importScene(m.scene, true);
+        };
+        $('no').onclick = () => {
+          last = m.scene.createdAt;
+          post({ type: 'save-last', last });
+          busy = false;
+          $('out').innerHTML = '';
+          state('Envoi ignoré, rien n’a changé.');
+        };
+        $('yes').focus();
+        return;
+      }
+      last = m.scene.createdAt;
+      post({ type: 'save-last', last });
+      busy = false;
+      state(`« ${m.scene.name} » importé.`);
+      tell({
+        state: 'imported',
+        screenId: m.scene.screenId,
+        message: `${r.frames + r.texts + r.vectors + r.instances} calques`,
+      });
+      $('out').innerHTML =
+        `<div class="box"><p>${r.frames} frames · ${r.texts} textes · ${r.vectors} icônes · ${r.instances} instances · ${r.variables} variables</p>
+        ${r.warnings.length ? `<strong>À vérifier (${r.warnings.length})</strong><ul>${r.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : '<p>Aucune incompatibilité détectée.</p>'}</div>`;
+    }
+  };
+</script>

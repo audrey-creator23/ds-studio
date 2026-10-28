@@ -245,11 +245,13 @@ export function CompositionView({
                 data-id={i.id}
                 data-ax={i.alignX}
                 data-ay={i.alignY}
+                data-bg={i.background ? '' : undefined}
                 className={`cmp-item width-${i.width}${isSel(i.id) ? ' is-selected' : ''}`}
                 style={
                   {
                     '--span': Math.min(i.span, box.columns),
                     '--rows': i.rows,
+                    background: i.background,
                   } as CSSProperties
                 }
                 draggable={editing && !!onDrop}
@@ -290,6 +292,8 @@ export function CompositionView({
     <DSProvider tokens={tokens}>
       <div
         className={`cmp-page${interact ? '' : ' is-editing'}`}
+        data-bg={composition.background ? '' : undefined}
+        style={{ background: composition.background }}
         onDragLeave={(e) => {
           if (e.currentTarget === e.target) setOver(undefined);
         }}
@@ -306,7 +310,10 @@ export function CompositionView({
             data-id={s.id}
             aria-label={s.name}
             className={`${classes(s)}${isSel(s.id) ? ' is-selected' : ''}`}
-            style={{ '--cols': s.columns } as CSSProperties}
+            data-bg={s.background ? '' : undefined}
+            style={
+              { '--cols': s.columns, background: s.background } as CSSProperties
+            }
             onClick={pick(s.id)}
           >
             {body(s, s.items)}

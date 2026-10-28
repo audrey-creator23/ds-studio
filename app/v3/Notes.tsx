@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Bell,
   BellOff,
@@ -97,15 +97,78 @@ function NoteCard({
       await Notification.requestPermission().catch(() => undefined);
     await onChange({ remindAt: iso, remindedAt: null });
   }
+  const pending = note.remindAt && !note.remindedAt;
+  const tool = (
+    label: string,
+    icon: ReactNode,
+    run: () => void,
+    pressed?: boolean,
+  ) => (
+    <button
+      type="button"
+      className="note-tool"
+      aria-label={label}
+      title={label}
+      aria-pressed={pressed}
+      onClick={run}
+    >
+      {icon}
+    </button>
+  );
+  // Post-it : lecture par défaut (contenu + rappel informatif) ; actions
+  // au survol ou au focus (clavier, toucher), superposées sans décaler le
+  // contenu ; édition au crayon, « Valider » en bas à droite.
   return (
-    <Card
+    <article
       className="note"
       data-color={editing ? color : note.color}
-      data-state={editing ? 'edit' : 'done'}
-      aria-label="Note"
+      data-state={editing ? 'edit' : 'read'}
+      data-pinned={note.pinned || undefined}
+      aria-label={`Note${note.pinned ? ' épinglée' : ''}`}
+      tabIndex={editing ? undefined : 0}
     >
-      <div className="note-head">
-        {editing ? (
+      {note.pinned && <span className="note-tape" aria-hidden="true" />}
+      {!editing && (
+        <div
+          className="note-tools"
+          role="toolbar"
+          aria-label="Actions de la note"
+        >
+          {tool(
+            note.pinned ? 'Désépingler' : 'Épingler',
+            note.pinned ? (
+              <PinOff size={15} aria-hidden="true" />
+            ) : (
+              <Pin size={15} aria-hidden="true" />
+            ),
+            () => void onChange({ pinned: !note.pinned }),
+            note.pinned,
+          )}
+          {pending
+            ? tool(
+                'Annuler le rappel',
+                <BellOff size={15} aria-hidden="true" />,
+                () => void onChange({ remindAt: null, remindedAt: null }),
+              )
+            : tool(
+                'Programmer un rappel',
+                <Bell size={15} aria-hidden="true" />,
+                edit,
+              )}
+          {tool(
+            'Modifier la note',
+            <Pencil size={15} aria-hidden="true" />,
+            edit,
+          )}
+          {tool(
+            'Supprimer la note',
+            <Trash2 size={15} aria-hidden="true" />,
+            onDelete,
+          )}
+        </div>
+      )}
+      {editing ? (
+        <>
           <span className="note-colors" role="group" aria-label="Couleur">
             {colors.map((c) => (
               <button
@@ -119,111 +182,77 @@ function NoteCard({
               />
             ))}
           </span>
-        ) : (
-          <span className="note-colors" />
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={note.pinned ? 'Désépingler' : 'Épingler'}
-          title={note.pinned ? 'Désépingler' : 'Épingler'}
-          aria-pressed={note.pinned}
-          onClick={() => void onChange({ pinned: !note.pinned })}
-        >
-          {note.pinned ? (
-            <Pin size={15} aria-hidden="true" />
-          ) : (
-            <PinOff size={15} aria-hidden="true" />
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Supprimer la note"
-          title="Supprimer la note"
-          onClick={onDelete}
-        >
-          <Trash2 size={15} aria-hidden="true" />
-        </Button>
-      </div>
-      {editing ? (
-        <textarea
-          className="note-text"
-          aria-label="Texte de la note"
-          maxLength={2000}
-          rows={4}
-          autoFocus={!note.text}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
+          <textarea
+            className="note-text"
+            aria-label="Texte de la note"
+            maxLength={2000}
+            rows={5}
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <div className="note-reminder">
+            {pending ? (
+              <>
+                <span className="note-when">
+                  <Bell size={13} aria-hidden="true" /> Rappel le{' '}
+                  {when(note.remindAt!)}
+                </span>
+                <button
+                  type="button"
+                  className="note-link"
+                  onClick={() =>
+                    void onChange({ remindAt: null, remindedAt: null })
+                  }
+                >
+                  Annuler le rappel
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  type="datetime-local"
+                  className="note-date"
+                  aria-label="Date et heure du rappel"
+                  min={local(now())}
+                  value={at}
+                  onChange={(e) => setAt(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="note-link"
+                  disabled={!at || new Date(at) <= new Date()}
+                  onClick={() => void schedule()}
+                >
+                  Programmer
+                </button>
+              </>
+            )}
+          </div>
+          <div className="note-foot">
+            <Button
+              size="sm"
+              disabled={busy || !text.trim()}
+              onClick={() => void validate()}
+            >
+              <Check size={14} aria-hidden="true" /> Valider
+            </Button>
+          </div>
+        </>
       ) : (
-        <p className="note-read">{note.text}</p>
+        <>
+          <p className="note-read">{note.text}</p>
+          {(pending || note.remindedAt) && (
+            <p className="note-when">
+              <Bell size={13} aria-hidden="true" />{' '}
+              {pending
+                ? `Rappel le ${when(note.remindAt!)}`
+                : `Rappelé le ${when(note.remindedAt!)}`}
+            </p>
+          )}
+        </>
       )}
-      <div className="note-reminder">
-        {note.remindAt && !note.remindedAt ? (
-          <>
-            <span className="muted small">
-              <Bell size={13} aria-hidden="true" /> Rappel le{' '}
-              {when(note.remindAt)}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                void onChange({ remindAt: null, remindedAt: null })
-              }
-            >
-              <BellOff size={13} aria-hidden="true" /> Annuler
-            </Button>
-          </>
-        ) : (
-          <>
-            <input
-              type="datetime-local"
-              className="input input-sm"
-              aria-label="Date et heure du rappel"
-              min={local(now())}
-              value={at}
-              onChange={(e) => setAt(e.target.value)}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!at || new Date(at) <= new Date()}
-              onClick={() => void schedule()}
-            >
-              <Bell size={13} aria-hidden="true" /> Programmer
-            </Button>
-          </>
-        )}
-        {note.remindedAt && (
-          <span className="muted small">
-            Rappelé le {when(note.remindedAt)}
-          </span>
-        )}
-      </div>
-      <div className="note-foot">
-        {editing ? (
-          <Button
-            size="sm"
-            disabled={busy || !text.trim()}
-            onClick={() => void validate()}
-          >
-            <Check size={14} aria-hidden="true" /> Valider
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Modifier la note"
-            title="Modifier la note"
-            onClick={edit}
-          >
-            <Pencil size={15} aria-hidden="true" />
-          </Button>
-        )}
-      </div>
-    </Card>
+    </article>
   );
 }
 

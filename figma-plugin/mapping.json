@@ -1,0 +1,14 @@
+{
+  "button": ["Button", "Bouton"],
+  "mButton": ["Button", "Bouton"],
+  "badge": ["Badge"],
+  "mBadge": ["Badge"],
+  "field": ["Input", "Text field", "Champ"],
+  "mInput": ["Input", "Text field", "Champ"],
+  "mAlert": ["Alert", "Alerte"],
+  "mProgress": ["Progress", "Progression"],
+  "mTabs": ["Tabs", "Onglets"],
+  "card": ["Card", "Carte"],
+  "mCard": ["Card", "Carte"],
+  "navigation": ["Navigation", "Navbar"]
+}

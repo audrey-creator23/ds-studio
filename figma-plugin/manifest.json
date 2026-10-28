@@ -1,0 +1,20 @@
+{
+  "name": "DS-Studio Bridge",
+  "id": "ds-studio-bridge-local",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"],
+    "devAllowedDomains": ["http://localhost:4310"],
+    "reasoning": "Lit l'écran envoyé par DS-Studio sur ce Mac (serveur local localhost:4310) ; aucun autre accès réseau."
+  },
+  "relaunchButtons": [
+    {
+      "command": "import",
+      "name": "Importer depuis DS-Studio"
+    }
+  ]
+}

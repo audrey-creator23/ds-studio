@@ -864,7 +864,9 @@ test('bulle Claude : toutes les pages, contexte, clavier, glisser, position mém
   ).toBeVisible();
 });
 
-test('v3 : dashboard, rendus, frise temporelle, thème', async ({ page }) => {
+test('v3 : dashboard, accès rapide, frise temporelle, thème', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
@@ -895,7 +897,7 @@ test('v3 : dashboard, rendus, frise temporelle, thème', async ({ page }) => {
   await expect(nextKpi).toContainText('J+7');
   await expect(nextKpi).toContainText('en retard');
   // Remis (« Fait ») mais pas validé : toujours le prochain rendu, échéance
-  // passée distinguée d'un retard ; badge « Remis ».
+  // passée distinguée d'un retard.
   await page.goto('/?vue=brief');
   await page.getByRole('button', { name: 'Actualiser ma progression' }).click();
   await page
@@ -905,7 +907,6 @@ test('v3 : dashboard, rendus, frise temporelle, thème', async ({ page }) => {
   await page.goto('/');
   await expect(nextKpi).toContainText('Note de cadrage · 13/11/2026');
   await expect(nextKpi).toContainText('remis, en attente de validation');
-  await expect(page.locator('.rendus li').first()).toContainText('Remis');
   await page.clock.setFixedTime(new Date(2026, 9, 28, 10));
   await page.reload();
   await expect(nextKpi).toContainText('J-16');
@@ -924,26 +925,51 @@ test('v3 : dashboard, rendus, frise temporelle, thème', async ({ page }) => {
   await expect(
     page.getByText('Le volcan illustre le temps restant'),
   ).toBeVisible();
-  // Rendus : les 5 toujours visibles, sans bascule ; un rendu fait défiler
-  // jusqu'à son étape, qui reste fermée.
-  await expect(page.locator('.rendus li')).toHaveCount(5);
+  // Accès rapide : 4 tuiles 2 × 2, teintes distinctes, vraies routes.
   await expect(
-    page.getByRole('button', { name: 'Voir les rendus à réaliser' }),
-  ).toHaveCount(0);
-  // Colonnes alignées : badges et dates au même x sur les 5 lignes.
-  for (const sel of ['.rendus .badge', '.rendus small']) {
-    const xs = await page
-      .locator(sel)
-      .evaluateAll((els) =>
-        els.map((e) => Math.round(e.getBoundingClientRect().right)),
-      );
-    expect(new Set(xs).size).toBe(1);
-  }
+    page.getByText('Retrouvez vos espaces de travail en un clic.'),
+  ).toBeVisible();
+  const tiles = page
+    .getByRole('list', { name: 'Espaces de travail' })
+    .getByRole('link');
+  await expect(tiles).toHaveCount(4);
+  const info = await tiles.evaluateAll((els) =>
+    els.map((e) => {
+      const r = e.getBoundingClientRect();
+      return {
+        text: e.textContent,
+        href: e.getAttribute('href'),
+        bg: getComputedStyle(e).backgroundColor,
+        x: Math.round(r.left),
+        y: Math.round(r.top),
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+      };
+    }),
+  );
+  expect(info.map((t) => t.href)).toEqual([
+    '?vue=design',
+    '?vue=brief',
+    '?vue=schemas',
+    '?vue=notes',
+  ]);
+  expect(info[0].text).toContain('Créer mes interfaces');
+  expect(new Set(info.map((t) => t.bg)).size).toBe(4);
+  expect(new Set(info.map((t) => t.x)).size).toBe(2);
+  expect(new Set(info.map((t) => t.y)).size).toBe(2);
+  expect(new Set(info.map((t) => t.w)).size).toBe(1);
+  expect(new Set(info.map((t) => t.h)).size).toBe(1);
+  await expect(page.locator('.rendus')).toHaveCount(0);
   // Volcan : remplit la carte Activité.
   const stage = await page.locator('.activity .stage').boundingBox();
   expect(stage!.height).toBeGreaterThanOrEqual(220);
-  await page.locator('.rendus a').nth(1).click();
-  await expect(page).toHaveURL(/vue=brief#etape-problematique/);
+  await tiles.nth(1).click();
+  await expect(page).toHaveURL(/vue=brief/);
+  await expect(
+    page.getByRole('heading', { name: 'Étapes du PFE', level: 1 }),
+  ).toBeVisible();
+  // Accès ciblé à une étape (ancre) : défilement jusqu'à elle, fermée.
+  await page.goto('/?vue=brief#etape-problematique');
   const step = page.locator('#etape-problematique');
   await expect(step).toBeInViewport();
   await expect(page.locator('.step-detail')).toHaveCount(0);
@@ -1214,7 +1240,7 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
   await expect(frame.locator('.cmp-group')).toHaveCSS('padding', '0px');
   await page.keyboard.press('ControlOrMeta+Shift+z');
   await expect(frame.locator('.cmp-group')).not.toHaveCSS('padding', '0px');
-  // Grouper / dégrouper une sélection multiple (Maj + clic).
+  // Grouper / dégrouper une sélection multiple (⌘/Ctrl + clic).
   await drop('.cmp-section > .cmp-section-body', block('text', 'body'));
   await expect(frame.locator('.cmp-item')).toHaveCount(5);
   const lines = page.locator('.tree-section > ol > .tree-node > .tree-line');
@@ -1222,7 +1248,7 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
   await lines
     .last()
     .locator('.tree-pick')
-    .click({ modifiers: ['Shift'] });
+    .click({ modifiers: ['ControlOrMeta'] });
   await page.getByRole('button', { name: 'Grouper' }).click();
   await expect(frame.locator('.cmp-group')).toHaveCount(2);
   await page.getByRole('button', { name: 'Dégrouper' }).click();
@@ -1305,7 +1331,7 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   const dialog = page.getByRole('dialog', { name: 'Télécharger l’écran' });
   await dialog.getByRole('textbox', { name: 'Nom de l’écran' }).fill('Accueil');
-  await expect(dialog.getByRole('radio', { name: 'Figma' })).toBeDisabled();
+  await expect(dialog.getByRole('radio', { name: /Figma/ })).toBeEnabled();
   await dialog.getByRole('radio', { name: 'Composant React/TSX' }).check();
   let download = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Valider' }).click();
@@ -1468,15 +1494,33 @@ test('v3 : mes notes, épinglées, persistantes, rappel', async ({ page }) => {
   await page.reload();
   await expect(card).toContainText('Relire la note de cadrage');
   await expect(note).toHaveCount(0);
+  // Lecture : aucun bouton hors survol/focus ; actions superposées sans
+  // décaler le contenu.
+  const tools = card.getByRole('toolbar', { name: 'Actions de la note' });
+  await page.mouse.move(0, 0);
+  await expect(tools).toHaveCSS('opacity', '0');
+  const text = card.locator('.note-read');
+  const y = (await text.boundingBox())!.y;
+  await card.hover();
+  await expect(tools).toHaveCSS('opacity', '1');
+  expect((await text.boundingBox())!.y).toBe(y);
   // Rééditer : texte et couleur, enregistrés seulement au nouveau Valider.
-  await card.getByRole('button', { name: 'Modifier la note' }).click();
+  await tools.getByRole('button', { name: 'Modifier la note' }).click();
   await note.fill('Relire la note de cadrage v2');
   await card.getByRole('button', { name: 'Couleur 9' }).click();
   await card.getByRole('button', { name: 'Valider' }).click();
+  await expect(note).toHaveCount(0);
   await expect(card).toHaveCSS('background-color', 'rgb(245, 85, 54)');
   await page.reload();
   await expect(card).toContainText('v2');
-  // Rappel programmé, puis annulé.
+  // Épingler au clavier : focus sur la note → actions accessibles.
+  await card.focus();
+  await expect(tools).toHaveCSS('opacity', '1');
+  await tools.getByRole('button', { name: 'Désépingler' }).click();
+  await expect(card).not.toHaveAttribute('data-pinned', /.*/);
+  // Rappel programmé (affiché en lecture, informatif), puis annulé.
+  await card.hover();
+  await tools.getByRole('button', { name: 'Programmer un rappel' }).click();
   const at = new Date(Date.now() + 3_600_000);
   const p = (n: number) => String(n).padStart(2, '0');
   await page
@@ -1484,12 +1528,315 @@ test('v3 : mes notes, épinglées, persistantes, rappel', async ({ page }) => {
     .fill(
       `${at.getFullYear()}-${p(at.getMonth() + 1)}-${p(at.getDate())}T${p(at.getHours())}:${p(at.getMinutes())}`,
     );
-  await page.getByRole('button', { name: 'Programmer' }).click();
-  await expect(page.getByText(/Rappel le/)).toBeVisible();
-  await page.getByRole('button', { name: 'Annuler' }).click();
-  await expect(page.getByRole('button', { name: 'Programmer' })).toBeVisible();
+  await card.getByRole('button', { name: 'Programmer' }).click();
+  await card.getByRole('button', { name: 'Valider' }).click();
+  await expect(card.locator('.note-when')).toContainText('Rappel le');
+  await card.hover();
+  await tools.getByRole('button', { name: 'Annuler le rappel' }).click();
+  await expect(card.locator('.note-when')).toHaveCount(0);
   // Suppression.
   page.once('dialog', (d) => void d.accept());
-  await page.getByRole('button', { name: 'Supprimer la note' }).click();
+  await card.hover();
+  await tools.getByRole('button', { name: 'Supprimer la note' }).click();
   await expect(page.getByText('Aucune note.')).toBeVisible();
+});
+
+test('v3 : couleur de fond et audit de contraste WCAG', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=design');
+  const frame = page.frameLocator('iframe[title="Aperçu de l’écran"]');
+  await expect(frame.locator('.cmp-section')).toHaveCount(1);
+  await frame
+    .locator('.cmp-section > .cmp-section-body')
+    .first()
+    .evaluate((el) => {
+      const dt = new DataTransfer();
+      dt.setData(
+        'application/x-ds-block',
+        JSON.stringify({ kind: 'text', variant: 'body' }),
+      );
+      const r = el.getBoundingClientRect();
+      for (const type of ['dragover', 'drop'])
+        el.dispatchEvent(
+          new DragEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer: dt,
+            clientX: r.left + 4,
+            clientY: r.bottom - 2,
+          }),
+        );
+    });
+  await expect(frame.locator('.cmp-item')).toHaveCount(1);
+  const pageBg = frame.locator('.cmp-page');
+  // Sans sélection : fond de l'écran. Aperçu en direct, Annuler rétablit.
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Couleur de fond' }).click();
+  let dialog = page.getByRole('dialog', { name: /Couleur de fond · écran/ });
+  await dialog.getByRole('textbox', { name: 'HEX' }).fill('#333333');
+  await expect(pageBg).toHaveCSS('background-color', 'rgb(51, 51, 51)');
+  await dialog.getByRole('button', { name: 'Annuler' }).click();
+  await expect(pageBg).not.toHaveCSS('background-color', 'rgb(51, 51, 51)');
+  // Valider : enregistré, une étape d'annulation, transparence acceptée.
+  await page.getByRole('button', { name: 'Couleur de fond' }).click();
+  dialog = page.getByRole('dialog', { name: /Couleur de fond/ });
+  await dialog.getByRole('textbox', { name: 'HEX' }).fill('#333333');
+  await dialog.getByRole('button', { name: 'Valider' }).click();
+  await expect(pageBg).toHaveCSS('background-color', 'rgb(51, 51, 51)');
+  await page.getByRole('heading', { name: 'Mon espace Design' }).click();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(pageBg).not.toHaveCSS('background-color', 'rgb(51, 51, 51)');
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(pageBg).toHaveCSS('background-color', 'rgb(51, 51, 51)');
+  // Audit : texte sombre sur fond sombre signalé, contour sans changer le
+  // style ; popover ratio actuel / requis ; correction proposée, appliquée
+  // seulement sur demande.
+  await page.getByRole('button', { name: 'Audit de contraste' }).click();
+  await expect(page.locator('.studio-status')).toContainText('non conforme');
+  const flagged = frame.locator('[data-contrast="fail"]').first();
+  await expect(flagged).toHaveCSS('outline-style', 'solid');
+  await flagged.click();
+  const pop = page.getByRole('dialog', { name: 'Contraste insuffisant' });
+  await expect(pop).toContainText('requis 4,50:1');
+  await pop.getByRole('button', { name: 'Corriger' }).click();
+  await expect(pop).toContainText('Après');
+  await expect(pageBg).toHaveCSS('background-color', 'rgb(51, 51, 51)');
+  await pop.getByRole('button', { name: 'Appliquer' }).click();
+  await expect(pageBg).not.toHaveCSS('background-color', 'rgb(51, 51, 51)');
+  await expect(page.locator('.studio-status')).toContainText('aucun écart');
+  // Désactivé : plus aucun contour.
+  await page.getByRole('button', { name: 'Audit de contraste' }).click();
+  await expect(frame.locator('[data-contrast]')).toHaveCount(0);
+  // Export Figma : scène mesurée envoyée au serveur, lue par le plugin
+  // (origine « null ») avec le code d'appairage ; refusée sans.
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  const save = page.getByRole('dialog', { name: 'Télécharger l’écran' });
+  await save.getByRole('radio', { name: /Figma/ }).check();
+  // Plugin fermé : le clic ouvre le fichier Figma cible (aucun accès réseau
+  // réel pendant le test).
+  await page
+    .context()
+    .route('https://www.figma.com/**', (r) =>
+      r.fulfill({ status: 200, body: '' }),
+    );
+  const popup = page.waitForEvent('popup');
+  await save.getByRole('button', { name: 'Valider' }).click();
+  expect((await popup).url()).toContain('zw2u0ScSwnWJR5a0wLdlEC');
+  const status = save.getByRole('status').filter({ hasText: 'Envoyé' });
+  await expect(status).toContainText('Code d’appairage');
+  const code = /([0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4})/.exec(
+    (await status.textContent())!,
+  )![1];
+  const url = '/api/figma/scene';
+  const denied = await page.request.get(url, {
+    headers: { Origin: 'null', 'X-DS-Figma': 'AAAA-BBBB-CCCC' },
+  });
+  expect(denied.status()).toBe(401);
+  const res = await page.request.get(url, {
+    headers: { Origin: 'null', 'X-DS-Figma': code },
+  });
+  expect(res.status()).toBe(200);
+  expect(res.headers()['access-control-allow-origin']).toBe('null');
+  const scene = await res.json();
+  expect(scene.root.w).toBeGreaterThan(300);
+  expect(scene.root.layout.mode).toBe('VERTICAL');
+  expect(scene.root.fill).toBeTruthy();
+  const flat = JSON.stringify(scene.root);
+  expect(flat).toContain('"type":"TEXT"');
+  expect(flat).toContain('"kind":"text"');
+  expect(
+    scene.tokens.some((t: { name: string }) => t.name === 'color/brand'),
+  ).toBe(true);
+  // Autre origine : toujours refusée.
+  const foreign = await page.request.get(url, {
+    headers: { Origin: 'https://example.com', 'X-DS-Figma': code },
+  });
+  expect(foreign.status()).toBe(403);
+  // Adresse du manifeste Figma (« localhost ») : admise pour cette seule
+  // route, avec origine null et code ; refusée ailleurs.
+  const local = 'http://localhost:4318';
+  const viaLocalhost = await page.request.get(`${local}${url}`, {
+    headers: { Origin: 'null', 'X-DS-Figma': code },
+  });
+  expect(viaLocalhost.status()).toBe(200);
+  const otherRoute = await page.request.get(`${local}/api/state`, {
+    headers: { Origin: 'null' },
+  });
+  expect(otherRoute.status()).toBe(403);
+  // Statut réel : plugin fermé, puis plugin connecté qui rend compte.
+  await expect(save.locator('.figma-live')).toContainText('Plugin');
+  await expect(
+    save.getByRole('link', { name: /Ouvrir le fichier Figma/ }),
+  ).toHaveAttribute('href', /zw2u0ScSwnWJR5a0wLdlEC/);
+  const meta = await page.request.get(`${local}/api/figma/scene/meta`, {
+    headers: { Origin: 'null', 'X-DS-Figma': code },
+  });
+  expect((await meta.json()).screenId).toBe(scene.screenId);
+  const told = await page.request.post(`${local}/api/figma/status`, {
+    headers: {
+      Origin: 'null',
+      'X-DS-Figma': code,
+      'Content-Type': 'application/json',
+    },
+    data: {
+      state: 'imported',
+      screenId: scene.screenId,
+      message: '12 calques',
+    },
+  });
+  expect(told.status()).toBe(200);
+  await expect(save.locator('.figma-live')).toContainText(
+    'Importé dans Figma (12 calques)',
+  );
+});
+
+test('v3 : onglets d’écrans, couleurs de repère et suppression', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=design');
+  const screens = page.getByRole('tablist', { name: 'Écrans' });
+  const tabs = screens.getByRole('tab');
+  const before = await tabs.count();
+  await screens.getByRole('button', { name: 'Nouvel écran' }).click();
+  await screens.getByRole('button', { name: 'Nouvel écran' }).click();
+  await expect(tabs).toHaveCount(before + 2);
+  // Repère : point coloré distinct par écran, onglet actif noir/blanc.
+  const dots = () =>
+    screens
+      .locator('.screen-dot')
+      .evaluateAll((els) =>
+        els.map((e) => getComputedStyle(e).backgroundColor),
+      );
+  const colors = await dots();
+  // Cycle de 5 teintes : autant de couleurs distinctes que d'écrans (≤ 5).
+  expect(new Set(colors).size).toBe(Math.min(colors.length, 5));
+  await expect(tabs.last()).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+  // Croix : invisible au repos, visible au survol, sans décalage.
+  const middle = screens.locator('.screen-tab').nth(-2);
+  const close = middle.locator('.screen-close');
+  await page.mouse.move(0, 0);
+  await page.getByRole('heading', { name: 'Mon espace Design' }).click();
+  await expect(close).toHaveCSS('opacity', '0');
+  const width = (await middle.boundingBox())!.width;
+  await middle.hover();
+  await expect(close).toHaveCSS('opacity', '1');
+  expect((await middle.boundingBox())!.width).toBe(width);
+  await expect(close).toHaveAttribute('title', 'Supprimer l’écran');
+  // Annuler : rien ne change ; confirmer : écran supprimé, voisin ouvert.
+  page.once('dialog', (d) => void d.dismiss());
+  await close.click();
+  await expect(tabs).toHaveCount(before + 2);
+  page.once('dialog', (d) => void d.accept());
+  await close.click();
+  await expect(tabs).toHaveCount(before + 1);
+  // L'écran ouvert (non supprimé) reste sélectionné.
+  await expect(tabs.last()).toHaveAttribute('aria-selected', 'true');
+  // Clavier : Suppr sur l'onglet actif, puis voisin sélectionné.
+  await tabs.last().focus();
+  page.once('dialog', (d) => void d.accept());
+  await page.keyboard.press('Delete');
+  await expect(tabs).toHaveCount(before);
+  await expect(screens.locator('[aria-selected="true"]')).toHaveCount(1);
+  // Persistance après rechargement, couleurs conservées.
+  const kept = await dots();
+  await page.reload();
+  await expect(tabs).toHaveCount(before);
+  expect(await dots()).toEqual(kept);
+  // Dernier écran : jamais supprimable.
+  if (before === 1)
+    await expect(screens.locator('.screen-close')).toHaveCount(0);
+});
+
+test('v3 : calques, cases de sélection multiple et actions groupées', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=design');
+  await page
+    .getByRole('tablist', { name: 'Écrans' })
+    .getByRole('button', { name: 'Nouvel écran' })
+    .click();
+  const frame = page.frameLocator('iframe[title="Aperçu de l’écran"]');
+  // Nouvel écran réellement ouvert (enregistrement du précédent terminé).
+  const tabs = page.getByRole('tablist', { name: 'Écrans' }).getByRole('tab');
+  await expect(tabs.last()).toHaveAttribute('aria-selected', 'true');
+  await expect(frame.locator('.cmp-item')).toHaveCount(0);
+  await expect(frame.locator('.cmp-section')).toHaveCount(1);
+  for (let n = 0; n < 4; n++)
+    await frame
+      .locator('.cmp-section > .cmp-section-body')
+      .first()
+      .evaluate((el) => {
+        const dt = new DataTransfer();
+        dt.setData(
+          'application/x-ds-block',
+          JSON.stringify({ kind: 'text', variant: 'body' }),
+        );
+        const r = el.getBoundingClientRect();
+        for (const type of ['dragover', 'drop'])
+          el.dispatchEvent(
+            new DragEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              dataTransfer: dt,
+              clientX: r.left + 4,
+              clientY: r.bottom - 2,
+            }),
+          );
+      });
+  const items = frame.locator('.cmp-section > .cmp-section-body > .cmp-item');
+  await expect(items).toHaveCount(4);
+  await page
+    .getByRole('tablist', { name: 'Outils du studio' })
+    .getByRole('tab', { name: 'Calques' })
+    .click();
+  const rows = page.locator('.tree-section > ol > .tree-node > .tree-line');
+  const box = (i: number) => rows.nth(i).getByRole('checkbox');
+  const name = (i: number) => rows.nth(i).locator('.tree-pick');
+  // Clic sur le nom : sélection simple ; case : ajout sans changer le reste.
+  await name(0).click();
+  await expect(box(0)).toHaveAttribute('aria-checked', 'true');
+  await box(2).click();
+  await expect(box(0)).toHaveAttribute('aria-checked', 'true');
+  await expect(box(2)).toHaveAttribute('aria-checked', 'true');
+  await expect(frame.locator('.cmp-item.is-selected')).toHaveCount(2);
+  await expect(
+    page.getByRole('complementary', { name: 'Propriétés : 2 éléments' }),
+  ).toBeVisible();
+  // Case décochée au clavier (Espace) ; ⌘/Ctrl + clic = ajout ; Maj = plage.
+  await box(2).focus();
+  await page.keyboard.press('Space');
+  await expect(box(2)).toHaveAttribute('aria-checked', 'false');
+  await name(1).click({ modifiers: ['ControlOrMeta'] });
+  await expect(box(1)).toHaveAttribute('aria-checked', 'true');
+  await name(0).click();
+  await name(3).click({ modifiers: ['Shift'] });
+  for (const i of [0, 1, 2, 3])
+    await expect(box(i)).toHaveAttribute('aria-checked', 'true');
+  // Actions groupées : dupliquer, supprimer (confirmation), une étape ⌘Z.
+  const bar = page.getByRole('complementary', {
+    name: 'Propriétés : 4 éléments',
+  });
+  await bar.getByRole('button', { name: 'Dupliquer la sélection' }).click();
+  await expect(items).toHaveCount(8);
+  await page.getByRole('heading', { name: 'Mon espace Design' }).click();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(items).toHaveCount(4);
+  await name(0).click();
+  await name(1).click({ modifiers: ['Shift'] });
+  page.once('dialog', (d) => void d.dismiss());
+  await page.getByRole('button', { name: 'Supprimer la sélection' }).click();
+  await expect(items).toHaveCount(4);
+  page.once('dialog', (d) => void d.accept());
+  await page.getByRole('button', { name: 'Supprimer la sélection' }).click();
+  await expect(items).toHaveCount(2);
+  await page.getByRole('heading', { name: 'Mon espace Design' }).click();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(items).toHaveCount(4);
+  // Échap : plus aucune case cochée.
+  await name(0).click();
+  await page.getByRole('heading', { name: 'Mon espace Design' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.tree-check[aria-checked="true"]')).toHaveCount(0);
 });

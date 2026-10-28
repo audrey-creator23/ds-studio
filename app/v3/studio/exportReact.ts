@@ -58,10 +58,10 @@ function container(b: Box, items: Item[], pad: string): string {
             )
           : `${pad}    ${jsx(i)}`;
       const align = `${i.alignX ? ` data-ax=${q(i.alignX)}` : ''}${i.alignY ? ` data-ay=${q(i.alignY)}` : ''}`;
-      return `${pad}  <div className="cmp-item width-${i.width}"${align} style={{ '--span': ${Math.min(i.span, b.columns)}, '--rows': ${i.rows} } as CSSProperties}>\n${content}\n${pad}  </div>`;
+      return `${pad}  <div className="cmp-item width-${i.width}"${align} style={{ '--span': ${Math.min(i.span, b.columns)}, '--rows': ${i.rows}${i.background ? `, background: ${q(i.background)}` : ''} } as CSSProperties}>\n${content}\n${pad}  </div>`;
     })
     .join('\n');
-  return `${pad}<div className=${q(classes(b) + (b.margin === undefined ? ' cmp-group' : ''))} style={{ '--cols': ${b.columns} } as CSSProperties}>\n${pad}  <div className="cmp-section-body">\n${inner}\n${pad}  </div>\n${pad}</div>`;
+  return `${pad}<div className=${q(classes(b) + (b.margin === undefined ? ' cmp-group' : ''))} style={{ '--cols': ${b.columns}${'background' in b && b.background ? `, background: ${q(b.background as string)}` : ''} } as CSSProperties}>\n${pad}  <div className="cmp-section-body">\n${inner}\n${pad}  </div>\n${pad}</div>`;
 }
 
 export function exportReact(c: Composition) {
@@ -85,7 +85,7 @@ import { Block } from './design/CompositionView.js';
 export default function ${name}({ tokens }: { tokens: Tokens }) {
   return (
     <DSProvider tokens={tokens}>
-      <div className="cmp-page">
+      <div className="cmp-page"${c.background ? ` style={{ background: ${q(c.background)} }}` : ''}>
 ${sections}
       </div>
     </DSProvider>

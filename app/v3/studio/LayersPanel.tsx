@@ -1,5 +1,5 @@
 import { useState, type DragEvent, type MouseEvent } from 'react';
-import { Box, LayoutTemplate, Pencil, Square } from 'lucide-react';
+import { Box, Check, LayoutTemplate, Pencil } from 'lucide-react';
 import {
   blockSpecs,
   layoutLabels,
@@ -21,7 +21,7 @@ export default function LayersPanel({
 }: {
   c: CompositionState;
   multi: string[];
-  onSelect: (id: string, additive?: boolean) => void;
+  onSelect: (id: string, mode?: 'single' | 'toggle' | 'range') => void;
 }) {
   const [over, setOver] = useState<string>();
   const [renaming, setRenaming] = useState<string>();
@@ -75,8 +75,12 @@ export default function LayersPanel({
     else c.patchItem(id, { label: value || undefined });
     setRenaming(undefined);
   }
+  // Nom : sélection simple ; ⌘/Ctrl : ajout/retrait ; Maj : plage.
   const pick = (id: string) => (e: MouseEvent) =>
-    onSelect(id, e.shiftKey || e.metaKey || e.ctrlKey);
+    onSelect(
+      id,
+      e.metaKey || e.ctrlKey ? 'toggle' : e.shiftKey ? 'range' : 'single',
+    );
 
   // Rendu de ligne (fonction, pas composant : garde le focus du renommage).
   function row({
@@ -86,17 +90,33 @@ export default function LayersPanel({
     level,
     icon,
     isSection = false,
+    color,
   }: {
     id: string;
     label: string;
     hint?: string;
     level: number;
-    icon: typeof Box;
+    icon?: typeof Box;
     isSection?: boolean;
+    color?: string;
   }) {
     const Icon = icon;
     return (
       <div className="tree-line" data-level={level} {...grab(id)}>
+        <button
+          type="button"
+          role="checkbox"
+          className="tree-check"
+          aria-checked={chosen(id)}
+          aria-label={`Sélection multiple : ${label}`}
+          title="Ajouter ou retirer de la sélection"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(id, 'toggle');
+          }}
+        >
+          {chosen(id) && <Check size={11} strokeWidth={3} aria-hidden="true" />}
+        </button>
         {renaming === id ? (
           <input
             className="input input-sm tree-rename"
@@ -118,7 +138,14 @@ export default function LayersPanel({
             aria-pressed={chosen(id)}
             onClick={pick(id)}
           >
-            <Icon size={14} strokeWidth={1.75} aria-hidden="true" />
+            {Icon && <Icon size={14} strokeWidth={1.75} aria-hidden="true" />}
+            {color && (
+              <span
+                className="tree-swatch"
+                style={{ background: color }}
+                title={`Fond ${color}`}
+              />
+            )}
             <span className="tree-name">{label}</span>
             {hint && <small>{hint}</small>}
           </button>
@@ -148,7 +175,8 @@ export default function LayersPanel({
           id: i.id,
           label: label,
           level: level,
-          icon: i.kind === 'group' ? Box : Square,
+          icon: i.kind === 'group' ? Box : undefined,
+          color: i.background,
           hint:
             i.kind === 'group'
               ? layoutLabels[i.variant as keyof typeof layoutLabels]
@@ -205,6 +233,7 @@ export default function LayersPanel({
               level: 0,
               icon: LayoutTemplate,
               isSection: true,
+              color: s.background,
             })}
             <ol>
               {s.items.map((i, index) => item(i, s.id, index, 1))}
@@ -217,7 +246,9 @@ export default function LayersPanel({
           </li>
         ))}
       </ol>
-      <p className="muted small">Maj ou ⌘ + clic : sélection multiple.</p>
+      <p className="muted small">
+        Case ou ⌘ + clic : ajouter · Maj + clic : plage.
+      </p>
     </div>
   );
 }

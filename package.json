@@ -1,6 +1,6 @@
 {
   "name": "ds-studio",
-  "version": "2.27.1",
+  "version": "2.32.0",
   "private": true,
   "type": "module",
   "description": "Starter pédagogique local pour explorer et faire évoluer un Design System.",
@@ -12,6 +12,8 @@
     "build": "tsc --noEmit && vite build",
     "start": "tsx app/server/index.ts",
     "launcher": "node scripts/launcher.mjs",
+    "service": "node scripts/service.mjs",
+    "figma:plugin": "esbuild figma-plugin/code.ts --bundle --format=iife --target=es2017 --minify --outfile=figma-plugin/dist/code.js",
     "test:launcher": "node --test tests/launcher.test.mjs",
     "qualify:desktop": "node scripts/qualify-desktop.mjs",
     "check": "tsc --noEmit",
