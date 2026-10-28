@@ -73,6 +73,67 @@ export const milestones: {
   },
 ];
 
+// Les 5 grands rendus du PFE (≠ sous-tâches et jalons), d'après le brief
+// Notion : Planning des cours (note de cadrage 13 nov., document de cadrage
+// 29 janv., cours Design System jusqu'au 12 mars) et pages Livrables
+// (Cadrage, Design System, Tests utilisateurs ; maquettes et prototype
+// « à livrer à l'étape Design System »). Sans date officielle : `date` vide.
+// Un rendu est fait quand toutes ses tâches sont faites ou validées.
+export const rendus: {
+  id: string;
+  title: string;
+  date: string;
+  tasks: TaskId[];
+  step: string;
+}[] = [
+  {
+    id: 'note-cadrage',
+    title: 'Note de cadrage',
+    date: '2026-11-13',
+    tasks: ['intention'],
+    step: 'presentation',
+  },
+  {
+    id: 'document-cadrage',
+    title: 'Document de cadrage',
+    date: '2027-01-29',
+    tasks: ['contexte', 'fonctionnel', 'technique'],
+    step: 'problematique',
+  },
+  {
+    id: 'design-system',
+    title: 'Design System',
+    date: '2027-03-12',
+    tasks: ['design-system'],
+    step: 'livrables',
+  },
+  {
+    id: 'prototype',
+    title: 'Maquettes et prototype interactif',
+    date: '',
+    tasks: ['prototype'],
+    step: 'ux',
+  },
+  {
+    id: 'tests',
+    title: 'Tests utilisateurs',
+    date: '',
+    tasks: ['tests'],
+    step: 'methode',
+  },
+];
+export function renduDone(state: TaskState | undefined, i: number) {
+  return (
+    !!state &&
+    rendus[i].tasks.every((t) =>
+      ['done', 'validated'].includes(statusOf(state, t)),
+    )
+  );
+}
+// Prochain rendu : le premier non fait, dans l'ordre du planning.
+export const nextRendu = (state: TaskState | undefined) =>
+  rendus.findIndex((_, i) => !renduDone(state, i));
+
 export type MilestoneStatus =
   'validated' | 'done' | 'late' | 'current' | 'past' | 'upcoming';
 export const milestoneLabels: Record<MilestoneStatus, string> = {
@@ -84,7 +145,10 @@ export const milestoneLabels: Record<MilestoneStatus, string> = {
   upcoming: 'À venir',
 };
 
-export const today = () => new Date().toISOString().slice(0, 10);
+// Date du jour locale (AAAA-MM-JJ), pas UTC : sinon J-X décalé d'un jour
+// entre minuit et 1 h ou 2 h en France.
+export const today = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 export function nextMilestone(day = today()) {
   return milestones.findIndex((m) => m.date >= day);
 }

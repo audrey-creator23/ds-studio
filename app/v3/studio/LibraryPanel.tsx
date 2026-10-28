@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutGrid, X } from 'lucide-react';
 import type { Tokens } from '../../shared/model.js';
 import {
   blockKinds,
@@ -9,16 +10,25 @@ import {
   type BlockKind,
 } from '../../shared/composition.js';
 import { defaultConfig } from '../../client/design/componentSpecs.js';
-import { Badge, Button } from '../ui.js';
-
-// Bibliothèque : composants réels du projet uniquement (registre
-// blockSpecs). Glisser vers un calque ou une zone de l'aperçu, ou « + ».
 import { blockDrag as dragType } from '../../client/design/CompositionView.js';
 export { dragType };
-const categories = [...new Set(blockKinds.map((k) => blockSpecs[k].category))];
-// Composants demandés mais absents du DS : signalés, jamais inventés.
-const missing = ['Modale', 'Menu déroulant', 'Onglets Lisière', 'Tableau'];
 
+// Bibliothèque : composants réels du DS uniquement (registre blockSpecs).
+// Chips = catégories principales ; plusieurs chips = union stricte. Les
+// composants de niche (kit, planning…) se trouvent par la recherche. Sans
+// filtre ni recherche : état vide, aucune galerie. La galerie rend chaque
+// variante avec les vrais composants : glisser vers l'écran, ou clic.
+const main: BlockKind[] = [
+  'heading',
+  'text',
+  'button',
+  'field',
+  'badge',
+  'card',
+  'navigation',
+  'form',
+  'group',
+];
 export default function LibraryPanel({
   tokens,
   target,
@@ -29,28 +39,37 @@ export default function LibraryPanel({
   onAdd: (kind: BlockKind, variant: string) => void;
 }) {
   const [search, setSearch] = useState('');
-  const [focus, setFocus] = useState<BlockKind>('button');
+  const [picked, setPicked] = useState<BlockKind[]>([]);
   const query = search.trim().toLowerCase();
-  const kinds = blockKinds.filter((k) =>
-    `${blockSpecs[k].label} ${blockSpecs[k].description} ${blockSpecs[k].category} ${k}`
-      .toLowerCase()
-      .includes(query),
+  const idle = !picked.length && !query;
+  const shown = blockKinds.filter(
+    (k) =>
+      !idle &&
+      (!picked.length || picked.includes(k)) &&
+      (!query ||
+        `${blockSpecs[k].label} ${blockSpecs[k].description} ${blockSpecs[k].category} ${k}`
+          .toLowerCase()
+          .includes(query)),
   );
-  // Aperçu réel : toutes les variantes du composant choisi, rendues par la
-  // route d'aperçu isolée.
+  const gallery = useMemo(() => {
+    const c = emptyComposition('Bibliothèque');
+    c.sections = shown.map((k) => ({
+      ...newSection('grid', 2),
+      gap: 'sm' as const,
+      name: blockSpecs[k].label,
+      items: blockSpecs[k].variants.map(([v]) => ({
+        ...newItem(k, v),
+        span: 1,
+        children: undefined,
+        box: undefined,
+      })),
+    }));
+    return c;
+  }, [shown.join()]);
   const frame = useRef<HTMLIFrameElement>(null);
+  const add = useRef(onAdd);
+  add.current = onAdd;
   useEffect(() => {
-    const spec = blockSpecs[focus];
-    const gallery = emptyComposition(spec.label);
-    gallery.sections = [
-      {
-        ...newSection('stack'),
-        items: spec.variants.map(([v]) => ({
-          ...newItem(focus, v),
-          span: 4,
-        })),
-      },
-    ];
     const send = () =>
       frame.current?.contentWindow?.postMessage(
         {
@@ -59,108 +78,94 @@ export default function LibraryPanel({
           screen: 'compose',
           config: defaultConfig,
           composition: gallery,
-          interact: true,
+          interact: false,
+          palette: true,
         },
         location.origin,
       );
     if (tokens) send();
-    const onReady = (e: MessageEvent) => {
-      if (e.source === frame.current?.contentWindow && tokens) send();
+    const onMessage = (e: MessageEvent) => {
+      if (e.source !== frame.current?.contentWindow) return;
+      if (e.data?.type === 'ds-preview-ready' && tokens) send();
+      if (
+        e.data?.type === 'ds-pick' &&
+        blockKinds.includes(e.data.kind as BlockKind)
+      )
+        add.current(e.data.kind as BlockKind, String(e.data.variant));
     };
-    addEventListener('message', onReady);
-    return () => removeEventListener('message', onReady);
-  }, [focus, tokens]);
+    addEventListener('message', onMessage);
+    return () => removeEventListener('message', onMessage);
+  }, [gallery, tokens]);
+  const toggle = (k: BlockKind) =>
+    setPicked((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
 
   return (
     <div className="library" aria-label="Bibliothèque du DS">
-      <p className="muted small">
-        Ajout dans : <strong>{target ?? 'nouvelle section'}</strong>
-      </p>
       <input
         type="search"
-        className="input"
+        className="input input-sm"
         aria-label="Rechercher un composant"
         placeholder="Rechercher…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
-      <div className="library-scroll">
-        {categories.map((cat) => {
-          const list = kinds.filter((k) => blockSpecs[k].category === cat);
-          if (!list.length) return null;
-          return (
-            <section key={cat}>
-              <h3 className="panel-sub">{cat}</h3>
-              <ul className="library-list">
-                {list.map((k) => (
-                  <li
-                    key={k}
-                    draggable
-                    aria-current={focus === k ? 'true' : undefined}
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData(
-                        dragType,
-                        JSON.stringify({
-                          kind: k,
-                          variant: blockSpecs[k].variants[0][0],
-                        }),
-                      );
-                      e.dataTransfer.effectAllowed = 'copy';
-                    }}
-                  >
-                    <button
-                      type="button"
-                      className="library-pick"
-                      onClick={() => setFocus(k)}
-                    >
-                      <strong>{blockSpecs[k].label}</strong>
-                      <small>
-                        {blockSpecs[k].variants.length} variante
-                        {blockSpecs[k].variants.length > 1 ? 's' : ''} ·{' '}
-                        {blockSpecs[k].family}
-                      </small>
-                    </button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Ajouter ${blockSpecs[k].label}`}
-                      onClick={() => onAdd(k, blockSpecs[k].variants[0][0])}
-                    >
-                      +
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          );
-        })}
-        {!kinds.length && (
-          <p className="muted">Aucun composant existant ne correspond.</p>
+      <div className="chips" role="group" aria-label="Filtrer par catégorie">
+        {main.map((k) =>
+          picked.includes(k) ? (
+            <button
+              key={k}
+              type="button"
+              className="chip"
+              aria-pressed="true"
+              aria-label={`Retirer le filtre ${blockSpecs[k].label}`}
+              onClick={() => toggle(k)}
+            >
+              {blockSpecs[k].label}
+              <X size={12} aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              key={k}
+              type="button"
+              className="chip"
+              aria-pressed="false"
+              onClick={() => toggle(k)}
+            >
+              {blockSpecs[k].label}
+            </button>
+          ),
         )}
-        <section>
-          <h3 className="panel-sub">Courants mais absents du DS</h3>
-          <p className="missing">
-            {missing.map((m) => (
-              <Badge key={m} variant="outline">
-                {m}
-              </Badge>
-            ))}
-          </p>
-          <p className="muted small">
-            Import Figma, React ou tokens : prévu, non branché.
-          </p>
-        </section>
+        {picked.length > 1 && (
+          <button
+            type="button"
+            className="chip chip-clear"
+            onClick={() => setPicked([])}
+          >
+            Effacer les filtres
+          </button>
+        )}
       </div>
-      <figure className="library-preview">
-        <figcaption>
-          {blockSpecs[focus].label} · {blockSpecs[focus].description}
-        </figcaption>
+      {!idle && (
+        <p className="muted small" aria-live="polite">
+          {shown.length} composant{shown.length > 1 ? 's' : ''} · ajout dans{' '}
+          <strong>{target ?? 'nouvelle section'}</strong>
+        </p>
+      )}
+      {shown.length ? (
         <iframe
           ref={frame}
-          title={`Aperçu des variantes : ${blockSpecs[focus].label}`}
+          className="gallery"
+          title="Galerie des composants du DS"
           src="/index.html?preview=1&scenario=compose"
         />
-      </figure>
+      ) : idle ? (
+        <div className="library-empty">
+          <LayoutGrid size={20} aria-hidden="true" />
+          <p>Choisissez une catégorie ou recherchez un composant.</p>
+        </div>
+      ) : (
+        <p className="muted">Aucun composant du DS ne correspond.</p>
+      )}
     </div>
   );
 }

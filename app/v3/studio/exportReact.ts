@@ -57,7 +57,8 @@ function container(b: Box, items: Item[], pad: string): string {
               pad + '    ',
             )
           : `${pad}    ${jsx(i)}`;
-      return `${pad}  <div className="cmp-item width-${i.width}" style={{ '--span': ${Math.min(i.span, b.columns)}, '--rows': ${i.rows} } as CSSProperties}>\n${content}\n${pad}  </div>`;
+      const align = `${i.alignX ? ` data-ax=${q(i.alignX)}` : ''}${i.alignY ? ` data-ay=${q(i.alignY)}` : ''}`;
+      return `${pad}  <div className="cmp-item width-${i.width}"${align} style={{ '--span': ${Math.min(i.span, b.columns)}, '--rows': ${i.rows} } as CSSProperties}>\n${content}\n${pad}  </div>`;
     })
     .join('\n');
   return `${pad}<div className=${q(classes(b) + (b.margin === undefined ? ' cmp-group' : ''))} style={{ '--cols': ${b.columns} } as CSSProperties}>\n${pad}  <div className="cmp-section-body">\n${inner}\n${pad}  </div>\n${pad}</div>`;

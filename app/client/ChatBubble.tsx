@@ -216,7 +216,7 @@ export default function ChatBubble({
         <Indicator
           processing
           disabled={!chat.busy}
-          color="blue"
+          color="accent"
           size={12}
           offset={6}
           className="bubble-indicator"

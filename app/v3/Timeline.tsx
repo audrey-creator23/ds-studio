@@ -1,13 +1,19 @@
 import type { CSSProperties } from 'react';
-import { daysBetween, milestones, timeProgress } from '../shared/brief.js';
+import { daysBetween, milestones } from '../shared/brief.js';
 import { Badge } from './ui.js';
 
 // Frise des jalons : pas réguliers, rail rempli jusqu'à la date affichée.
 // États temporels seulement (Passé / À venir) : une date passée ne vaut pas
 // validation. Avec `onSelect`, chaque jalon prévisualise sa date.
-// Rampe --chart-1 → 5 : plus l'activité monte, plus la teinte est soutenue.
-export const chartOf = (a: number) =>
-  `var(--chart-${Math.min(5, 1 + Math.floor(a * 5))})`;
+// Proximité : le prochain jalon est rouge, le plus lointain jaune (palette
+// --accent-1 → 9) ; un jalon passé est atténué (passé ≠ terminé).
+function toneOf(date: string, today: string) {
+  const upcoming = milestones.filter((m) => m.date >= today);
+  const rank = upcoming.findIndex((m) => m.date === date);
+  if (rank < 0) return 'var(--muted-foreground)';
+  const step = upcoming.length > 1 ? (8 * rank) / (upcoming.length - 1) : 0;
+  return `var(--accent-${9 - Math.round(step)})`;
+}
 export const short = (d: string) =>
   new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', {
     day: 'numeric',
@@ -58,9 +64,7 @@ export default function Timeline({
             <li
               key={m.date}
               data-time={past ? 'past' : 'upcoming'}
-              style={
-                { '--tone': chartOf(timeProgress(m.date)) } as CSSProperties
-              }
+              style={{ '--tone': toneOf(m.date, today) } as CSSProperties}
             >
               {onSelect ? (
                 <button

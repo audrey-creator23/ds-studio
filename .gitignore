@@ -19,6 +19,8 @@ coverage/
 .gemini/
 workspace/private/
 workspace/exports/
+# Configuration Figma locale (clé de fichier) ; l'exemple reste suivi.
+workspace/figma.config.json
 .DS_Store
 Thumbs.db
 

@@ -864,46 +864,107 @@ test('bulle Claude : toutes les pages, contexte, clavier, glisser, position mém
   ).toBeVisible();
 });
 
-test('v3 : dashboard, frise temporelle, liste des tâches, thème', async ({
-  page,
-}) => {
+test('v3 : dashboard, rendus, frise temporelle, thème', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Récapitulatif des échéances PFE' }),
+    page.getByText('Récapitulatif des échéances du projet de fin d’études'),
   ).toBeVisible();
   await expect(page.locator('html')).toHaveClass(/dark/);
   expect(
     await page.evaluate(() => document.documentElement.scrollHeight),
   ).toBeLessThanOrEqual(900);
-  // KPI avant la frise ; la frise n'affiche que Passé / À venir.
-  const kpi = await page.getByText('Tâches à réaliser').boundingBox();
-  const frise = await page.getByText('Échéances à venir').boundingBox();
-  expect(kpi!.y).toBeLessThan(frise!.y);
-  await expect(page.locator('.timeline .badge')).toHaveText([
-    'Passé',
-    'À venir',
-    'À venir',
-    'À venir',
-    'À venir',
-    'À venir',
-  ]);
+  // Rendus : 5 grands rendus, jamais /9 ; prochain rendu non fait.
+  const kpi = page.locator('.kpis .card').first();
+  await expect(kpi).toContainText('Rendus restants');
+  await expect(kpi).toContainText('/ 5');
+  await expect(kpi).not.toContainText('/ 9');
+  await expect(page.locator('.kpis .card').nth(1)).toContainText(
+    'Prochain rendu',
+  );
+  // Prochain rendu au 28/10/2026 : Note de cadrage (ancienne tâche cochée
+  // ≠ rendu effectué), J-16 en date locale, même juste après minuit.
+  await page.clock.setFixedTime(new Date(2026, 9, 28, 0, 30));
+  await page.reload();
+  const nextKpi = page.locator('.kpis .card').nth(1);
+  await expect(nextKpi).toContainText('J-16');
+  await expect(nextKpi).toContainText('Note de cadrage · 13/11/2026');
+  await page.clock.setFixedTime(new Date(2026, 10, 20, 10));
+  await page.reload();
+  await expect(nextKpi).toContainText('J+7');
+  await expect(nextKpi).toContainText('en retard');
+  // Remis (« Fait ») mais pas validé : toujours le prochain rendu, échéance
+  // passée distinguée d'un retard ; badge « Remis ».
+  await page.goto('/?vue=brief');
+  await page.getByRole('button', { name: 'Actualiser ma progression' }).click();
+  await page
+    .getByRole('combobox', { name: 'Statut : Présentation' })
+    .selectOption('done');
+  await page.getByRole('button', { name: 'Fermer' }).click();
+  await page.goto('/');
+  await expect(nextKpi).toContainText('Note de cadrage · 13/11/2026');
+  await expect(nextKpi).toContainText('remis, en attente de validation');
+  await expect(page.locator('.rendus li').first()).toContainText('Remis');
+  await page.clock.setFixedTime(new Date(2026, 9, 28, 10));
+  await page.reload();
+  await expect(nextKpi).toContainText('J-16');
+  await expect(nextKpi).not.toContainText('attente');
+  await expect(
+    page.getByRole('button', { name: 'Voir la liste des tâches' }),
+  ).toHaveCount(0);
+  // Frise : Passé / À venir ; le KPI vient avant.
+  await expect(page.locator('.timeline .badge').first()).toHaveText('Passé');
   const fin = page.getByRole('button', { name: /^Fin du DS/ });
   await fin.click();
   await expect(
     page.getByRole('img', { name: 'Volcan, intensité 100 % : Éruption' }),
   ).toBeVisible();
   await fin.click();
-  await expect(fin).toHaveAttribute('aria-pressed', 'false');
-  await page.getByRole('button', { name: 'Voir la liste des tâches' }).click();
-  await expect(page.getByRole('region', { name: 'Tâches' })).toContainText(
-    'Recherche utilisateurs',
-  );
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('region', { name: 'Tâches' })).toHaveCount(0);
-  // Menu : pictos, pas de « Contexte & Assistant » ; bulle Claude partout.
+  await expect(
+    page.getByText('Le volcan illustre le temps restant'),
+  ).toBeVisible();
+  // Rendus : les 5 toujours visibles, sans bascule ; un rendu fait défiler
+  // jusqu'à son étape, qui reste fermée.
+  await expect(page.locator('.rendus li')).toHaveCount(5);
+  await expect(
+    page.getByRole('button', { name: 'Voir les rendus à réaliser' }),
+  ).toHaveCount(0);
+  // Colonnes alignées : badges et dates au même x sur les 5 lignes.
+  for (const sel of ['.rendus .badge', '.rendus small']) {
+    const xs = await page
+      .locator(sel)
+      .evaluateAll((els) =>
+        els.map((e) => Math.round(e.getBoundingClientRect().right)),
+      );
+    expect(new Set(xs).size).toBe(1);
+  }
+  // Volcan : remplit la carte Activité.
+  const stage = await page.locator('.activity .stage').boundingBox();
+  expect(stage!.height).toBeGreaterThanOrEqual(220);
+  await page.locator('.rendus a').nth(1).click();
+  await expect(page).toHaveURL(/vue=brief#etape-problematique/);
+  const step = page.locator('#etape-problematique');
+  await expect(step).toBeInViewport();
+  await expect(page.locator('.step-detail')).toHaveCount(0);
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  // Accès par le menu : toujours en haut, sans l'ancre ni l'ancien scroll.
+  const nav = page.locator('.sidebar nav');
+  await nav.getByText('Dashboard').click();
+  await nav.getByText('Étapes du PFE').click();
+  await expect(page).not.toHaveURL(/#etape/);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await page.evaluate(() => scrollTo(0, 800));
+  await nav.getByText('Mes notes').click();
+  await nav.getByText('Étapes du PFE').click();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  // États actifs centralisés : fond noir, texte blanc.
+  const active = nav.locator('[aria-current="page"]');
+  await expect(active).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+  await expect(active).toHaveCSS('color', 'rgb(255, 255, 255)');
+  // Menu : pictos, pas de « Contexte & Assistant » ; bulle Claude.
+  await page.goto('/');
   await expect(page.locator('.sidebar')).not.toContainText('Contexte');
-  await expect(page.locator('.sidebar nav svg')).toHaveCount(4);
   await page.getByRole('button', { name: 'Ouvrir le chat Claude' }).click();
   await expect(page.getByRole('dialog', { name: 'Chat Claude' })).toContainText(
     'Contexte : Dashboard',
@@ -911,68 +972,90 @@ test('v3 : dashboard, frise temporelle, liste des tâches, thème', async ({
   await page
     .getByRole('button', { name: 'Fermer le chat', exact: true })
     .click();
+  // Thème : icônes soleil / lune, mémorisé.
   await page.getByRole('button', { name: 'Clair' }).click();
   await page.reload();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
-  // Interface précédente toujours servie sur /index.html.
   await page.goto('/index.html');
   await expect(
     page.getByRole('heading', { name: 'Tableau de bord' }),
   ).toBeVisible();
 });
 
-test('v3 : fiche PFE, checklist, statuts persistants, frise jusqu’en bas', async ({
+test('v3 : étapes du PFE, statuts, checklist, sauvegarde, frise jusqu’en bas', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/?vue=brief');
-  await expect(page.getByRole('heading', { name: 'Fiche PFE' })).toBeVisible();
-  for (const name of [
-    'Accéder au brief Notion',
-    'Accéder à ma rédaction Notion',
-  ])
+  await expect(
+    page.getByRole('heading', { name: 'Étapes du PFE', level: 1 }),
+  ).toBeVisible();
+  for (const name of ['Accéder au brief', 'Accéder à mon fichier de rédaction'])
     await expect(page.getByRole('link', { name })).toHaveAttribute(
       'target',
       '_blank',
     );
-  // Checklist résumée ; le détail s'ouvre par le CTA.
-  const summary = page.locator('.checklist-card');
-  await expect(summary).toContainText('%');
-  await expect(summary.getByRole('combobox')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Continuer ma progression' }).click();
-  const detail = page.getByRole('dialog', { name: /Ma progression/ });
-  await expect(detail.getByRole('combobox')).toHaveCount(9);
-  const recherche = detail.getByRole('combobox', {
-    name: 'Statut : Recherche utilisateurs',
-  });
-  await recherche.selectOption('todo');
-  await expect(recherche).toHaveValue('todo');
-  const before = await summary.locator('.stat').textContent();
-  await recherche.selectOption('done');
-  await expect(summary.locator('.stat')).not.toHaveText(before!);
-  await detail
-    .getByRole('combobox', { name: 'Statut : Recherche utilisateurs' })
-    .selectOption('doing');
-  await detail.getByRole('button', { name: 'Fermer' }).click();
-  // Étapes : badge en lecture seule ; statut modifiable dans le détail.
+  await expect(page.locator('.page-header .lead')).toHaveText(
+    'Retrouvez les étapes de votre PFE, suivez votre progression et actualisez l’état d’avancement de vos tâches.',
+  );
+  // Toutes les étapes fermées à l'arrivée.
   await expect(page.locator('.steps > li')).toHaveCount(10);
+  await expect(page.locator('.step-detail')).toHaveCount(0);
+  // Checklist : un statut par étape, % recalculé (fait ou validé).
+  const summary = page.locator('.checklist-card');
+  await page.getByRole('button', { name: 'Actualiser ma progression' }).click();
+  const detail = page.getByRole('dialog', { name: /Ma progression/ });
+  await expect(detail.getByRole('combobox')).toHaveCount(10);
+  const pres = detail.getByRole('combobox', { name: 'Statut : Présentation' });
+  for (const t of ['À faire', 'En cours', 'À retravailler', 'Fait', 'Validé'])
+    await expect(pres.locator('option', { hasText: t })).toHaveCount(1);
+  for (const s of await detail.getByRole('combobox').all())
+    await s.selectOption('todo');
+  await expect(summary.locator('.stat')).toHaveText('0 %');
+  await pres.selectOption('validated');
+  await expect(summary.locator('.stat')).toHaveText('10 %');
+  await detail
+    .getByRole('combobox', { name: 'Statut : Objectifs' })
+    .selectOption('done');
+  await expect(summary.locator('.stat')).toHaveText('20 %');
+  await detail
+    .getByRole('combobox', { name: 'Statut : Objectifs' })
+    .selectOption('doing');
+  await expect(summary.locator('.stat')).toHaveText('10 %');
+  await detail.getByRole('button', { name: 'Fermer' }).click();
+  // Badge « Validé » vert, « À retravailler » rouge.
+  const first = page.locator('.step').first();
+  await expect(first.locator('.status-badge')).toHaveAttribute(
+    'data-status',
+    'validated',
+  );
+  // Détail : sections renommées ; « Masquer » sans changement, sinon
+  // « Sauvegarder et masquer » qui enregistre avant de fermer.
   const step = page.locator('.step', { hasText: 'Objectifs' });
   await expect(step.getByRole('combobox')).toHaveCount(0);
   await step.getByRole('button', { name: 'Voir le détail' }).click();
-  await expect(step).toContainText('Échéances et attendus');
+  for (const h of ['Attendus du brief', 'Mes pistes', 'Échéancier', 'Suivi'])
+    await expect(step.getByRole('heading', { name: h })).toBeVisible();
+  await expect(step.getByRole('button', { name: 'Masquer' })).toBeVisible();
   await step
     .getByRole('combobox', { name: 'Statut de l’étape : Objectifs' })
-    .selectOption('doing');
-  await expect(step.locator('.step-badge')).toHaveText('En cours');
+    .selectOption('rework');
+  await step.getByRole('button', { name: 'Sauvegarder et masquer' }).click();
+  await expect(step.locator('.step-detail')).toHaveCount(0);
+  await expect(step.locator('.status-badge')).toHaveText('À retravailler');
+  // Pistes éditables et persistantes.
+  await step.getByRole('button', { name: 'Voir le détail' }).click();
+  await step.getByRole('button', { name: 'Modifier mes pistes' }).click();
+  await step
+    .getByRole('textbox', { name: 'Mes pistes, une par ligne' })
+    .fill('Piste A\nPiste B');
+  await step.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(step.locator('.step-detail')).toContainText('Piste B');
   await page.reload();
-  await expect(
-    page.locator('.step', { hasText: 'Objectifs' }).locator('.step-badge'),
-  ).toHaveText('En cours');
-  await page.getByRole('button', { name: 'Continuer ma progression' }).click();
-  await expect(
-    page.getByRole('combobox', { name: 'Statut : Recherche utilisateurs' }),
-  ).toHaveValue('doing');
-  await page.keyboard.press('Escape');
+  const again = page.locator('.step', { hasText: 'Objectifs' });
+  await expect(again.locator('.status-badge')).toHaveText('À retravailler');
+  await again.getByRole('button', { name: 'Voir le détail' }).click();
+  await expect(again.locator('.step-detail')).toContainText('Piste A');
   // Frise verticale remplie jusqu'au bas du parcours.
   await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
   await expect
@@ -996,13 +1079,46 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
   ).toBeVisible();
   // Onglets : un seul contenu à la fois, Bibliothèque par défaut.
   const tabs = page.getByRole('tablist', { name: 'Outils du studio' });
-  await expect(tabs.getByRole('tab')).toHaveText([
-    'Claude',
-    'Bibliothèque',
-    'Calques',
-    'Versions',
-    'Export',
-  ]);
+  await expect(tabs.getByRole('tab')).toHaveCount(3);
+  for (const name of ['Claude', 'Bibliothèque', 'Calques'])
+    await expect(tabs.getByRole('tab', { name })).toBeVisible();
+  // Bibliothèque : état vide sans filtre ; chips principales, union stricte,
+  // tags retirables ; la recherche atteint les composants de niche.
+  const library = page.locator('.library');
+  await expect(library.locator('.library-empty')).toBeVisible();
+  await expect(library.locator('iframe')).toHaveCount(0);
+  await expect(library.getByRole('button', { name: 'Planning' })).toHaveCount(
+    0,
+  );
+  const count = page.locator('.library .muted.small');
+  await page.getByRole('button', { name: 'Bouton', exact: true }).click();
+  await page.getByRole('button', { name: 'Badge', exact: true }).click();
+  await expect(count).toContainText('2 composants');
+  await page.getByRole('button', { name: 'Retirer le filtre Badge' }).click();
+  await expect(count).toContainText('1 composant');
+  await expect(
+    page.getByRole('button', { name: 'Effacer les filtres' }),
+  ).toHaveCount(0);
+  const gallery = page.frameLocator(
+    'iframe[title="Galerie des composants du DS"]',
+  );
+  await expect(gallery.locator('.cmp-pick').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Retirer le filtre Bouton' }).click();
+  await expect(library.locator('.library-empty')).toBeVisible();
+  await page
+    .getByRole('searchbox', { name: 'Rechercher un composant' })
+    .fill('planning');
+  await expect(count).toContainText('1 composant');
+  await page
+    .getByRole('searchbox', { name: 'Rechercher un composant' })
+    .fill('');
+  // Barre d'outils : pas de champ nom, pas de boutons annuler / rétablir.
+  await expect(
+    page.getByRole('textbox', { name: 'Nom de l’écran' }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('.preview-bar').getByRole('button', { name: 'Annuler' }),
+  ).toHaveCount(0);
   await expect(tabs.getByRole('tab', { name: 'Bibliothèque' })).toHaveAttribute(
     'aria-selected',
     'true',
@@ -1054,7 +1170,14 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
   await expect(frame.locator('.cmp-group .cmp-item')).toHaveCount(2);
   // Calques synchronisés.
   await tabs.getByRole('tab', { name: 'Calques' }).click();
-  await expect(page.locator('.tree-group .tree-row')).toHaveCount(2);
+  await expect(page.locator('.tree-group > ol .tree-line')).toHaveCount(2);
+  // Renommer un calque (crayon), nom enregistré avec l'écran.
+  await page.getByRole('button', { name: 'Renommer Conteneur' }).click();
+  await page.getByRole('textbox', { name: 'Renommer Conteneur' }).fill('Tags');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tree-group > .tree-line .tree-name')).toHaveText(
+    'Tags',
+  );
   // Réordonner dans l'écran : le second badge passe devant.
   const second = await frame
     .locator('.cmp-group .cmp-item')
@@ -1067,7 +1190,7 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
   );
   // Auto Layout : justification et padding appliqués immédiatement.
   // Sélection du conteneur depuis les calques (synchronisée avec l'écran).
-  await page.locator('.tree-group > .tree-pick').click();
+  await page.locator('.tree-group > .tree-line .tree-pick').click();
   await expect(frame.locator('.cmp-group.is-selected')).toHaveCount(1);
   const bar = page.getByRole('complementary', { name: /Propriétés/ });
   await bar.getByRole('button', { name: 'Justification' }).click();
@@ -1085,24 +1208,85 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
     .getByRole('button', { name: 'L' })
     .click();
   await expect(frame.locator('.cmp-group')).not.toHaveCSS('padding', '0px');
-  // Annuler / rétablir.
-  await page.getByRole('button', { name: 'Annuler' }).click();
+  // Annuler / rétablir au clavier (⌘Z / ⇧⌘Z).
+  await page.getByRole('heading', { name: 'Mon espace Design' }).click();
+  await page.keyboard.press('ControlOrMeta+z');
   await expect(frame.locator('.cmp-group')).toHaveCSS('padding', '0px');
-  await page.getByRole('button', { name: 'Rétablir' }).click();
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(frame.locator('.cmp-group')).not.toHaveCSS('padding', '0px');
+  // Grouper / dégrouper une sélection multiple (Maj + clic).
+  await drop('.cmp-section > .cmp-section-body', block('text', 'body'));
+  await expect(frame.locator('.cmp-item')).toHaveCount(5);
+  const lines = page.locator('.tree-section > ol > .tree-node > .tree-line');
+  await lines.first().locator('.tree-pick').click();
+  await lines
+    .last()
+    .locator('.tree-pick')
+    .click({ modifiers: ['Shift'] });
+  await page.getByRole('button', { name: 'Grouper' }).click();
+  await expect(frame.locator('.cmp-group')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Dégrouper' }).click();
+  await expect(frame.locator('.cmp-group')).toHaveCount(1);
+  await expect(frame.locator('.cmp-item')).toHaveCount(5);
+  // Alignement : bloc d'une pile (horizontal seul), blocs d'une rangée
+  // (sélection multiple, une seule étape d'annulation), re-clic = retrait.
+  const align = page.getByRole('group', { name: 'Alignement' });
+  await lines.first().locator('.tree-pick').click();
+  await expect(align.getByRole('button')).toHaveCount(6);
+  await expect(
+    align.getByRole('button', { name: 'Aligner en bas' }),
+  ).toBeDisabled();
+  await align.getByRole('button', { name: 'Centrer horizontalement' }).click();
+  const first = frame
+    .locator('.cmp-section > .cmp-section-body > .cmp-item')
+    .first();
+  await expect(first).toHaveCSS('align-self', 'center');
+  await expect(
+    align.getByRole('button', { name: 'Centrer horizontalement' }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  const badges = page.locator('.tree-group > ol .tree-line .tree-pick');
+  await badges.first().click();
+  await badges.last().click({ modifiers: ['Shift'] });
+  await align.getByRole('button', { name: 'Aligner en bas' }).click();
+  const inGroup = frame.locator('.cmp-group > .cmp-section-body > .cmp-item');
+  await expect(inGroup.first()).toHaveCSS('align-self', 'flex-end');
+  await expect(inGroup.last()).toHaveCSS('align-self', 'flex-end');
+  await page.getByRole('heading', { name: 'Mon espace Design' }).click();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(inGroup.first()).not.toHaveAttribute('data-ay', 'end');
+  await expect(inGroup.last()).not.toHaveAttribute('data-ay', 'end');
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(inGroup.last()).toHaveAttribute('data-ay', 'end');
+  await lines.first().locator('.tree-pick').click();
+  await align.getByRole('button', { name: 'Centrer horizontalement' }).click();
+  await expect(first).not.toHaveAttribute('data-ax', 'center');
   // Changement d'appareil sans perte, rotation, Screen sans cadre.
   await page
     .getByRole('group', { name: 'Appareil' })
     .getByRole('button', { name: 'iPad' })
     .click();
-  await expect(page.getByText('820 × 1180')).toBeVisible();
-  await expect(frame.locator('.cmp-item')).toHaveCount(4);
+  // Noms seuls sous les appareils ; l'actif en noir (état centralisé).
+  await expect(page.locator('.devices')).not.toContainText('×');
+  await expect(
+    page.getByRole('group', { name: 'Appareil' }).getByRole('button', {
+      name: 'iPad',
+    }),
+  ).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+  const shot = page.locator('iframe[title="Aperçu de l’écran"]');
+  const ratio = () =>
+    shot.evaluate(
+      (el) =>
+        (el as HTMLElement).offsetWidth / (el as HTMLElement).offsetHeight,
+    );
+  await expect.poll(ratio).toBeLessThan(1);
+  await expect(frame.locator('.cmp-item')).toHaveCount(5);
   await page.getByRole('button', { name: 'Pivoter' }).click();
-  await expect(page.getByText('1180 × 820')).toBeVisible();
+  await expect.poll(ratio).toBeGreaterThan(1);
   await page
     .getByRole('group', { name: 'Appareil' })
     .getByRole('button', { name: 'MacBook' })
     .click();
-  await expect(page.getByText('1512 × 982')).toBeVisible();
+  await expect.poll(ratio).toBeGreaterThan(1);
   await page
     .getByRole('group', { name: 'Appareil' })
     .getByRole('button', { name: 'Screen' })
@@ -1116,26 +1300,51 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
     .getByRole('button', { name: 'Mobile' })
     .click();
   await expect(page.locator('.device--mobile .island')).toBeVisible();
-  await expect(frame.locator('.cmp-item')).toHaveCount(4);
-  // Exports réels depuis « Enregistrer » : TSX et PNG téléchargés.
+  await expect(frame.locator('.cmp-item')).toHaveCount(5);
+  // Exports réels depuis « Enregistrer » ; le nom se saisit dans la modale.
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Enregistrer l’écran' });
+  const dialog = page.getByRole('dialog', { name: 'Télécharger l’écran' });
+  await dialog.getByRole('textbox', { name: 'Nom de l’écran' }).fill('Accueil');
   await expect(dialog.getByRole('radio', { name: 'Figma' })).toBeDisabled();
   await dialog.getByRole('radio', { name: 'Composant React/TSX' }).check();
   let download = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Valider' }).click();
-  expect((await download).suggestedFilename()).toMatch(/\.tsx$/);
+  expect((await download).suggestedFilename()).toBe('accueil.tsx');
   await dialog.getByRole('radio', { name: 'Image PNG' }).check();
   download = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Valider' }).click();
   expect((await download).suggestedFilename()).toMatch(/\.png$/);
   await expect(dialog.getByRole('status')).toContainText('téléchargé');
   await dialog.getByRole('button', { name: 'Fermer' }).click();
-  // Persistance : l'écran survit au rechargement.
+  // Onglets d'écrans : nom affiché, nouvel écran vide, retour sans perte.
+  const screens = page.getByRole('tablist', { name: 'Écrans' });
+  await expect(
+    screens.getByRole('tab', { name: 'Accueil', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await screens.getByRole('button', { name: 'Nouvel écran' }).click();
+  await expect(frame.locator('.cmp-item')).toHaveCount(0);
+  await screens.getByRole('tab', { name: 'Accueil', exact: true }).click();
+  await expect(frame.locator('.cmp-item')).toHaveCount(5);
+  // Versions : modifications récentes, restauration.
+  await page.getByRole('button', { name: 'Versions' }).click();
+  const versions = page.getByRole('dialog', {
+    name: '10 dernières modifications',
+  });
+  await expect(versions).toBeVisible();
+  await versions.getByRole('button', { name: 'Fermer' }).click();
+  // Persistance : l'écran et le nom du calque survivent au rechargement.
   await page.reload();
-  await expect(frame.locator('.cmp-item')).toHaveCount(4);
+  await expect(frame.locator('.cmp-item')).toHaveCount(5);
+  await tabs.getByRole('tab', { name: 'Calques' }).click();
+  await expect(page.locator('.tree-group > .tree-line .tree-name')).toHaveText(
+    'Tags',
+  );
   // IA → proposition → validation (composeur simulé côté serveur).
   await tabs.getByRole('tab', { name: 'Claude' }).click();
+  await expect(page.getByRole('heading', { name: 'Claude' })).toHaveCount(0);
+  await expect(
+    page.getByRole('textbox', { name: 'Message à Claude' }),
+  ).toHaveAttribute('placeholder', 'Décrivez…');
   await page
     .getByRole('textbox', { name: 'Message à Claude' })
     .fill('Place une grande card à gauche, trois petites à droite');
@@ -1147,7 +1356,7 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
   ).toBeVisible();
 });
 
-test('v3 : mes schémas, onglets FigJam, liens persistants', async ({
+test('v3 : mes schémas, menu crayon, export, ajout, import', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -1155,45 +1364,132 @@ test('v3 : mes schémas, onglets FigJam, liens persistants', async ({
   await expect(
     page.getByRole('heading', { name: 'Mes schémas' }),
   ).toBeVisible();
-  await expect(page.locator('.sidebar nav li').last()).toContainText(
-    'Mes schémas',
-  );
   const tabs = page.getByRole('tablist', { name: 'Types de schémas' });
   await expect(tabs.getByRole('tab')).toHaveCount(7);
-  await expect(page.getByText(/Aucun tableau FigJam/)).toBeVisible();
-  // Lien refusé s'il ne s'agit pas d'un tableau FigJam.
+  await expect(tabs.getByRole('tab').first()).toHaveText('Benchmark');
+  // Onglet vide : aperçu illustratif étiqueté « Exemple fictif ».
+  await expect(page.getByText('Exemple fictif')).toBeVisible();
+  // Export réel de l'exemple (PNG).
+  let download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exporter' }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.png$/);
+  // Crayon : menu d'édition ; partir de zéro, éléments éditables.
+  const pencil = page.getByRole('button', { name: 'Modifier le schéma' });
+  await pencil.click();
+  await page.getByRole('menuitem', { name: 'Partir de zéro' }).click();
+  await expect(
+    page.getByRole('textbox', { name: 'Texte de l’élément' }),
+  ).toHaveCount(3);
+  await pencil.click();
+  await page.getByRole('menuitem', { name: 'Ajouter un élément' }).click();
+  await expect(
+    page.getByRole('textbox', { name: 'Texte de l’élément' }),
+  ).toHaveCount(4);
   await page
-    .getByRole('textbox', { name: 'Lien FigJam' })
-    .fill('https://example.com/x');
-  await page.getByRole('button', { name: 'Ajouter' }).click();
-  await expect(page.getByRole('alert')).toContainText('Lien non reconnu');
-  // Lien FigJam : intégration officielle et ouverture dans FigJam.
+    .getByRole('textbox', { name: 'Texte de l’élément' })
+    .first()
+    .fill('Concurrent A');
+  // Ajouter un schéma : type puis Partir de zéro → nouvel onglet.
+  await page.getByRole('button', { name: 'Ajouter un schéma' }).click();
+  const add = page.getByRole('dialog', { name: 'Ajouter un schéma' });
+  await add.getByRole('combobox').selectOption('Storyboard');
+  await add.getByRole('button', { name: 'Partir de zéro' }).click();
+  await expect(tabs.getByRole('tab', { name: 'Storyboard' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  // Import par lien : refusé hors services connus ; Figma intégré.
+  await tabs.getByRole('tab', { name: 'Personas' }).click();
+  await page.getByRole('button', { name: 'Importer', exact: true }).click();
+  let dialog = page.getByRole('dialog', { name: /Importer/ });
+  await dialog.getByRole('textbox').fill('https://example.com/x');
+  await dialog.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Lien non reconnu');
   const board =
-    'https://www.figma.com/board/AbCdEfGhIjKlMnOp/Entretiens?node-id=0-1';
-  await page
-    .getByRole('textbox', { name: 'Nom du tableau' })
-    .fill('Entretiens');
-  await page.getByRole('textbox', { name: 'Lien FigJam' }).fill(board);
-  await page.getByRole('button', { name: 'Ajouter' }).click();
+    'https://www.figma.com/board/AbCdEfGhIjKlMnOp/Personas?node-id=0-1';
+  await dialog.getByRole('textbox').fill(board);
+  await dialog.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(page.locator('.schema-view iframe')).toHaveAttribute(
     'src',
-    'https://embed.figma.com/board/AbCdEfGhIjKlMnOp/Entretiens?node-id=0-1&embed-host=ds-studio',
+    'https://embed.figma.com/board/AbCdEfGhIjKlMnOp/Personas?node-id=0-1&embed-host=ds-studio',
   );
-  await expect(
-    page.getByRole('link', { name: /Ouvrir dans FigJam/ }),
-  ).toHaveAttribute('href', board);
-  // Persistance, onglets indépendants.
+  // Export d'un lien : raccourci .url.
+  download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exporter' }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.url$/);
+  // Fichier local : type validé, aperçu réel.
+  await tabs.getByRole('tab', { name: 'Mind maps' }).click();
+  await page.getByRole('button', { name: 'Importer', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: /Importer/ });
+  await dialog.getByRole('button', { name: 'Depuis mon ordinateur' }).click();
+  await dialog.locator('input[type=file]').setInputFiles({
+    name: 'notes.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('x'),
+  });
+  await dialog.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(dialog.getByRole('alert')).toContainText(
+    'Format non pris en charge',
+  );
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  await dialog.locator('input[type=file]').setInputFiles({
+    name: 'map.png',
+    mimeType: 'image/png',
+    buffer: png,
+  });
+  await dialog.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(page.locator('.schema-img')).toBeVisible();
+  // Persistance après rechargement (fichier, tableau, onglet ajouté).
   await page.reload();
-  await expect(
-    page.getByRole('button', { name: 'Entretiens', exact: true }),
-  ).toBeVisible();
-  await tabs.getByRole('tab', { name: 'Personas' }).click();
-  await expect(
-    page.getByText(/Aucun tableau FigJam pour « Personas »/),
-  ).toBeVisible();
-  await tabs.getByRole('tab', { name: /Entretiens utilisateurs/ }).click();
-  // Retrait (le tableau FigJam n'est pas supprimé).
+  await tabs.getByRole('tab', { name: 'Mind maps' }).click();
+  await expect(page.locator('.schema-img')).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Benchmark' }).click();
+  await expect(page.locator('.schema-view')).toContainText('Concurrent A');
+  await expect(tabs.getByRole('tab', { name: 'Storyboard' })).toBeVisible();
+});
+
+test('v3 : mes notes, épinglées, persistantes, rappel', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.locator('.sidebar').getByText('Mes notes').click();
+  await expect(page.getByRole('heading', { name: 'Mes notes' })).toBeVisible();
+  await page.getByRole('button', { name: 'Nouvelle note' }).click();
+  const note = page.getByRole('textbox', { name: 'Texte de la note' });
+  const card = page.locator('.note');
+  await note.fill('Relire la note de cadrage');
+  // Valider : enregistrée, lecture seule, fond plein de la teinte.
+  await card.getByRole('button', { name: 'Valider' }).click();
+  await expect(note).toHaveCount(0);
+  await expect(card).toContainText('Relire la note de cadrage');
+  await expect(card).toHaveCSS('background-color', 'rgb(250, 188, 60)');
+  await page.reload();
+  await expect(card).toContainText('Relire la note de cadrage');
+  await expect(note).toHaveCount(0);
+  // Rééditer : texte et couleur, enregistrés seulement au nouveau Valider.
+  await card.getByRole('button', { name: 'Modifier la note' }).click();
+  await note.fill('Relire la note de cadrage v2');
+  await card.getByRole('button', { name: 'Couleur 9' }).click();
+  await card.getByRole('button', { name: 'Valider' }).click();
+  await expect(card).toHaveCSS('background-color', 'rgb(245, 85, 54)');
+  await page.reload();
+  await expect(card).toContainText('v2');
+  // Rappel programmé, puis annulé.
+  const at = new Date(Date.now() + 3_600_000);
+  const p = (n: number) => String(n).padStart(2, '0');
+  await page
+    .getByRole('textbox', { name: 'Date et heure du rappel' })
+    .fill(
+      `${at.getFullYear()}-${p(at.getMonth() + 1)}-${p(at.getDate())}T${p(at.getHours())}:${p(at.getMinutes())}`,
+    );
+  await page.getByRole('button', { name: 'Programmer' }).click();
+  await expect(page.getByText(/Rappel le/)).toBeVisible();
+  await page.getByRole('button', { name: 'Annuler' }).click();
+  await expect(page.getByRole('button', { name: 'Programmer' })).toBeVisible();
+  // Suppression.
   page.once('dialog', (d) => void d.accept());
-  await page.getByRole('button', { name: 'Retirer Entretiens' }).click();
-  await expect(page.getByText(/Aucun tableau FigJam/)).toBeVisible();
+  await page.getByRole('button', { name: 'Supprimer la note' }).click();
+  await expect(page.getByText('Aucune note.')).toBeVisible();
 });

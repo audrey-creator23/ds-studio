@@ -3031,3 +3031,87 @@ select.status-tag {
   color: var(--ui-fg);
   box-shadow: var(--ui-shadow-xs);
 }
+
+/* Galerie de la bibliothèque (studio v3) : vrais composants, glissables. */
+.cmp-pick {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgb(0 0 0 / 0.08);
+  border-radius: 10px;
+  background: var(--color-surface, #fff);
+  cursor: grab;
+}
+.cmp-pick:hover,
+.cmp-pick:focus-visible {
+  border-color: #f19143;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(241 145 67 / 0.35);
+}
+.cmp-caption {
+  color: #5f5e5b;
+  font:
+    500 11px/1.3 system-ui,
+    sans-serif;
+}
+.cmp-pick-body {
+  pointer-events: none;
+}
+.cmp-pick-body:empty {
+  min-height: 32px;
+  border: 1px dashed rgb(0 0 0 / 0.2);
+  border-radius: 6px;
+}
+
+/* Alignement propre d'un élément (barre de propriétés), dans son parent.
+   Pile : horizontal = axe transversal. Rangée : vertical = axe
+   transversal ; horizontal = contenu dans sa cellule. Grille : les deux. */
+.cmp-section.layout-stack > .cmp-section-body > .cmp-item[data-ax='start'] {
+  align-self: flex-start;
+}
+.cmp-section.layout-stack > .cmp-section-body > .cmp-item[data-ax='center'] {
+  align-self: center;
+}
+.cmp-section.layout-stack > .cmp-section-body > .cmp-item[data-ax='end'] {
+  align-self: flex-end;
+}
+.cmp-section.layout-row > .cmp-section-body > .cmp-item[data-ay='start'] {
+  align-self: flex-start;
+}
+.cmp-section.layout-row > .cmp-section-body > .cmp-item[data-ay='center'] {
+  align-self: center;
+}
+.cmp-section.layout-row > .cmp-section-body > .cmp-item[data-ay='end'] {
+  align-self: flex-end;
+}
+.cmp-section.layout-row > .cmp-section-body > .cmp-item[data-ax] {
+  display: flex;
+  flex-direction: column;
+}
+.cmp-section.layout-row > .cmp-section-body > .cmp-item[data-ax='start'] {
+  align-items: flex-start;
+}
+.cmp-section.layout-row > .cmp-section-body > .cmp-item[data-ax='center'] {
+  align-items: center;
+}
+.cmp-section.layout-row > .cmp-section-body > .cmp-item[data-ax='end'] {
+  align-items: flex-end;
+}
+.cmp-section.layout-grid > .cmp-section-body > .cmp-item[data-ax='start'] {
+  justify-self: start;
+}
+.cmp-section.layout-grid > .cmp-section-body > .cmp-item[data-ax='center'] {
+  justify-self: center;
+}
+.cmp-section.layout-grid > .cmp-section-body > .cmp-item[data-ax='end'] {
+  justify-self: end;
+}
+.cmp-section.layout-grid > .cmp-section-body > .cmp-item[data-ay='start'] {
+  align-self: start;
+}
+.cmp-section.layout-grid > .cmp-section-body > .cmp-item[data-ay='center'] {
+  align-self: center;
+}
+.cmp-section.layout-grid > .cmp-section-body > .cmp-item[data-ay='end'] {
+  align-self: end;
+}

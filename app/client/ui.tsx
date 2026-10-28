@@ -14,14 +14,14 @@ import {
 export const statusColors: Record<TaskStatus, string> = {
   todo: 'neutral',
   doing: 'yellow',
-  done: 'blue',
+  done: 'accent',
   validated: 'green',
 };
 
 export function TaskProgress({
   value,
   label = 'Tâches faites ou validées',
-  tone = 'blue.5',
+  tone = 'accent.5',
 }: {
   value: number;
   label?: string;

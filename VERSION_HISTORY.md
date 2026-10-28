@@ -5,6 +5,203 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.27.1 — 2026-10-28
+
+- **Type** : patch (branche `v3-dashboard` ; règle des rendus : acquis
+  seulement si l’étape liée est « Validé » ; données inchangées)
+- **Fichiers** : `app/shared/steps.ts` (`renduAcquired`),
+  `app/v3/Dashboard.tsx`, `tests/steps.test.ts`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Prochain rendu = premier rendu non validé par le prof : avec
+  l’étape Présentation marquée « Fait », le KPI affiche bien « Note de
+  cadrage · 13/11/2026 », J-16 au 28/10/2026 (et non plus le Document de
+  cadrage). J-X calculé chaque jour sur la date locale. Échéance passée :
+  « en retard » si rien n’est remis, « remis, en attente de validation »
+  sinon. Carte Rendus : badges « À réaliser », « Remis », « Validé » ;
+  compteurs « validé(s) ».
+
+## 2.27.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; nouveaux tokens
+  `--selected`, `--selected-foreground`, `--selected-ring`)
+- **Fichiers** : `app/v3/v3.css`, `app/v3/App.tsx`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : États actifs et sélectionnés centralisés (une seule règle,
+  trois tokens) : fond #000, texte et icônes blancs (21:1), liseré clair
+  en sombre pour les détacher des surfaces foncées, focus clavier conservé.
+  Couvre navigation, onglets (studio, schémas, écrans), bascules
+  (appareils, thème), chips, outils de la barre de propriétés, calques,
+  frise, formats d’export. Remplace les états actifs jaunes ou en dégradé
+  (onglets de Mes schémas, appareils, alignements) des versions 2.24.3 à
+  2.25.1. Hors champ, inchangés : couleurs sémantiques, pastilles de
+  couleur, notes validées. Étapes du PFE : l’accès par le menu ouvre
+  toujours la page en haut (défilement du document remis à 0, ancre
+  retirée, pas de restauration du navigateur) ; un rendu cliqué depuis le
+  Dashboard fait toujours défiler jusqu’à son étape.
+
+## 2.26.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; aucune donnée nouvelle : texte
+  et couleur s’enregistrent désormais au clic sur « Valider », plus à la
+  sortie du champ)
+- **Fichiers** : `app/v3/Notes.tsx`, `app/v3/v3.css`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : Mes notes : mode édition (couleurs, texte) avec « Valider »
+  en bas à droite ; une fois validée, la note est enregistrée, en lecture
+  seule, sur fond plein de sa teinte (palette officielle), texte et icônes
+  encre #0A0A0A (≥ 6:1), et le bouton devient un crayon pour rééditer
+  (nouveau « Valider » pour enregistrer). Épinglage, suppression et rappels
+  inchangés et lisibles sur le fond coloré ; nouvelle note vide ouverte en
+  édition.
+
+## 2.25.1 — 2026-10-28
+
+- **Type** : patch (branche `v3-dashboard` ; CSS seulement)
+- **Fichiers** : `app/v3/v3.css`
+- **Résumé** : Mes schémas : onglet de catégorie actif en jaune primaire
+  #FABC3C, texte encre #0A0A0A en gras (contraste 11,6:1, clair et
+  sombre) ; inactifs neutres, survol en couleur de texte principale, focus
+  clavier souligné d’un contour jaune. Dimensions et navigation inchangées.
+
+## 2.25.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; modèle de composition étendu
+  de façon rétrocompatible : `alignX` / `alignY` facultatifs par bloc,
+  valeurs `start`, `center`, `end`, conservés par la normalisation et le
+  schéma de sortie de Claude)
+- **Fichiers** : `app/shared/composition.ts`,
+  `app/client/design/useComposition.ts` (`patchItems`),
+  `app/client/design/CompositionView.tsx`, `app/client/styles.css`,
+  `app/v3/studio/PropsBar.tsx`, `app/v3/studio/exportReact.ts`,
+  `app/v3/v3.css`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Design : 6 outils d’alignement en tête de la barre de
+  propriétés (gauche, centre horizontal, droite, haut, centre vertical,
+  bas ; icônes Lucide, info-bulles, état actif sur le dégradé officiel,
+  texte encre). Sélection simple ou multiple, une seule étape
+  d’annulation (⌘Z / ⇧⌘Z), re-clic sur l’option active pour la retirer.
+  Alignement dans le conteneur parent : pile verticale (horizontal, le
+  vertical y est désactivé avec explication), rangée et grille (les deux
+  axes). Repris dans l’aperçu, les exports et le TSX.
+
+## 2.24.3 — 2026-10-28
+
+- **Type** : patch (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/Studio.tsx`, `app/v3/v3.css`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : Design : écart entre le panneau gauche et la
+  prévisualisation porté à 35 px (`gap` 11,5 px de part et d’autre du
+  séparateur de 12 px). Sélecteur d’appareils : noms seuls, centrés, sans
+  retour à la ligne (dimensions retirées, toujours en info-bulle) ;
+  appareil actif sur le dégradé officiel #FABC3C → #F55536, texte encre
+  #0A0A0A en gras (contraste ≥ 6:1), inactifs discrets. Test e2e : rotation
+  vérifiée par le format de l’aperçu.
+
+## 2.24.2 — 2026-10-28
+
+- **Type** : patch (branche `v3-dashboard` ; CSS seulement)
+- **Fichiers** : `app/v3/v3.css`
+- **Résumé** : Design : `gap` de 4 px sur `.studio-body`, de part et
+  d’autre du séparateur (12 px) ; l’écart entre le panneau gauche et la
+  prévisualisation passe de 12 à 20 px. Proportions, séparateur
+  redimensionnable et affichage mobile (empilé) inchangés.
+
+## 2.24.1 — 2026-10-28
+
+- **Type** : patch (branche `v3-dashboard` ; CSS seulement)
+- **Fichiers** : `app/v3/v3.css`
+- **Résumé** : Dashboard : cartes Activité et Rendus légèrement descendues
+  (écart de 20 px avec « Échéances à venir », au lieu de 12 px) ; carte
+  Rendus : 22 px entre la barre de progression et la première ligne (au
+  lieu de 10 px), les 5 lignes restent réparties. Toujours sans défilement
+  à 1440 × 900.
+
+## 2.24.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; règle de statut : une ancienne
+  tâche cochée donne au plus « En cours », « Fait » / « Validé » se
+  déclarent dans les Étapes du PFE ; date du jour en heure locale)
+- **Fichiers** : `app/shared/brief.ts`, `app/shared/steps.ts`,
+  `app/v3/Dashboard.tsx`, `app/v3/Brief.tsx`, `app/v3/v3.css`,
+  `tests/steps.test.ts` (nouveau), `tests/e2e/studio.spec.ts`
+- **Résumé** : Prochain rendu corrigé : Note de cadrage · 13/11/2026, J-16
+  au 28/10/2026 (la tâche « intention » cochée ne vaut plus rendu effectué ;
+  J-X calculé sur la date locale, plus d’écart d’un jour après minuit ;
+  échéance dépassée affichée J+X · en retard). Carte Rendus : 5 lignes
+  réparties sur la hauteur, colonnes numéro / titre / date / badge
+  alignées, titres sur plusieurs lignes gérés. KPI : pied de carte aligné
+  en bas. Étapes du PFE : nouveau sous-titre, toutes les étapes fermées au
+  chargement (depuis le Dashboard : défilement vers l’étape, sans
+  l’ouvrir), bouton « Actualiser ma progression ».
+
+## 2.23.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; nouvelle source unique
+  `/api/v3/data` → `.ds-studio/v3-data.json` (statuts d’étapes, pistes,
+  notes), fichier privé hors Git ; statut « À retravailler » ; libellé de
+  calque `label` facultatif dans le modèle de composition, rétrocompatible ;
+  `workspace/figma.config.json` ignoré par Git)
+- **Fichiers** : `app/shared/steps.ts` (nouveau), `app/server/userData.ts`
+  (nouveau), `app/server/http.ts`, `app/shared/composition.ts`,
+  `app/client/App.tsx`, `app/client/design/CompositionView.tsx`,
+  `app/client/design/useComposition.ts`, `app/v3/useUserData.ts` (nouveau),
+  `app/v3/Notes.tsx` (nouveau), `app/v3/App.tsx`, `app/v3/Brief.tsx`,
+  `app/v3/Dashboard.tsx`, `app/v3/Schemas.tsx`, `app/v3/Studio.tsx`,
+  `app/v3/studio/*` (StudioChat, LibraryPanel, LayersPanel, PropsBar,
+  Device, ExportPanel), `app/v3/v3.css`, `.gitignore`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : Étapes du PFE : toutes fermées à l’arrivée, un seul statut
+  par étape (À faire, En cours, À retravailler en rouge, Fait, Validé en
+  vert), « Sauvegarder et masquer » si le statut change sinon « Masquer »,
+  « Attendus du brief » et « Mes pistes » éditables et persistantes,
+  checklist recalculée (fait ou validé) et synchronisée ; écritures
+  rapides sans perte. Dashboard : les 5 rendus toujours visibles, compacts,
+  sans bascule ; volcan qui remplit la carte. Mes schémas : Benchmark en
+  premier, crayon avec menu (textes, éléments, couleurs), « Exporter »
+  réel (fichier, raccourci de lien, PNG), « Ajouter un schéma » (type puis
+  Importer ou Partir de zéro). Nouvelle page « Mes notes » : notes
+  épinglées, couleurs, rappels datés (notification système ou alerte
+  intégrée, tant que DS-Studio est ouvert), annulation, suppression.
+  Design : panneau Claude réduit (fil, proposition, saisie « Décrivez… »,
+  « Cibler » au-dessus de la bulle, alerte discrète « Clé API non
+  connectée ») ; bibliothèque en état vide sans filtre, chips principales
+  à tags retirables, composants de niche par la recherche ; calques
+  hiérarchisés avec guides et renommage au crayon ; nom d’écran demandé
+  dans la modale d’export ; dimensions sous chaque appareil, « Pivoter »,
+  ⌘Z / ⇧⌘Z sans boutons, Versions (10 dernières modifications,
+  restauration), onglets d’écrans en bas et « Nouvel écran », Grouper /
+  Dégrouper une sélection multiple (Maj ou ⌘ + clic).
+
+## 2.22.0 — 2026-10-27
+
+- **Type** : minor (branche `v3-dashboard` ; liste partagée des 5 rendus
+  officiels dans `app/shared/brief.ts` ; CSP : `blob:` pour les aperçus
+  d’images et de PDF importés ; données existantes conservées, anciens
+  liens FigJam repris)
+- **Fichiers** : `app/shared/brief.ts`, `app/server/http.ts`,
+  `app/client/App.tsx`, `app/client/design/CompositionView.tsx`,
+  `app/client/theme.ts`, `app/client/ui.tsx`, `app/client/ChatBubble.tsx`,
+  `app/client/design/MantineBlocks.tsx`, `app/client/styles.css`,
+  `app/v3/*` (App, Dashboard, Timeline, Brief, Studio, Schemas,
+  SchemaExamples, fileStore, ui, v3.css), `app/v3/studio/LibraryPanel.tsx`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : en-têtes à 10 px puis 20 px ; bascule de thème soleil/lune ;
+  palette officielle des accents (#FABC3C → #F55536, 9 nuances, dégradé)
+  centralisée dans les tokens v3 et le thème Mantine, sans bleu ni violet.
+  Dashboard : « Rendus restants » sur les 5 rendus officiels (statuts réels),
+  « Prochain rendu » (nom et date du planning), frise jaune → rouge selon la
+  proximité, volcan sans légende avec nouveau sous-titre, carte Rendus
+  dépliable dont chaque rendu ouvre son étape (ancre stable, même après
+  rechargement). Design : barre d’outils dans la carte d’aperçu, nom
+  d’écran en champ discret, onglets Claude / Bibliothèque / Calques à
+  icônes, Versions dans la barre, bibliothèque à chips (union stricte) et
+  galerie de vrais composants glissables. Étapes du PFE (ex-Fiche PFE) :
+  liens « Accéder au brief » / « Accéder à mon fichier de rédaction », badges
+  À faire / En cours / Fait / Validé par le prof, résumés détaillés, détail
+  ordonné (exigences officielles du brief, propositions à valider,
+  échéancier, suivi, synthèse). Mes schémas : aperçus « Exemple fictif »,
+  nom du fichier, import par lien (Figma/FigJam intégrés, autres services
+  en fiche) ou fichier local (images, PDF ; type et taille vérifiés,
+  stockage local), remplacement et retrait.
+
 ## 2.21.0 — 2026-10-27
 
 - **Type** : minor (branche `v3-dashboard` ; `/` sert désormais l’interface v3,

@@ -76,9 +76,9 @@ export default function Device({
   tokens?: Tokens;
   scheme: 'light' | 'dark';
   composition: Composition;
-  selected?: string;
+  selected?: string | string[];
   proposal: boolean;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, additive?: boolean) => void;
   onDrop: (drop: DropEvent) => void;
   frameRef: RefObject<HTMLIFrameElement | null>;
 }) {
@@ -132,9 +132,12 @@ export default function Device({
       )
         return;
       if (e.data?.type === 'ds-preview-ready' && tokens) send();
+      // Raccourcis annuler / rétablir saisis dans l'aperçu.
+      if (e.data?.type === 'ds-key')
+        dispatchEvent(new CustomEvent('ds-history', { detail: e.data.key }));
       if (proposal) return;
       if (e.data?.type === 'ds-select' && typeof e.data.id === 'string')
-        onSelect(e.data.id);
+        onSelect(e.data.id, e.data.additive === true);
       if (e.data?.type === 'ds-drop' && typeof e.data.container === 'string')
         onDrop(e.data as DropEvent);
     };

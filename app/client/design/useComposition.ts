@@ -240,6 +240,16 @@ export function useComposition({
         return c;
       });
     },
+    // Même réglage sur plusieurs blocs : une seule étape d'annulation.
+    patchItems(ids: string[], patch: Partial<Item>) {
+      update((c) => {
+        for (const id of ids) {
+          const found = findItem(c, id);
+          if (found) found.list[found.index] = { ...found.item, ...patch };
+        }
+        return c;
+      });
+    },
     patchSection(id: string, patch: Partial<Section>) {
       update((c) => {
         c.sections = c.sections.map((s) =>
@@ -337,6 +347,46 @@ export function useComposition({
       update(() => next);
       setSelected(undefined);
       setNotice('Version restaurée dans le brouillon. Annulable.');
+    },
+    // Grouper : blocs frères (même liste, hors conteneurs) réunis dans un
+    // conteneur placé à la position du premier ; dégrouper fait l'inverse.
+    group(ids: string[]) {
+      const g = newItem('group', 'stack');
+      let ok = false;
+      update((c) => {
+        const found = ids.map((id) => findItem(c, id));
+        if (found.some((f) => !f)) return c;
+        const list = found[0]!.list;
+        if (
+          found.some((f) => f!.list !== list || f!.item.kind === 'group') ||
+          c.sections.every((s) => s.items !== list)
+        ) {
+          setError('Grouper : sélectionnez des blocs d’une même section.');
+          return c;
+        }
+        const ordered = found.map((f) => f!).sort((a, b) => a.index - b.index);
+        g.children = ordered.map((f) => f.item);
+        const at = ordered[0].index;
+        for (const f of [...ordered].reverse()) list.splice(f.index, 1);
+        list.splice(at, 0, g);
+        ok = true;
+        return c;
+      });
+      if (ok) setSelected(g.id);
+      return ok;
+    },
+    ungroup(id: string) {
+      update((c) => {
+        const found = findItem(c, id);
+        if (!found || found.item.kind !== 'group') return c;
+        found.list.splice(
+          found.index,
+          1,
+          ...((found.item.children ?? []) as Item[]),
+        );
+        return c;
+      });
+      setSelected(undefined);
     },
     rename(name: string) {
       update((c) => ({ ...c, name }));

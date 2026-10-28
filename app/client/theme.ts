@@ -104,6 +104,20 @@ const scales = {
     '#193CB8',
     '#1C398E',
   ],
+  // Palette officielle des accents (jaune → rouge) : 5 teintes et nuances
+  // interpolées ; 9 = rouge le plus soutenu pour les états actifs.
+  accent: [
+    '#FFF3DA',
+    '#FABC3C',
+    '#FCB73A',
+    '#FFB238',
+    '#F8A23E',
+    '#F19143',
+    '#F88440',
+    '#FF773D',
+    '#FA663A',
+    '#F55536',
+  ],
   red: [
     '#FEF2F2',
     '#FFE2E2',
@@ -140,8 +154,8 @@ export const roles = {
   primary: shadcnDark.primary, // bouton plein clair
   primaryHover: '#D4D4D4',
   onPrimary: shadcnDark.primaryForeground,
-  accent: shadcnDark.chart[1], // bleu des graphiques
-  accentSoft: 'rgb(43 127 255 / 0.16)',
+  accent: '#F19143', // palette officielle (Sandy Brown)
+  accentSoft: 'rgb(241 145 67 / 0.16)',
   danger: shadcnDark.destructive,
   dangerSoft: 'rgb(255 100 103 / 0.12)',
   success: '#05DF72',
@@ -297,7 +311,7 @@ function uiVariables(mode: 'light' | 'dark'): Record<string, string> {
     '--ui-ring-subtle': dark ? roles.ringSubtle : 'rgb(161 161 161 / 0.50)',
     '--ui-ring-destructive': roles.ringDestructive,
     '--ui-accent': roles.accent,
-    '--ui-accent-strong': shadcnDark.sidebarPrimary,
+    '--ui-accent-strong': '#8C4122', // orange profond : texte blanc 7,3:1
     '--ui-accent-soft': roles.accentSoft,
     '--ui-warning': dark ? roles.warning : '#A65F00',
     '--ui-warning-soft': 'rgb(253 199 0 / 0.12)',

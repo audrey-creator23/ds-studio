@@ -1,105 +1,42 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { useTasks } from '../client/useTasks.js';
-import { levels, levelOf } from '../client/Volcano.js';
+import { levelOf } from '../client/Volcano.js';
 import VolcanoGL, { webglAvailable } from '../client/VolcanoGL.js';
 import {
   daysBetween,
   milestoneStatus,
   milestones,
-  nextMilestone,
-  progress,
+  rendus,
   timeProgress,
   today,
 } from '../shared/brief.js';
+import Timeline, { short } from './Timeline.js';
 import {
-  statusLabels,
-  statusOf,
-  taskStatuses,
-  tasks,
-  type TaskStatus,
-} from '../shared/tasks.js';
-import Timeline, { chartOf, short } from './Timeline.js';
+  renduAcquired,
+  stepDone,
+  stepStatus,
+  type StepId,
+} from '../shared/steps.js';
+import { useUserData } from './useUserData.js';
 import {
   Badge,
-  Button,
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
   Progress,
-  type BadgeVariant,
 } from './ui.js';
 
-// Dashboard projet (itération v3). L'activité du volcan suit les dates du
-// PFE, pas les tâches ; un jalon de la frise prévisualise sa date (un second
-// clic revient à aujourd'hui).
+// Dashboard projet (v3). L'activité du volcan suit les dates du PFE ; les
+// rendus suivent le statut réel de leur étape (même source que la
+// checklist des Étapes du PFE), jamais les dates.
 const start = milestones[0].date;
 const end = milestones[milestones.length - 1].date;
-export const taskBadge: Record<TaskStatus, BadgeVariant> = {
-  todo: 'outline',
-  doing: 'outline',
-  done: 'secondary',
-  validated: 'default',
-};
-
-// Liste réelle des tâches, ouverte depuis la carte « Tâches réalisées ».
-function TaskList({ state }: { state: ReturnType<typeof useTasks>['state'] }) {
-  const [open, setOpen] = useState(false);
-  const id = useId();
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: Event) => {
-      if (
-        e instanceof KeyboardEvent
-          ? e.key === 'Escape'
-          : !root.current?.contains(e.target as Node)
-      )
-        setOpen(false);
-    };
-    addEventListener('keydown', close);
-    addEventListener('pointerdown', close);
-    return () => {
-      removeEventListener('keydown', close);
-      removeEventListener('pointerdown', close);
-    };
-  }, [open]);
-  return (
-    <div className="popover-root" ref={root}>
-      <Button
-        variant="outline"
-        size="sm"
-        aria-label="Voir la liste des tâches"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen(!open)}
-      >
-        Liste
-      </Button>
-      {open && (
-        <div id={id} className="popover" role="region" aria-label="Tâches">
-          <ul className="task-list">
-            {tasks.map((t) => {
-              const s = state ? statusOf(state, t.id) : t.initial;
-              return (
-                <li key={t.id}>
-                  <span>
-                    {t.label}
-                    {t.due && <small> · {t.due}</small>}
-                  </span>
-                  <Badge variant={taskBadge[s]}>{statusLabels[s]}</Badge>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
+const renduLink = (step: string) => `?vue=brief#etape-${step}`;
+const numeric = (d: string) =>
+  new Date(d + 'T00:00:00').toLocaleDateString('fr-FR');
 
 export default function Dashboard() {
   const { state, error } = useTasks();
@@ -107,6 +44,13 @@ export default function Dashboard() {
   const [day, setDay] = useState(now);
   const [gl, setGl] = useState(webglAvailable);
   const [fail] = useState(() => () => setGl(false));
+  const { data } = useUserData();
+  // Statut de l'étape liée : validé = rendu acquis ; fait = remis, en
+  // attente de validation (toujours à suivre) ; sinon à réaliser.
+  const renduStatus = rendus.map((r) =>
+    stepStatus(data, state, r.step as StepId),
+  );
+  const ok = renduStatus.map(renduAcquired);
 
   const intensity = timeProgress(day);
   const statuses = milestones.map((_, i) => milestoneStatus(i, state, now));
@@ -114,27 +58,29 @@ export default function Dashboard() {
     (s) => s === 'done' || s === 'validated',
   ).length;
   const late = statuses.filter((s) => s === 'late').length;
-  const next = nextMilestone(now);
   const total = daysBetween(start, end);
   const elapsed = Math.min(total, Math.max(0, daysBetween(start, now)));
-  const done = progress(state);
-  const counts = taskStatuses.map((s) => ({
-    status: s,
-    n: state ? tasks.filter((t) => statusOf(state, t.id) === s).length : 0,
-  }));
-  const todo = state
-    ? tasks.filter((t) => statusOf(state, t.id) === 'todo').slice(0, 4)
-    : [];
+  const ready = !!state && !!data;
+  const done = ok.filter(Boolean).length;
+  const nextI = ready ? ok.findIndex((x) => !x) : -1;
+  const nextR = nextI >= 0 ? rendus[nextI] : undefined;
+  // Échéance passée : en retard si rien n'est remis, sinon en attente de
+  // validation (le rendu reste suivi tant qu'il n'est pas validé).
+  const overdue =
+    nextR?.date && nextR.date < now
+      ? stepDone(renduStatus[nextI])
+        ? ' · remis, en attente de validation'
+        : ' · en retard'
+      : '';
 
   return (
     <div className="page">
       <header className="page-header">
         <h1 id="page-title" tabIndex={-1}>
-          Récapitulatif des échéances PFE
+          Dashboard
         </h1>
         <p className="lead">
-          Activité calculée sur les dates · du {short(start)} au {short(end)} ·
-          jour {elapsed} sur {total}
+          Récapitulatif des échéances du projet de fin d’études
         </p>
       </header>
 
@@ -147,35 +93,43 @@ export default function Dashboard() {
       <div className="kpis">
         <Card>
           <CardHeader>
-            <CardDescription>Tâches à réaliser</CardDescription>
+            <CardDescription>Rendus restants</CardDescription>
             <CardTitle className="stat">
-              {state ? counts[0].n : '…'}
+              {ready ? rendus.length - done : '…'}
               <small>
                 {' '}
-                / {tasks.length} · {done} % faites
+                / {rendus.length} · {done} validé{done > 1 ? 's' : ''}
               </small>
             </CardTitle>
-            <CardAction>
-              <TaskList state={state} />
-            </CardAction>
           </CardHeader>
           <CardFooter>
-            <Progress value={done} label="Tâches faites ou validées" />
+            <Progress
+              value={(done / rendus.length) * 100}
+              label="Rendus validés"
+            />
           </CardFooter>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Prochaine échéance</CardDescription>
+            <CardDescription>Prochain rendu</CardDescription>
             <CardTitle className="stat">
-              {next >= 0
-                ? `J-${daysBetween(now, milestones[next].date)}`
-                : 'Terminé'}
+              {!ready
+                ? '…'
+                : nextR
+                  ? nextR.date
+                    ? daysBetween(now, nextR.date) >= 0
+                      ? `J-${daysBetween(now, nextR.date)}`
+                      : `J+${-daysBetween(now, nextR.date)}`
+                    : 'Sans date'
+                  : 'Terminé'}
             </CardTitle>
           </CardHeader>
           <CardFooter className="muted">
-            {next >= 0
-              ? `${milestones[next].title} · ${short(milestones[next].date)}`
-              : 'Tous les jalons sont passés.'}
+            {!ready
+              ? '…'
+              : nextR
+                ? `${nextR.title}${nextR.date ? ` · ${numeric(nextR.date)}${overdue}` : ' · date non fixée au planning'}`
+                : 'Tous les rendus sont validés.'}
           </CardFooter>
         </Card>
         <Card>
@@ -187,7 +141,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardFooter>
-            <Progress value={(elapsed / total) * 100} label="Période écoulée" />
+            <Progress value={(elapsed / total) * 100} label="Délai écoulé" />
           </CardFooter>
         </Card>
         <Card>
@@ -227,8 +181,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Activité</CardTitle>
             <CardDescription>
-              {levelOf(intensity)} · intensité {Math.round(intensity * 100)} %
-              {day !== now && ` · au ${short(day)}`}
+              Le volcan illustre le temps restant avant le rendu final du PFE.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -245,60 +198,43 @@ export default function Dashboard() {
                 </p>
               )}
             </div>
-            <ol className="levels" aria-label="Paliers d’activité">
-              {[...levels].reverse().map(([min, name]) => (
-                <li
-                  key={name}
-                  aria-current={
-                    levelOf(intensity) === name ? 'step' : undefined
-                  }
-                  style={{ '--tone': chartOf(min) } as CSSProperties}
-                >
-                  {name}
-                </li>
-              ))}
-            </ol>
           </CardContent>
         </Card>
 
         <Card className="tasks">
           <CardHeader>
-            <CardTitle>Tâches</CardTitle>
+            <CardTitle>Rendus</CardTitle>
             <CardDescription>
-              {tasks.length} tâches · avancement indépendant des dates
+              {done} validé{done > 1 ? 's' : ''} sur {rendus.length} · selon le
+              statut de chaque étape
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="stack-bar" aria-hidden="true">
-              {counts.map((c) => (
-                <span
-                  key={c.status}
-                  data-status={c.status}
-                  style={{ flexGrow: c.n }}
-                />
-              ))}
+              <span data-status="done" style={{ flexGrow: done }} />
+              <span
+                data-status="todo"
+                style={{ flexGrow: rendus.length - done }}
+              />
             </div>
-            <ul className="legend">
-              {counts.map((c) => (
-                <li key={c.status} data-status={c.status}>
-                  <span>{statusLabels[c.status]}</span>
-                  <strong>{c.n}</strong>
+            <ol className="rendus" aria-label="Rendus du PFE">
+              {rendus.map((r, i) => (
+                <li key={r.id} data-done={ok[i] || undefined}>
+                  <a href={renduLink(r.step)}>
+                    <span className="rendu-n">{i + 1}</span>
+                    <span className="rendu-title">{r.title}</span>
+                    <small>{r.date ? short(r.date) : 'Non fixée'}</small>
+                    <Badge variant={ok[i] ? 'secondary' : 'outline'}>
+                      {ok[i]
+                        ? 'Validé'
+                        : stepDone(renduStatus[i])
+                          ? 'Remis'
+                          : 'À réaliser'}
+                    </Badge>
+                  </a>
                 </li>
               ))}
-            </ul>
-            {todo.length > 0 && (
-              <>
-                <h3 className="subhead">À faire ensuite</h3>
-                <ul className="list">
-                  {todo.map((t) => (
-                    <li key={t.id}>
-                      <span>{t.label}</span>
-                      {t.due && <small>{t.due}</small>}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+            </ol>
           </CardContent>
         </Card>
       </div>

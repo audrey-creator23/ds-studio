@@ -64,7 +64,7 @@ export function MantineBlock({ item }: { item: Item }) {
           <Progress
             value={64}
             size="sm"
-            color={item.variant === 'accent' ? 'blue.5' : 'neutral.2'}
+            color={item.variant === 'accent' ? 'accent.5' : 'neutral.2'}
             aria-label={item.text || 'Progression'}
           />
         </Stack>

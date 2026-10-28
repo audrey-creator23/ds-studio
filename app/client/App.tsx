@@ -103,8 +103,9 @@ export function Preview() {
     screen: string;
     config: ComponentConfig;
     composition?: Composition;
-    selected?: string;
+    selected?: string | string[];
     interact: boolean;
+    palette: boolean;
   }>();
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
@@ -131,8 +132,13 @@ export function Preview() {
             ? normalizeComposition(e.data.composition)
             : undefined,
           selected:
-            typeof e.data.selected === 'string' ? e.data.selected : undefined,
+            typeof e.data.selected === 'string'
+              ? e.data.selected
+              : Array.isArray(e.data.selected)
+                ? e.data.selected.filter((x: unknown) => typeof x === 'string')
+                : undefined,
           interact: e.data.interact === true,
+          palette: e.data.palette === true,
         });
     };
     addEventListener('message', onMessage);
@@ -178,11 +184,23 @@ export function Preview() {
       }
     };
     addEventListener('message', onExport);
+    // ⌘Z / ⇧⌘Z (ou Ctrl+Y) dans l'aperçu : relayés au studio.
+    const onKey = (e: KeyboardEvent) => {
+      if (parent === window || !(e.metaKey || e.ctrlKey)) return;
+      const k = e.key.toLowerCase();
+      const key =
+        k === 'z' ? (e.shiftKey ? 'redo' : 'undo') : k === 'y' ? 'redo' : '';
+      if (!key) return;
+      e.preventDefault();
+      parent.postMessage({ type: 'ds-key', key }, location.origin);
+    };
+    addEventListener('keydown', onKey);
     if (parent !== window)
       parent.postMessage({ type: 'ds-preview-ready' }, location.origin);
     return () => {
       removeEventListener('message', onMessage);
       removeEventListener('message', onExport);
+      removeEventListener('keydown', onKey);
     };
   }, []);
   const scenario =
@@ -198,11 +216,23 @@ export function Preview() {
         composition={live.composition}
         selected={live.selected}
         interact={live.interact}
-        onSelect={(id) =>
-          parent.postMessage({ type: 'ds-select', id }, location.origin)
+        onSelect={(id, additive) =>
+          parent.postMessage(
+            { type: 'ds-select', id, additive },
+            location.origin,
+          )
         }
         onDrop={(drop) =>
           parent.postMessage({ type: 'ds-drop', ...drop }, location.origin)
+        }
+        onPick={
+          live.palette
+            ? (block) =>
+                parent.postMessage(
+                  { type: 'ds-pick', ...block },
+                  location.origin,
+                )
+            : undefined
         }
       />
     );

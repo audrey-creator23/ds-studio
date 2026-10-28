@@ -8,6 +8,8 @@ import { Store, StudioError } from './store.js';
 import { ProjectStore } from './project.js';
 import { projectSchema } from '../shared/project.js';
 import { TaskStore } from './tasks.js';
+import { UserDataStore } from './userData.js';
+import { userDataUpdate } from '../shared/steps.js';
 import { taskUpdateSchema } from '../shared/tasks.js';
 import { CodexAdapter } from '../../connectors/agents/codex.js';
 import { unvalidatedAdapter } from '../../connectors/agents/unvalidated.js';
@@ -60,6 +62,7 @@ export async function createStudioServer(options: {
   };
   const project = new ProjectStore(store.directory);
   const tasks = new TaskStore(store.directory);
+  const userData = new UserDataStore(store.directory);
   const chat = new ChatStore(store.directory);
   const assistant = options.assistant ?? new ClaudeAssistant(root);
   const composer = options.composer ?? new ClaudeAssistant(root);
@@ -95,7 +98,7 @@ export async function createStudioServer(options: {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader(
       'Content-Security-Policy',
-      `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'${options.dev ? ' ws://127.0.0.1:*' : ''}; frame-src 'self' https://embed.figma.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'`,
+      `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'${options.dev ? ' ws://127.0.0.1:*' : ''}; frame-src 'self' blob: https://embed.figma.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'`,
     );
     try {
       if (req.headers.host !== `127.0.0.1:${port}`)
@@ -147,6 +150,8 @@ export async function createStudioServer(options: {
             return send(200, await project.read());
           if (url.pathname === '/api/tasks')
             return send(200, await tasks.read());
+          if (url.pathname === '/api/v3/data')
+            return send(200, await userData.read());
           if (url.pathname === '/api/assistant') {
             const { sources } = await buildContext({
               root,
@@ -204,6 +209,10 @@ export async function createStudioServer(options: {
             .strict()
             .parse(body);
           return send(200, await project.save(b.base, b.project));
+        }
+        if (url.pathname === '/api/v3/data') {
+          const b = userDataUpdate.parse(body);
+          return send(200, await userData.set(b.key, b.value));
         }
         if (url.pathname === '/api/tasks') {
           const b = taskUpdateSchema.parse(body);

@@ -61,11 +61,14 @@ export default function ExportPanel({
   frameRef,
   size,
   onDone,
+  onName,
 }: {
   composition: Composition;
   frameRef: RefObject<HTMLIFrameElement | null>;
   size: string;
   onDone?: () => void;
+  // Nom de l'écran, demandé ici seulement (fichier exporté).
+  onName: (name: string) => void;
 }) {
   const [format, setFormat] = useState<Format>('png');
   const [state, setState] = useState<
@@ -100,8 +103,18 @@ export default function ExportPanel({
       setState({ kind: 'error', text: (e as Error).message });
     }
   }
+  const defaults = ['Écran 1', 'Nouvelle page'];
   return (
     <div className="export">
+      <input
+        className="export-name"
+        aria-label="Nom de l’écran"
+        placeholder="Donnez un nom à votre écran…"
+        maxLength={60}
+        autoFocus
+        value={defaults.includes(composition.name) ? '' : composition.name}
+        onChange={(e) => onName(e.target.value || 'Écran 1')}
+      />
       <fieldset className="export-formats">
         <legend>Format</legend>
         {formats.map((f) => (

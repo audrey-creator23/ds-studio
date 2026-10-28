@@ -6,6 +6,12 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignEndHorizontal,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignStartVertical,
   AlignHorizontalJustifyCenter,
   AlignVerticalJustifyCenter,
   ArrowDown,
@@ -21,6 +27,8 @@ import {
   Square,
   SquareDashed,
   Trash2,
+  Group,
+  Ungroup,
   Type,
   type LucideProps,
 } from 'lucide-react';
@@ -35,10 +43,65 @@ import {
   spaces,
   widths,
   type Box,
+  type Composition,
   type Item,
   type Section,
 } from '../../shared/composition.js';
 import type { CompositionState } from '../../client/design/useComposition.js';
+
+// Alignement propre des blocs sélectionnés dans leur conteneur parent.
+// Re-cliquer l'option active la retire. Dans une pile verticale, la hauteur
+// d'un bloc est celle de son contenu : l'alignement vertical y est inactif.
+const alignOptions = [
+  ['alignX', 'start', 'Aligner à gauche', AlignStartVertical],
+  ['alignX', 'center', 'Centrer horizontalement', AlignCenterVertical],
+  ['alignX', 'end', 'Aligner à droite', AlignEndVertical],
+  ['alignY', 'start', 'Aligner en haut', AlignStartHorizontal],
+  ['alignY', 'center', 'Centrer verticalement', AlignCenterHorizontal],
+  ['alignY', 'end', 'Aligner en bas', AlignEndHorizontal],
+] as const;
+function parentLayout(c: Composition, id: string) {
+  for (const s of c.sections)
+    for (const i of s.items) {
+      if (i.id === id) return { item: i, layout: s.layout };
+      const child = i.children?.find((x) => x.id === id);
+      if (child) return { item: child as Item, layout: i.variant };
+    }
+}
+function AlignTools({ c, ids }: { c: CompositionState; ids: string[] }) {
+  const found = ids.flatMap((id) => parentLayout(c.draft, id) ?? []);
+  if (!found.length) return null;
+  const stacked = found.every((f) => f.layout === 'stack');
+  return (
+    <div className="props-align" role="group" aria-label="Alignement">
+      {alignOptions.map(([key, value, label, Icon]) => {
+        const active = found.every((f) => f.item[key] === value);
+        const off = key === 'alignY' && stacked;
+        return (
+          <button
+            key={`${key}-${value}`}
+            type="button"
+            className="props-btn"
+            aria-label={label}
+            title={
+              off ? `${label} : sans effet dans une pile verticale` : label
+            }
+            aria-pressed={active}
+            disabled={off}
+            onClick={() =>
+              c.patchItems(
+                found.map((f) => f.item.id),
+                { [key]: active ? undefined : value },
+              )
+            }
+          >
+            <Icon size={16} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // Barre de propriétés ultra-fine, à droite de l'aperçu : seules les
 // propriétés de la sélection, une icône par réglage, contrôle en popover.
@@ -306,7 +369,16 @@ function itemTools(
   return tools;
 }
 
-export default function PropsBar({ c }: { c: CompositionState }) {
+export default function PropsBar({
+  c,
+  multi = [],
+  onGrouped,
+}: {
+  c: CompositionState;
+  // Sélection multiple (Maj / ⌘ + clic) : action « Grouper ».
+  multi?: string[];
+  onGrouped?: () => void;
+}) {
   const [open, setOpen] = useState<string>();
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => setOpen(undefined), [c.selected]);
@@ -345,6 +417,32 @@ export default function PropsBar({ c }: { c: CompositionState }) {
       }
     }
   }
+  if (multi.length > 1)
+    return (
+      <aside
+        className="props-bar"
+        aria-label={`Propriétés : ${multi.length} éléments`}
+      >
+        <span
+          className="props-count"
+          title={`${multi.length} éléments sélectionnés`}
+        >
+          {multi.length}
+        </span>
+        <AlignTools c={c} ids={multi} />
+        <button
+          type="button"
+          className="props-btn"
+          aria-label="Grouper"
+          title="Grouper"
+          onClick={() => {
+            if (c.group(multi)) onGrouped?.();
+          }}
+        >
+          <Group size={16} strokeWidth={1.75} aria-hidden="true" />
+        </button>
+      </aside>
+    );
   if (!section && !item)
     return (
       <aside className="props-bar" aria-label="Propriétés">
@@ -393,6 +491,13 @@ export default function PropsBar({ c }: { c: CompositionState }) {
       action: () => c.move(id, 1),
     },
   );
+  if (item?.kind === 'group')
+    tools.push({
+      id: 'ungroup',
+      label: 'Dégrouper',
+      icon: Ungroup,
+      action: () => c.ungroup(id),
+    });
   if (item)
     tools.push({
       id: 'copy',
@@ -413,6 +518,7 @@ export default function PropsBar({ c }: { c: CompositionState }) {
       ref={root}
       aria-label={`Propriétés : ${section ? `section ${section.name}` : blockSpecs[item!.kind].label}`}
     >
+      {item && <AlignTools c={c} ids={[item.id]} />}
       {tools.map((t) => {
         const Icon = t.icon;
         return (

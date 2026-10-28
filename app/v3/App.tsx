@@ -4,8 +4,11 @@ import {
   LayoutDashboard,
   Network,
   PanelLeftClose,
+  Moon,
   PanelLeftOpen,
   PenTool,
+  StickyNote,
+  Sun,
   type LucideProps,
 } from 'lucide-react';
 import { AssistantProvider } from '../client/useAssistantChat.js';
@@ -15,11 +18,13 @@ import Brief from './Brief.js';
 import Studio from './Studio.js';
 import Bubble from './Bubble.js';
 import Schemas from './Schemas.js';
+import Notes, { useReminders } from './Notes.js';
+import type { Note } from '../shared/steps.js';
 import { Button, ToggleGroup } from './ui.js';
 
 // Interface v3, servie sur /. Le Dashboard est la page d'accueil ; Claude est
 // accessible partout via la bulle. ?vue=… garde la page au rechargement.
-type Ready = 'dashboard' | 'design' | 'brief' | 'schemas';
+type Ready = 'dashboard' | 'design' | 'brief' | 'schemas' | 'notes';
 const pages: {
   id: Ready;
   label: string;
@@ -33,8 +38,9 @@ const pages: {
     context: 'volcano',
   },
   { id: 'design', label: 'Design', icon: PenTool, context: 'workshop' },
-  { id: 'brief', label: 'Fiche PFE', icon: FileText, context: 'brief' },
+  { id: 'brief', label: 'Étapes du PFE', icon: FileText, context: 'brief' },
   { id: 'schemas', label: 'Mes schémas', icon: Network, context: 'brief' },
+  { id: 'notes', label: 'Mes notes', icon: StickyNote, context: 'brief' },
 ];
 const ready = pages.map((p) => p.id);
 
@@ -57,6 +63,33 @@ const fromUrl = (): Ready => {
   return ready.includes(v as Ready) ? (v as Ready) : 'dashboard';
 };
 
+// Rappels des notes : alerte intégrée (en plus de la notification système).
+function Reminders() {
+  const [fired, setFired] = useState<Note[]>([]);
+  useReminders((n) => setFired((f) => [...f, n]));
+  if (!fired.length) return null;
+  return (
+    <div className="toasts" role="alert">
+      {fired.map((n) => (
+        <div key={n.id} className="toast">
+          <strong>Rappel</strong>
+          <p>{n.text || 'Note sans texte'}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFired((f) => f.filter((x) => x.id !== n.id))}
+          >
+            OK
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Pas de restauration automatique du défilement au rechargement.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
 export default function App() {
   const [page, setPage] = useState<Ready>(fromUrl);
   const [theme, setTheme] = useState(() => stored('ds-v3-theme', 'dark'));
@@ -76,9 +109,16 @@ export default function App() {
     url.searchParams.set('vue', page);
     history.replaceState(null, '', url);
   }, [page]);
+  // Navigation par le menu : chaque page s'ouvre en haut (le défilement
+  // est celui du document), sans ancre ni position restaurée. Seul un lien
+  // ciblé (#etape-… depuis le Dashboard) fait défiler vers une étape.
   function go(next: Ready) {
+    history.replaceState(null, '', location.pathname + location.search);
     setPage(next);
-    requestAnimationFrame(() => document.getElementById('page-title')?.focus());
+    requestAnimationFrame(() => {
+      document.scrollingElement?.scrollTo({ top: 0, behavior: 'instant' });
+      document.getElementById('page-title')?.focus({ preventScroll: true });
+    });
   }
   const current = pages.find((p) => p.id === page)!;
 
@@ -144,8 +184,16 @@ export default function App() {
               value={theme === 'dark' ? 'dark' : 'light'}
               onChange={setTheme}
               options={[
-                { value: 'light', label: 'Clair' },
-                { value: 'dark', label: 'Sombre' },
+                {
+                  value: 'light',
+                  title: 'Clair',
+                  label: <Sun size={16} aria-hidden="true" />,
+                },
+                {
+                  value: 'dark',
+                  title: 'Sombre',
+                  label: <Moon size={16} aria-hidden="true" />,
+                },
               ]}
             />
           </div>
@@ -156,12 +204,15 @@ export default function App() {
               <Studio scheme={theme === 'dark' ? 'dark' : 'light'} />
             ) : page === 'schemas' ? (
               <Schemas />
+            ) : page === 'notes' ? (
+              <Notes />
             ) : (
               <Dashboard />
             )}
           </main>
         </div>
         <Bubble pageLabel={current.label} />
+        <Reminders />
       </div>
     </AssistantProvider>
   );

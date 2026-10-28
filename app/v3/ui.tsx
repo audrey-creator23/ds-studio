@@ -137,7 +137,7 @@ export function ToggleGroup<T extends string>({
 }: {
   label: string;
   value: T;
-  options: { value: T; label: ReactNode }[];
+  options: { value: T; label: ReactNode; title?: string }[];
   onChange: (value: T) => void;
 }) {
   return (
@@ -153,6 +153,8 @@ export function ToggleGroup<T extends string>({
           type="button"
           data-slot="toggle"
           aria-pressed={value === o.value}
+          aria-label={o.title}
+          title={o.title}
           onClick={() => onChange(o.value)}
         >
           {o.label}

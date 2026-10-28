@@ -1,22 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
+import { Send, Square, TriangleAlert } from 'lucide-react';
 import { blockSpecs } from '../../shared/composition.js';
 import type { CompositionState } from '../../client/design/useComposition.js';
 import { useComposeChat } from '../../client/design/useComposeChat.js';
-import { useAssistantChat } from '../../client/useAssistantChat.js';
-import { Badge, Button } from '../ui.js';
+import { Button } from '../ui.js';
 
-// Chat du studio : Claude compose ou modifie l'écran avec les composants
-// réels. Contexte envoyé : écran courant et, si coché, élément sélectionné.
-// Chaque réponse est une proposition, visible dans l'aperçu, à valider.
-const examples = [
-  'Une grille de trois cartes sous le titre.',
-  'Ajoute un bouton secondaire « Voir les ateliers ».',
-  'Passe la section Ateliers en 2 colonnes.',
-];
-
+// Chat du studio : conversation, proposition éventuelle et saisie, rien
+// d'autre. Contexte envoyé : l'écran et, si « Cibler » est coché, l'élément
+// sélectionné. Chaque réponse est une proposition à valider.
 export default function StudioChat({ c }: { c: CompositionState }) {
   const chat = useComposeChat(c);
-  const assistant = useAssistantChat();
   const [target, setTarget] = useState(true);
   const log = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -28,7 +21,7 @@ export default function StudioChat({ c }: { c: CompositionState }) {
   );
   const item = owner?.items.find((i) => i.id === c.selected);
   const selection = item
-    ? `${blockSpecs[item.kind].label}${item.text ? ` « ${item.text.slice(0, 40)} »` : ''}`
+    ? `${item.label || blockSpecs[item.kind].label}${item.text ? ` « ${item.text.slice(0, 30)} »` : ''}`
     : owner
       ? `Section « ${owner.name} »`
       : undefined;
@@ -40,59 +33,16 @@ export default function StudioChat({ c }: { c: CompositionState }) {
   ]
     .filter(Boolean)
     .join(' ');
+  const offline = !!c.composer && !c.composer.available;
 
   return (
-    <section className="chat-panel" aria-labelledby="studio-chat">
-      <div className="panel-head">
-        <h2 id="studio-chat">Claude</h2>
-        <select
-          className="input input-sm"
-          aria-label="Modèle Claude"
-          value={assistant.info?.model ?? ''}
-          disabled={!assistant.info || chat.pending}
-          onChange={(e) => void assistant.chooseModel(e.target.value)}
-        >
-          {assistant.info?.models.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="context-chips" aria-label="Contexte envoyé">
-        <Badge variant="secondary">Projet PFE</Badge>
-        <Badge variant="secondary">Écran : {c.draft.name}</Badge>
-        {selection && (
-          <label className="chip-toggle">
-            <input
-              type="checkbox"
-              checked={target}
-              onChange={(e) => setTarget(e.target.checked)}
-            />
-            Cibler : {selection}
-          </label>
-        )}
-      </div>
+    <section className="chat-panel" aria-label="Chat avec Claude">
+      {offline && (
+        <p className="key-alert" role="status" title={c.composer?.detail}>
+          <TriangleAlert size={13} aria-hidden="true" /> Clé API non connectée
+        </p>
+      )}
       <div className="thread" ref={log} aria-live="polite">
-        {!c.turns.length && (
-          <div className="thread-empty">
-            <p className="muted">
-              Décrivez l’écran ou une modification. Claude n’utilise que les
-              composants du DS et ne modifie jamais le DS global.
-            </p>
-            {examples.map((x) => (
-              <Button
-                key={x}
-                variant="outline"
-                size="sm"
-                disabled={!chat.available}
-                onClick={() => chat.setDraft(x)}
-              >
-                {x}
-              </Button>
-            ))}
-          </div>
-        )}
         {c.turns.map((t, i) => (
           <p key={i} className="msg" data-role={t.role}>
             {t.text}
@@ -127,7 +77,7 @@ export default function StudioChat({ c }: { c: CompositionState }) {
         )}
       </div>
       {c.error && (
-        <p className="alert" role="alert">
+        <p className="alert-text" role="alert">
           {c.error}
         </p>
       )}
@@ -138,42 +88,54 @@ export default function StudioChat({ c }: { c: CompositionState }) {
           void chat.send(undefined, context);
         }}
       >
-        <label className="sr-only" htmlFor="studio-input">
-          Message à Claude
-        </label>
-        <textarea
-          id="studio-input"
-          className="input"
-          rows={3}
-          maxLength={3500}
-          value={chat.draft}
-          disabled={!chat.available || chat.pending}
-          placeholder={
-            chat.available
-              ? 'Décrire l’écran… (Entrée pour envoyer)'
-              : (c.composer?.detail ?? 'Connexion à Claude…')
-          }
-          onChange={(e) => chat.setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              void chat.send(undefined, context);
-            }
-          }}
-        />
-        <div className="row">
-          <small className="muted">Proposition à valider</small>
+        {selection && (
+          <label className="chip-toggle">
+            <input
+              type="checkbox"
+              checked={target}
+              onChange={(e) => setTarget(e.target.checked)}
+            />
+            <span>Cibler : {selection}</span>
+          </label>
+        )}
+        <div className="composer-box">
+          <label className="sr-only" htmlFor="studio-input">
+            Message à Claude
+          </label>
+          <textarea
+            id="studio-input"
+            rows={3}
+            maxLength={3500}
+            value={chat.draft}
+            disabled={!chat.available || chat.pending}
+            placeholder="Décrivez…"
+            onChange={(e) => chat.setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void chat.send(undefined, context);
+              }
+            }}
+          />
           {chat.pending ? (
-            <Button variant="outline" size="sm" onClick={chat.stop}>
-              Arrêter
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Arrêter"
+              title="Arrêter"
+              onClick={chat.stop}
+            >
+              <Square size={14} aria-hidden="true" />
             </Button>
           ) : (
             <Button
               type="submit"
-              size="sm"
+              size="icon"
+              aria-label="Envoyer"
+              title="Envoyer"
               disabled={!chat.available || !chat.draft.trim()}
             >
-              Envoyer
+              <Send size={14} aria-hidden="true" />
             </Button>
           )}
         </div>

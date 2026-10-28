@@ -33,6 +33,8 @@ export const aligns = ['start', 'center', 'end', 'stretch'] as const;
 export const sizes = ['sm', 'md', 'lg'] as const;
 export const widths = ['fill', 'hug'] as const;
 export const justifies = ['start', 'center', 'end', 'between'] as const;
+// Alignement propre d'un élément dans son conteneur parent (facultatif).
+export const selfAligns = ['start', 'center', 'end'] as const;
 export const spaces = ['none', 'sm', 'md', 'lg'] as const;
 
 export interface BlockSpec {
@@ -341,6 +343,10 @@ const leafSchema = z
     span: z.number().int().min(1).max(4),
     rows: z.number().int().min(1).max(4),
     width: z.enum(widths),
+    // Nom de calque choisi par l'utilisatrice (facultatif).
+    label: z.string().max(40).optional(),
+    alignX: z.enum(selfAligns).optional(),
+    alignY: z.enum(selfAligns).optional(),
   })
   .strict();
 export const itemSchema = leafSchema
@@ -477,6 +483,15 @@ export function normalizeComposition(
           span: int(i.span, 1, 4, spec.span),
           rows: int(i.rows, 1, 4, 1),
           width: pick(widths, i.width, 'fill'),
+          ...(typeof i.label === 'string' && i.label.trim()
+            ? { label: i.label.trim().slice(0, 40) }
+            : {}),
+          ...(selfAligns.includes(i.alignX as never)
+            ? { alignX: i.alignX }
+            : {}),
+          ...(selfAligns.includes(i.alignY as never)
+            ? { alignY: i.alignY }
+            : {}),
         };
         if (kind !== 'group') return item;
         const b = (i.box ?? {}) as Partial<Box>;
@@ -581,6 +596,9 @@ export function describeChanges(before: Composition, after: Composition) {
 }
 
 const outputLeaf = z.object({
+  label: z.string().optional(),
+  alignX: z.enum(selfAligns).optional(),
+  alignY: z.enum(selfAligns).optional(),
   id: z.string(),
   kind: z.enum(blockKinds),
   variant: z.string(),
