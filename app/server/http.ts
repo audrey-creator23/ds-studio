@@ -31,6 +31,7 @@ import {
 import { ChatStore, buildContext } from './assistant.js';
 import { CompositionStore } from './compositions.js';
 import { FigmaBridge } from './figmaBridge.js';
+import { CarteData } from './carteData.js';
 import {
   compositionSchema,
   composeSystem,
@@ -79,6 +80,19 @@ export async function createStudioServer(options: {
     );
   const compositions = new CompositionStore(store.directory);
   const figmaBridge = new FigmaBridge(store.directory);
+  const carteData = new CarteData();
+  // Source externe indisponible : 503 lisible (jamais de valeur inventée).
+  const external = async (load: () => Promise<unknown>) => {
+    try {
+      return await load();
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      throw new StudioError(
+        err.message || 'Source indisponible.',
+        err.status ?? 503,
+      );
+    }
+  };
   let chatBusy = false;
   const csrf = randomBytes(32).toString('hex');
   let busy = false;
@@ -249,6 +263,20 @@ export async function createStudioServer(options: {
             return send(200, await figmaBridge.status());
           if (url.pathname === '/api/export')
             return send(200, store.snapshot().tokens);
+          if (url.pathname === '/api/carte/situation')
+            return send(
+              200,
+              await carteData.situation(url.searchParams.get('force') === '1'),
+            );
+          if (url.pathname === '/api/carte/seismes')
+            return send(200, await external(() => carteData.seismes()));
+          if (url.pathname === '/api/carte/commune')
+            return send(
+              200,
+              await external(() =>
+                carteData.commune(url.searchParams.get('insee') ?? ''),
+              ),
+            );
           throw new StudioError('Route inconnue.', 404);
         }
         if (req.method !== 'POST')
@@ -400,6 +428,27 @@ export async function createStudioServer(options: {
             .parse(body);
           return send(200, { compositions: await compositions.remove(b.id) });
         }
+        // Adresse : corps de requête (jamais dans l'URL ni les journaux).
+        // Position : corps de requête (jamais dans l'URL ni les journaux).
+        if (url.pathname === '/api/carte/reverse') {
+          const b = z
+            .object({ lat: z.number(), lon: z.number() })
+            .strict()
+            .parse(body);
+          return send(
+            200,
+            await external(() => carteData.reverse(b.lat, b.lon)),
+          );
+        }
+        if (url.pathname === '/api/carte/geocode')
+          return send(
+            200,
+            await external(() =>
+              carteData.geocode(
+                z.object({ q: z.string() }).strict().parse(body).q,
+              ),
+            ),
+          );
         if (url.pathname === '/api/figma/scene') {
           const scene = await figmaBridge.put(
             z.object({ scene: z.unknown() }).strict().parse(body).scene,
@@ -634,11 +683,15 @@ export async function createStudioServer(options: {
           '/app/client/',
           '/app/v3/',
           '/app/shared/',
+          '/pfe-mobile/',
           '/node_modules/',
           '/@vite/',
           '/@id/',
         ];
-        if (
+        // Application PFE autonome (HMR en développement).
+        if (url.pathname === '/pfe' || url.pathname === '/pfe/')
+          req.url = '/pfe-mobile/index.html';
+        else if (
           url.pathname !== '/' &&
           url.pathname !== '/index.html' &&
           url.pathname !== '/v3.html' &&
@@ -664,6 +717,8 @@ export async function createStudioServer(options: {
         file = path.join(root, 'dist', 'v3.html');
       else if (pathname === '/index.html')
         file = path.join(root, 'dist', 'index.html');
+      else if (pathname === '/pfe' || pathname === '/pfe/')
+        file = path.join(root, 'dist', 'pfe-mobile', 'index.html');
       else throw new StudioError('Fichier introuvable.', 404);
       const data = await fs.readFile(file);
       const ext = path.extname(file);
@@ -675,6 +730,7 @@ export async function createStudioServer(options: {
             '.js': 'text/javascript; charset=utf-8',
             '.css': 'text/css; charset=utf-8',
             '.svg': 'image/svg+xml',
+            '.png': 'image/png',
             '.woff2': 'font/woff2',
           } as Record<string, string>
         )[ext] ?? 'application/octet-stream',

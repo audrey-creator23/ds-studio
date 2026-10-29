@@ -1,0 +1,15 @@
+{
+  "source": "AWS Terrain Tiles (Mapzen Joerd), Terrarium : terre zoom 11 (SRTM, NASA), mer zoom 10 (ETOPO1 NOAA, GEBCO)",
+  "encoding": "terrarium: (R * 256 + G + B / 256) - 32768 mètres",
+  "zoom": 11,
+  "width": 903,
+  "height": 980,
+  "west": -61.360015869140625,
+  "east": -60.73997497558594,
+  "north": 14.990555941040997,
+  "south": 14.339569264193987,
+  "mercator": {
+    "x0": 172782,
+    "y0": 240059
+  }
+}

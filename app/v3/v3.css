@@ -2955,3 +2955,1327 @@ button.timeline-item[aria-pressed='true']:hover,
 .bubble {
   touch-action: none;
 }
+
+/* ——— Carte interactive ——— */
+/* Page sans défilement : en-tête puis une grande card. Dans la card :
+   onglets + logement, puis carte 3D (prioritaire) et panneau sobre. */
+.carte {
+  grid-template-rows: auto minmax(0, 1fr);
+  max-width: none;
+  height: calc(100dvh - 40px);
+}
+.carte-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  gap: 12px;
+  min-height: 460px;
+  padding: 12px;
+}
+.carte-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.carte-tabs {
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.carte-tabs [role='tab'] {
+  flex: none;
+  padding: 0 12px;
+}
+.carte-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 12px;
+  min-height: 0;
+}
+.carte-stage {
+  position: relative;
+  container-type: inline-size;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  /* Couleur du large : visible seulement le temps du chargement. */
+  background: #0b2f45;
+}
+.carte-view {
+  position: absolute;
+  inset: 0;
+  outline-offset: -3px;
+}
+.carte-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.carte-canvas:active {
+  cursor: grabbing;
+}
+.carte-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: #e6eef3;
+  text-align: center;
+}
+.carte-state ul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+.carte-state .link {
+  color: inherit;
+  text-decoration: underline;
+}
+/* Surcouches : fond de card translucide, lisible sur l'océan. */
+.carte-top,
+.carte-legend,
+.carte-fiche,
+.carte-pin,
+.carte-hint,
+.carte-badge,
+.carte-note summary {
+  --veil: color-mix(in oklab, var(--card) 90%, transparent);
+}
+.carte-top {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  left: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+.carte-top > * {
+  pointer-events: auto;
+}
+.carte-risks {
+  background: var(--veil);
+  backdrop-filter: blur(6px);
+}
+.carte-risks button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+/* Carte étroite : pictogrammes seuls (nom en info-bulle et nom accessible). */
+@container (max-width: 1100px) {
+  .carte-risks button > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+.carte-tools {
+  display: flex;
+  gap: 6px;
+}
+.carte-tools .button {
+  background: var(--veil);
+  backdrop-filter: blur(6px);
+}
+.carte-bottom {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  max-width: min(340px, calc(100% - 20px));
+}
+.carte-legend,
+.carte-fiche {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--veil);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-xs);
+}
+.carte-legend {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.carte-legend summary {
+  cursor: pointer;
+}
+.carte-legend strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+.carte-legend ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.carte-legend p {
+  color: var(--muted-foreground);
+}
+.carte-legend--inline {
+  border-color: var(--border);
+  background: var(--muted);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+i[data-level] {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+i[data-level='1'] {
+  background: #fabc3c;
+}
+i[data-level='2'] {
+  background: #f19143;
+}
+i[data-level='3'] {
+  background: #f55536;
+}
+.carte-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.carte-track input,
+.carte-scenario input[type='range'] {
+  flex: 1;
+  width: 100%;
+  accent-color: var(--selected);
+}
+.carte-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.carte-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--veil);
+  font-weight: 600;
+}
+.carte-note details {
+  position: relative;
+}
+.carte-note summary {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--veil);
+  cursor: pointer;
+}
+.carte-note details ul {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: min(320px, 80vw);
+  margin: 0;
+  padding: 10px 12px 10px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+.carte-fiche {
+  position: absolute;
+  top: 56px;
+  right: 10px;
+  width: min(340px, calc(100% - 20px));
+  max-height: calc(100% - 120px);
+  overflow: auto;
+  padding: 12px 14px;
+}
+.carte-fiche header,
+.carte-coupe header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.carte-fiche h2,
+.carte-coupe h2 {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+.carte-fiche dl {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 12.5px;
+}
+.carte-fiche dt,
+.carte-panel h4,
+.carte-facts dt {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.carte-fiche dd,
+.carte-facts dd {
+  margin: 0;
+}
+/* Balises : ancrées au point (pointe en bas), suivies par la 3D. */
+.carte-pin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--veil);
+  color: var(--foreground);
+  font-size: 12px;
+  white-space: nowrap;
+  translate: -50% calc(-100% - 6px);
+  cursor: pointer;
+  box-shadow: 0 4px 10px -4px rgb(0 0 0 / 0.35);
+}
+.carte-pin[hidden] {
+  display: none;
+}
+.carte-pin::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  width: 2px;
+  height: 6px;
+  translate: -50% 0;
+  background: var(--foreground);
+}
+.carte-pin:is(button):hover,
+.carte-pin:is(button):focus-visible,
+.carte-pin--home {
+  border-color: var(--selected);
+  background: var(--selected);
+  color: var(--selected-foreground);
+}
+.carte-pin--eye,
+.carte-pin--home {
+  cursor: default;
+}
+.carte-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--radius-md);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-xs);
+}
+/* Panneau : lecture progressive, sections séparées, défilement interne. */
+.carte-panel {
+  /* Positionné : les textes masqués (sr-only) restent dans le défilement. */
+  position: relative;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+}
+.carte-panel-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+}
+.carte-panel p,
+.carte-panel h4 {
+  margin: 0;
+}
+.carte-home-sim svg {
+  vertical-align: -2px;
+}
+.carte-panel h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.carte-block {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.carte-block:last-child {
+  border-bottom: 0;
+}
+.carte-na {
+  color: var(--muted-foreground);
+}
+.carte-stamp {
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+}
+.carte-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--foreground);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.carte-list {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.carte-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, #ffb238 22%, transparent);
+  font-weight: 600;
+}
+.carte-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 72px;
+  margin: 4px 0 0;
+}
+.carte-bars > div {
+  display: grid;
+  flex: 1;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+  text-align: center;
+}
+.carte-bars i {
+  align-self: end;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: #f19143;
+}
+.carte-bars small {
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.carte-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+/* Mon logement */
+.carte-home {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 460px;
+  font-size: 12.5px;
+}
+.carte-home > div {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.carte-home strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.carte-home-form {
+  display: grid;
+  flex: 1 1 360px;
+  gap: 8px;
+  max-width: 520px;
+  font-size: 12.5px;
+}
+.carte-home-form .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.carte-home-form .input {
+  flex: 1;
+}
+.carte-consent {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.carte-results {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.carte-results button {
+  display: grid;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.carte-results button:hover,
+.carte-results button:focus-visible {
+  border-color: var(--selected);
+}
+.carte-home-sim {
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+}
+.carte-scenario {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.carte-scenario legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+.carte-scenario label {
+  display: grid;
+  gap: 4px;
+}
+.carte-scenario .toggle-group {
+  flex-wrap: wrap;
+}
+/* Me préparer */
+.carte-household {
+  display: flex;
+  gap: 12px;
+}
+.carte-household label {
+  display: grid;
+  gap: 4px;
+}
+.carte-household input {
+  width: 80px;
+}
+.carte-needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.chip-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.chip-check:has(input:checked) {
+  border-color: var(--selected);
+  background: var(--selected);
+  color: var(--selected-foreground);
+}
+.carte-check {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.carte-check legend {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.carte-check label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.carte-panel progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--selected);
+}
+/* Coupe tectonique (schéma animé). */
+.carte-coupe {
+  position: absolute;
+  inset: 56px 10px 10px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  padding: 12px 14px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-xs);
+}
+.carte-coupe svg {
+  width: 100%;
+  height: 100%;
+  min-height: 160px;
+}
+.carte-coupe footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.c-sky {
+  fill: var(--muted);
+}
+.c-sea {
+  fill: #2a6f8f;
+}
+.c-plate-up {
+  fill: #8a6d52;
+}
+.c-plate-down {
+  fill: #5d4a3a;
+}
+.c-island {
+  fill: #4f7a3a;
+}
+.c-plume,
+.c-magma {
+  fill: none;
+  stroke: #f55536;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 6 6;
+}
+.c-plume {
+  stroke: #9a9590;
+}
+.c-motion {
+  stroke: #fabc3c;
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+}
+.c-label {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.c-small {
+  fill: var(--foreground);
+  font-size: 10.5px;
+}
+.c-focus circle,
+.c-rupture circle {
+  fill: #f55536;
+}
+.c-ring {
+  fill: none !important;
+  stroke: #ff773d;
+  stroke-width: 2;
+}
+.c-rupture,
+.c-wave {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.c-wave {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+svg[data-step='2'] .c-rupture,
+svg[data-step='3'] .c-rupture,
+svg[data-step='3'] .c-wave {
+  opacity: 1;
+}
+svg[data-step='1'] .c-plate-down {
+  fill: #6e4a35;
+}
+svg[data-playing] .c-motion,
+svg[data-playing] .c-magma {
+  animation: carte-flow 1.2s linear infinite;
+}
+svg[data-playing][data-step='2'] .c-ring {
+  animation: carte-ring 1.2s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+svg[data-playing][data-step='3'] .c-wave {
+  animation: carte-wave 2.4s ease-in-out infinite;
+}
+@keyframes carte-flow {
+  to {
+    stroke-dashoffset: 14;
+  }
+}
+@keyframes carte-ring {
+  from {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+@keyframes carte-wave {
+  50% {
+    transform: translateX(-120px);
+  }
+}
+.carte-steps {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+.carte-steps button {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.carte-steps [aria-current] button {
+  border-color: var(--selected);
+}
+.carte-steps b {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--selected);
+  color: var(--selected-foreground);
+  font-size: 11px;
+}
+.carte-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.carte-head-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.carte-body--full {
+  grid-template-columns: minmax(0, 1fr);
+}
+.carte-explain {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: var(--muted-foreground);
+}
+.carte-explain svg {
+  flex: none;
+  margin-top: 2px;
+}
+.carte-panel h3 .carte-status {
+  margin-left: auto;
+}
+.carte-status {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+}
+.carte-status[data-kind='obs'] {
+  color: var(--foreground);
+}
+/* Échelle de vigilance officielle (couleurs utilisées seulement si un
+   niveau officiel est publié) ; gris = non disponible. */
+i[data-vigilance] {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+i[data-vigilance='vert'] {
+  background: #2f9e44;
+}
+i[data-vigilance='jaune'] {
+  background: #fcc419;
+}
+i[data-vigilance='orange'] {
+  background: #f76707;
+}
+i[data-vigilance='rouge'] {
+  background: #e03131;
+}
+i[data-vigilance='violet'] {
+  background: #7048e8;
+}
+i[data-vigilance='na'] {
+  border: 1px dashed var(--muted-foreground);
+  background: transparent;
+}
+/* Balises de statut : grises sans niveau officiel, aucune animation. */
+.carte-pin[data-status] small {
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+.carte-pin[data-status]:hover small,
+.carte-pin[data-status]:focus-visible small {
+  color: inherit;
+}
+/* Si un niveau officiel est publié : pastille et pulsation selon niveau. */
+.carte-pin[data-level] {
+  box-shadow: 0 0 0 3px var(--vig);
+}
+.carte-pin[data-level='jaune'] {
+  --vig: #fcc419;
+}
+.carte-pin[data-level='orange'] {
+  --vig: #f76707;
+  animation: carte-vig 2.4s ease-in-out infinite;
+}
+.carte-pin[data-level='rouge'] {
+  --vig: #e03131;
+  animation: carte-vig 1.6s ease-in-out infinite;
+}
+.carte-pin[data-level='violet'] {
+  --vig: #7048e8;
+  animation: carte-vig 1.2s ease-in-out infinite;
+}
+.carte-pin[data-level='vert'] {
+  --vig: #2f9e44;
+}
+@keyframes carte-vig {
+  50% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .carte-coupe svg *,
+  .carte-pin[data-level] {
+    animation: none !important;
+  }
+}
+@media (max-width: 1100px) {
+  .carte {
+    height: auto;
+  }
+  .carte-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .carte-stage {
+    height: 62dvh;
+  }
+  .carte-panel {
+    max-height: none;
+  }
+}
+@media (max-width: 760px) {
+  .carte-fiche {
+    top: 56px;
+    max-height: calc(100% - 68px);
+  }
+}
+
+/* Onglets du studio : couleur de catégorie (tokens centralisés).
+   Actif : bouton rempli de sa couleur, texte et pictogramme noirs
+   (contraste ≥ 6:1) ; inactifs neutres ; card gauche : nuance très
+   atténuée de l'onglet actif, transition douce. */
+:root {
+  --tab-library: #ff773d;
+  --tab-layers: #f55536;
+  --tab-claude: #fabc3c;
+  --tab-tint: 7%;
+}
+.dark {
+  --tab-tint: 9%;
+}
+[data-tab='library'] {
+  --tab-color: var(--tab-library);
+}
+[data-tab='layers'] {
+  --tab-color: var(--tab-layers);
+}
+[data-tab='claude'] {
+  --tab-color: var(--tab-claude);
+}
+.side-panel[data-tab] {
+  background: color-mix(
+    in oklab,
+    var(--tab-color) var(--tab-tint),
+    var(--card)
+  );
+  transition: background-color 0.3s ease;
+}
+.side-panel .tabs [role='tab'][data-tab][aria-selected='true'],
+.side-panel .tabs [role='tab'][data-tab][aria-selected='true']:hover {
+  background: var(--tab-color);
+  color: #000;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .side-panel[data-tab] {
+    transition: none;
+  }
+}
+
+/* Modale « Exporter un écran » : grand titre, champ nommé, formats,
+   statut Figma utile (avec action). */
+.panel-head h2.export-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.export-name-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.export-name-field > span {
+  font-size: 12px;
+  font-weight: 600;
+}
+.export > .figma-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.export > .figma-live small {
+  flex-basis: 100%;
+  color: var(--muted-foreground);
+}
+.studio-status .link {
+  margin-left: 8px;
+}
+
+/* ——— Carte : ma situation ——— */
+.carte-card:not(:has(> .carte-head)) {
+  grid-template-rows: minmax(0, 1fr);
+}
+.locate,
+.here {
+  display: grid;
+  gap: 8px;
+}
+/* « Vous êtes ici » : sous-card grise distincte du panneau. */
+.here {
+  padding: 12px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+}
+.locate h3,
+.here h3,
+.proches h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.locate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.here .button {
+  justify-self: start;
+}
+.proches-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.proches-head .button[aria-busy='true'] svg {
+  animation: figma-spin 1s linear infinite;
+}
+.proches-clock {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.proches-clock time::first-letter {
+  text-transform: uppercase;
+}
+.proches-near {
+  font-size: 12px;
+  font-weight: 500;
+}
+.proches-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 0 44px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.proches-toggle[aria-expanded='true'] svg {
+  rotate: 180deg;
+}
+.proches-detail dl {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 12.5px;
+}
+.proches-detail dt {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.proches-detail dd {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.vig-scale {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+.carte-back {
+  background: color-mix(in oklab, var(--card) 90%, transparent);
+}
+/* Pictogrammes : mouvement discret propre au phénomène (identification,
+   jamais un signal de danger) ; aucun si mouvement réduit. */
+.rk-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+}
+.rk-icon svg {
+  animation: 3.2s ease-in-out infinite;
+}
+.rk-icon[data-risk='seisme'] svg {
+  animation-name: rk-shake;
+}
+.rk-icon[data-risk='volcan'] svg {
+  animation-name: rk-rise;
+}
+.rk-icon[data-risk='tsunami'] svg,
+.rk-icon[data-risk='sargasses'] svg,
+.rk-icon[data-risk='brume'] svg {
+  animation-name: rk-drift;
+}
+.rk-icon[data-risk='cyclone'] svg {
+  animation: rk-spin 6s linear infinite;
+}
+.rk-icon[data-risk='pluies'] svg {
+  animation-name: rk-fall;
+}
+@keyframes rk-shake {
+  0%,
+  88%,
+  100% {
+    translate: 0;
+  }
+  91% {
+    translate: -1px 0;
+  }
+  94% {
+    translate: 1px 0;
+  }
+  97% {
+    translate: -1px 0;
+  }
+}
+@keyframes rk-rise {
+  50% {
+    translate: 0 -1.5px;
+  }
+}
+@keyframes rk-drift {
+  50% {
+    translate: -2px 0;
+  }
+}
+@keyframes rk-fall {
+  50% {
+    translate: 0 1.5px;
+  }
+}
+@keyframes rk-spin {
+  to {
+    rotate: -360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rk-icon svg,
+  .proches-head .button svg {
+    animation: none !important;
+  }
+}
+
+/* Niveau de vigilance actuel : titre, niveau global, tags des risques. */
+.vig-title {
+  font-size: 17px !important;
+  letter-spacing: -0.01em;
+}
+.vig-global {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px dashed var(--muted-foreground);
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+}
+.vig-global b {
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.vig-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vig-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 2px 10px 2px 3px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--risk);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.vig-tag .rk-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+.vig-tag[aria-pressed='true'] {
+  border-color: var(--selected);
+  border-left-color: var(--risk);
+  background: var(--selected);
+  color: var(--selected-foreground);
+}
+.vig-tag[aria-pressed='true'] .rk-icon {
+  background: var(--risk);
+  color: #000;
+}
+.vig-selected {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--risk);
+  border-radius: var(--radius-md);
+  background: var(--muted);
+}
+.vig-selected .proches-toggle {
+  justify-self: start;
+  margin: 4px 0 0;
+}
+.carte-illus {
+  font-weight: 600;
+}
+
+/* ——— Prévention : prototype et préparation ——— */
+.carte-stage.proto-stage {
+  background: var(--muted);
+}
+.proto-stage .device-stage {
+  height: 100%;
+}
+.prep-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.prep-card {
+  align-content: start;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.prep-wide {
+  grid-column: 1 / -1;
+}
+.prep-wide > .carte-panel-body {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  padding: 0;
+}
+.dl,
+.plan {
+  display: grid;
+  gap: 10px;
+}
+.dl-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dl-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.dl-list li[data-unavailable] {
+  border-style: dashed;
+}
+.dl-list label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.dl-list label span {
+  display: grid;
+}
+.dl-list progress {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--selected);
+}
+.dl-actions {
+  display: flex;
+}
+.plan progress {
+  width: 100%;
+  accent-color: var(--selected);
+}
+.plan-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-steps button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--foreground);
+  cursor: pointer;
+}
+.plan-steps button[aria-current] {
+  border-color: var(--selected);
+  background: var(--selected);
+  color: var(--selected-foreground);
+}
+.plan-step {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+}
+.carte-panel .plan-step h4 {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.plan-field {
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.plan-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.plan-sms {
+  justify-self: start;
+  text-decoration: none;
+}
+@media (max-width: 1100px) {
+  .prep-grid,
+  .prep-wide > .carte-panel-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Bouton de barre activé (Tester l'écran) : état sélectionné noir/blanc. */
+.preview-bar .button[data-variant='outline'][aria-pressed='true'],
+.dark .preview-bar .button[data-variant='outline'][aria-pressed='true'] {
+  background: var(--selected);
+  color: var(--selected-foreground);
+}

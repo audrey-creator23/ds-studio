@@ -1,0 +1,673 @@
+/* Application PFE : un seul code responsive (téléphone, tablette,
+   ordinateur). Marge commune --m-pad + zones sûres ; cibles ≥ 44 px ;
+   DA DS-Studio ; écran d'urgence à fort contraste. */
+:root {
+  --m-pad: 20px;
+  --m-gap: 14px;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+}
+/* Lancement : illustration → titre → progression → accès urgence. */
+.m-splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  height: 100%;
+  padding: calc(var(--m-pad) + env(safe-area-inset-top)) var(--m-pad)
+    calc(var(--m-pad) + env(safe-area-inset-bottom));
+  animation: m-fade 0.6s ease;
+}
+.m-logo {
+  font-size: 72px;
+  line-height: 1;
+  animation: m-pop 1.2s ease-in-out infinite alternate;
+}
+.m-splash-text {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  text-align: center;
+}
+.m-splash-text b {
+  font-size: 22px;
+}
+.m-splash-text small {
+  color: var(--muted-foreground);
+}
+.m-loader {
+  width: 140px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #f55536, #fabc3c) 0 0 / 40% 100% no-repeat
+    var(--muted);
+  animation: m-load 1.2s ease-in-out infinite;
+}
+.m-urgent {
+  display: inline-flex;
+  margin-top: 32px;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #f55536;
+  color: #000;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+@keyframes m-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes m-pop {
+  to {
+    transform: scale(1.06);
+  }
+}
+@keyframes m-load {
+  50% {
+    background-position: 100% 0;
+  }
+}
+/* Cadre : barre latérale (grand écran) + contenu. */
+.m-app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+  animation: m-fade 0.4s ease;
+}
+.m-side {
+  display: none;
+}
+.m-frame {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  padding-top: env(safe-area-inset-top);
+}
+.m-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px var(--m-pad) 8px;
+}
+.m-bar h1 {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 600;
+}
+.m-bar .button[data-size='icon'] {
+  width: 44px;
+  height: 44px;
+}
+.m-drop {
+  position: absolute;
+  z-index: 10;
+  top: calc(env(safe-area-inset-top) + 64px);
+  left: var(--m-pad);
+  right: var(--m-pad);
+}
+.m-menu {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--popover);
+  box-shadow: var(--shadow-xs);
+}
+.m-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.m-menu button:hover {
+  background: var(--muted);
+}
+.m-menu button[aria-current='page'] {
+  background: var(--selected);
+  color: var(--selected-foreground);
+}
+.m-main {
+  position: relative;
+  min-height: 0;
+}
+.m-home,
+.m-scroll {
+  display: grid;
+  align-content: start;
+  gap: var(--m-gap);
+  height: 100%;
+  padding: 8px var(--m-pad) calc(var(--m-pad) + env(safe-area-inset-bottom));
+  overflow: auto;
+}
+.m-hello {
+  font-size: 22px;
+  font-weight: 600;
+}
+.m-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 104px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.m-cta span {
+  display: grid;
+  gap: 4px;
+}
+.m-cta b {
+  font-size: 19px;
+}
+.m-cta small {
+  color: var(--muted-foreground);
+}
+.m-cta--danger {
+  border-color: #f55536;
+  background: #000;
+  color: #fff;
+}
+.m-cta--danger small {
+  color: #e5e5e5;
+}
+.m-cta--danger svg {
+  color: #f55536;
+}
+.m-scroll h2 {
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.m-offline {
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+  font: 12px/1.5 inherit;
+  white-space: pre-wrap;
+}
+details summary {
+  cursor: pointer;
+}
+/* ——— Je suis en danger ——— */
+.danger {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+}
+.danger-body {
+  display: grid;
+  align-content: start;
+  gap: var(--m-gap);
+  padding: 4px var(--m-pad) var(--m-pad);
+  overflow: auto;
+  font-size: 16px;
+}
+.d-risk {
+  display: grid;
+  gap: 6px;
+}
+.d-tag {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 2px solid var(--foreground);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.d-picks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.d-picks button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.d-picks button[aria-pressed='true'] {
+  background: var(--selected);
+  color: var(--selected-foreground);
+}
+.d-first {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.d-sos {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 12px 18px;
+  border-radius: var(--radius-xl);
+  background: #f55536;
+  color: #000;
+  text-decoration: none;
+}
+.d-sos span {
+  display: grid;
+}
+.d-sos b {
+  font-size: 21px;
+}
+.d-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.d-numbers a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--foreground);
+  font-size: 14px;
+  text-decoration: none;
+}
+.d-qs {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.d-q {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+.d-q[data-open] {
+  border-color: var(--foreground);
+}
+.d-q > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.d-q > button[aria-expanded='true'] svg {
+  rotate: 180deg;
+}
+.d-a {
+  display: grid;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+.d-a ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+}
+.d-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.d-card h2 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.d-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.d-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+/* Contact d'urgence : toujours visible, au-dessus de la zone sûre. */
+.d-dock {
+  padding: 10px var(--m-pad) calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--background);
+}
+.d-contact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: var(--selected);
+  color: var(--selected-foreground);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.d-contact small {
+  font-weight: 400;
+  opacity: 0.8;
+}
+.d-contact--add {
+  border: 2px dashed var(--foreground);
+  background: var(--card);
+  color: var(--foreground);
+}
+.d-add {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.d-add .d-contact {
+  grid-column: 1 / -1;
+}
+.d-add .input {
+  min-height: 44px;
+}
+/* Grand écran : navigation latérale permanente, contenu centré. */
+@media (min-width: 900px) {
+  :root {
+    --m-pad: 32px;
+    --m-gap: 18px;
+  }
+  .m-app {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+  .m-side {
+    display: block;
+    padding: 24px 16px;
+    border-right: 1px solid var(--border);
+  }
+  .m-side .m-menu {
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .m-burger,
+  .m-drop {
+    display: none !important;
+  }
+  .m-bar,
+  .m-home,
+  .m-scroll,
+  .danger-body,
+  .d-dock {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  .m-home {
+    grid-template-columns: 1fr 1fr;
+  }
+  .m-hello {
+    grid-column: 1 / -1;
+    font-size: 28px;
+  }
+  .d-picks {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+/* ——— Carte plein écran ——— */
+.m-app[data-screen='explore'] .m-frame {
+  grid-template-rows: minmax(0, 1fr);
+}
+.m-explore {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+.m-explore .carte-stage {
+  position: absolute;
+  inset: 0;
+  height: auto;
+  border-radius: 0;
+}
+/* Outils de la carte sous les éléments flottants du haut. */
+.m-explore .carte-top {
+  top: calc(env(safe-area-inset-top) + 92px);
+}
+.m-over {
+  position: absolute;
+  z-index: 4;
+  top: env(safe-area-inset-top);
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px var(--m-pad) 0;
+  pointer-events: none;
+}
+.m-over > * {
+  pointer-events: auto;
+}
+.m-over .m-bar {
+  padding: 0;
+}
+.m-over .m-burger,
+.m-vig {
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+.m-vig {
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  max-width: 220px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.m-vig b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.m-vig small {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.m-illus {
+  position: absolute;
+  z-index: 3;
+  top: calc(env(safe-area-inset-top) + 140px);
+  left: var(--m-pad);
+  font-size: 12px;
+}
+/* Tiroir : réduit (aperçu des 7 risques) / intermédiaire / déployé. */
+.m-sheet {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 86%;
+  padding: 0 var(--m-pad) env(safe-area-inset-bottom);
+  border-top: 1px solid var(--border);
+  border-radius: 18px 18px 0 0;
+  background: color-mix(in oklab, var(--card) 96%, transparent);
+  box-shadow: 0 -8px 24px -12px rgb(0 0 0 / 0.4);
+  transition: height 0.25s ease;
+}
+.m-explore[data-sheet='half'] .m-sheet {
+  height: 48%;
+}
+.m-explore[data-sheet='full'] .m-sheet {
+  height: 86%;
+}
+.m-handle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  height: 28px;
+  border: 0;
+  background: none;
+  cursor: grab;
+  touch-action: none;
+}
+.m-handle span {
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--muted-foreground);
+}
+.m-peek {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  padding-bottom: 12px;
+}
+.m-peek button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--foreground);
+  cursor: pointer;
+}
+.m-peek button[aria-pressed='true'] {
+  border-color: var(--selected);
+  background: var(--selected);
+  color: var(--selected-foreground);
+}
+.m-peek button i {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+}
+.m-sheet-body {
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: var(--m-pad);
+}
+.m-last {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+}
+.m-cta--small {
+  min-height: 56px;
+  padding: 0 16px;
+  font-weight: 600;
+}
+.m-shortcuts {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-shortcuts li {
+  display: grid;
+  gap: 6px;
+}
+.m-shortcuts code {
+  overflow-wrap: anywhere;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+@media (min-width: 900px) {
+  .m-sheet {
+    right: auto;
+    left: var(--m-pad);
+    width: 420px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m-sheet {
+    transition: none;
+  }
+  .m-splash,
+  .m-logo,
+  .m-loader,
+  .m-app {
+    animation: none;
+  }
+}

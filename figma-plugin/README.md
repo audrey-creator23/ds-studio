@@ -24,8 +24,10 @@ Fichier cible fixe : « DS-Studio — Mes maquettes », page 1
 Figma ne lance jamais un plugin tout seul à l’ouverture d’un fichier :
 une action reste nécessaire par session Figma, puis tout est automatique.
 
-1. DS-Studio : Design → **Enregistrer** → **Figma** → **Valider**. Si le
-   plugin n’est pas ouvert, le fichier Figma cible s’ouvre.
+1. DS-Studio : Design → **Exporter** → nom de l’écran → **Figma** →
+   **Exporter**. Si le plugin n’est pas ouvert, l’application Figma
+   Desktop est ouverte (schéma `figma://` déclaré par l’app macOS) ; si
+   elle ne s’ouvre pas, DS-Studio le dit et propose le navigateur.
 2. Figma : cliquez **Importer depuis DS-Studio** dans le panneau de droite
    (rien de sélectionné), ou ⌥⌘P (relancer le dernier plugin). Le plugin
    importe aussitôt le dernier envoi, sans code ni clic.

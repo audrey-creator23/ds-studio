@@ -2,11 +2,13 @@ import { useEffect, useState, type ComponentType } from 'react';
 import {
   FileText,
   LayoutDashboard,
+  Map as MapIcon,
   Network,
   PanelLeftClose,
   Moon,
   PanelLeftOpen,
   PenTool,
+  ShieldCheck,
   StickyNote,
   Sun,
   type LucideProps,
@@ -19,12 +21,21 @@ import Studio from './Studio.js';
 import Bubble from './Bubble.js';
 import Schemas from './Schemas.js';
 import Notes, { useReminders } from './Notes.js';
+import Carte from './Carte.js';
+import Prevention from './Prevention.js';
 import type { Note } from '../shared/steps.js';
 import { Button, ToggleGroup } from './ui.js';
 
 // Interface v3, servie sur /. Le Dashboard est la page d'accueil ; Claude est
 // accessible partout via la bulle. ?vue=… garde la page au rechargement.
-type Ready = 'dashboard' | 'design' | 'brief' | 'schemas' | 'notes';
+type Ready =
+  | 'dashboard'
+  | 'design'
+  | 'brief'
+  | 'schemas'
+  | 'notes'
+  | 'carte'
+  | 'prevention';
 const pages: {
   id: Ready;
   label: string;
@@ -41,6 +52,13 @@ const pages: {
   { id: 'brief', label: 'Étapes du PFE', icon: FileText, context: 'brief' },
   { id: 'schemas', label: 'Mes schémas', icon: Network, context: 'brief' },
   { id: 'notes', label: 'Mes notes', icon: StickyNote, context: 'brief' },
+  { id: 'carte', label: 'Carte interactive', icon: MapIcon, context: 'brief' },
+  {
+    id: 'prevention',
+    label: 'Prévention & ressources',
+    icon: ShieldCheck,
+    context: 'brief',
+  },
 ];
 const ready = pages.map((p) => p.id);
 
@@ -112,8 +130,13 @@ export default function App() {
   // Navigation par le menu : chaque page s'ouvre en haut (le défilement
   // est celui du document), sans ancre ni position restaurée. Seul un lien
   // ciblé (#etape-… depuis le Dashboard) fait défiler vers une étape.
-  function go(next: Ready) {
-    history.replaceState(null, '', location.pathname + location.search);
+  // `tab` : onglet à ouvrir dans la page cible (liens Carte ↔ Prévention).
+  function go(next: Ready, tab?: string) {
+    const url = new URL(location.href);
+    url.hash = '';
+    if (tab) url.searchParams.set('onglet', tab);
+    else url.searchParams.delete('onglet');
+    history.replaceState(null, '', url);
     setPage(next);
     requestAnimationFrame(() => {
       document.scrollingElement?.scrollTo({ top: 0, behavior: 'instant' });
@@ -206,6 +229,10 @@ export default function App() {
               <Schemas />
             ) : page === 'notes' ? (
               <Notes />
+            ) : page === 'carte' ? (
+              <Carte go={go} />
+            ) : page === 'prevention' ? (
+              <Prevention go={go} />
             ) : (
               <Dashboard />
             )}

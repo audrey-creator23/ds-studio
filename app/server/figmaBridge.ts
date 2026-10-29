@@ -22,8 +22,26 @@ export class FigmaBridge {
   private code?: string;
   private lastSeen = 0;
   private last?: FigmaStatus;
+  // Appairage déjà réussi au moins une fois (marqueur privé persistant) :
+  // le code n'a plus à être montré à l'utilisatrice.
+  private paired?: boolean;
   seen() {
     this.lastSeen = Date.now();
+    if (!this.paired) {
+      this.paired = true;
+      void atomicWrite(
+        this.file('figma-paired'),
+        new Date().toISOString() + '\n',
+      );
+    }
+  }
+  private async isPaired() {
+    if (this.paired === undefined)
+      this.paired = await readPrivate(this.file('figma-paired'), 100).then(
+        () => true,
+        () => false,
+      );
+    return this.paired;
   }
   report(value: unknown) {
     this.last = { ...reportSchema.parse(value), at: new Date().toISOString() };
@@ -34,6 +52,7 @@ export class FigmaBridge {
     const s = await this.get();
     return {
       connected: Date.now() - this.lastSeen < 10_000,
+      paired: await this.isPaired(),
       sent: s
         ? { screenId: s.screenId, name: s.name, createdAt: s.createdAt }
         : null,

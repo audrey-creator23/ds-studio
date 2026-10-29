@@ -6,9 +6,10 @@ import {
   ScanEye,
   Library,
   MessageCircle,
+  MousePointerClick,
   Plus,
   RefreshCw,
-  Save,
+  Download,
   X,
 } from 'lucide-react';
 const screenColorKey = 'ds-v3-screen-colors';
@@ -64,10 +65,11 @@ import { ContrastPopover, useContrastAudit } from './studio/ContrastAudit.js';
 // bibliothèque, les calques, la barre de propriétés et l'aperçu. Chaque
 // écran est enregistré automatiquement dans le projet (fichier privé,
 // distinct des tokens) ; « Enregistrer » exporte. Rien ne touche le DS global.
+// Ordre et couleur de catégorie de chaque onglet (tokens --tab-* du CSS).
 const tabs = [
-  ['claude', 'Claude', MessageCircle],
   ['library', 'Bibliothèque', Library],
   ['layers', 'Calques', Layers],
+  ['claude', 'Claude', MessageCircle],
 ] as const;
 type Tab = (typeof tabs)[number][0];
 const defaultNames = ['Écran 1', 'Nouvelle page'];
@@ -126,6 +128,9 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
   );
   const frame = useRef<HTMLIFrameElement>(null);
   const [saving, setSaving] = useState(false);
+  // Test de l'écran : composants réellement utilisables dans l'appareil
+  // (la sélection d'édition est suspendue).
+  const [testing, setTesting] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const tab: Tab = tabs.some(([t]) => t === ui.tab) ? ui.tab : 'library';
   const [versions, setVersions] = useState(() => readHistory(c.draft.id));
@@ -261,11 +266,14 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
   }, [c.selected]);
   const add = c.addItem;
   const moveTo = c.moveTo;
+  // Composant ajouté (glisser-déposer) : la bibliothèque revient au neutre.
+  const [added, setAdded] = useState(0);
   const onDrop = useCallback(
     (d: DropEvent) => {
-      if (d.block)
+      if (d.block) {
         add(d.block.kind as BlockKind, d.block.variant, d.container, d.index);
-      else if (d.move) moveTo(d.move, d.container, d.index);
+        setAdded((n) => n + 1);
+      } else if (d.move) moveTo(d.move, d.container, d.index);
     },
     [add, moveTo],
   );
@@ -396,7 +404,7 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
   // « Actualiser Figma » : met à jour l'écran dans le fichier cible.
   const figmaSync = useFigmaSync();
   const figmaMeta = { device: view.device, scheme, tokens };
-  const figmaBusy = ['busy', 'waiting', 'closed'].includes(figmaSync.state);
+  const figmaBusy = figmaSync.state === 'busy';
   const figmaLabel =
     figmaSync.state === 'imported'
       ? 'Figma synchronisé'
@@ -422,7 +430,11 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
         ref={body}
         style={{ gridTemplateColumns: `${ui.split}% 12px minmax(0, 1fr)` }}
       >
-        <section className="panel side-panel" aria-label="Outils">
+        <section
+          className="panel side-panel"
+          aria-label="Outils"
+          data-tab={tab}
+        >
           <div className="tabs" role="tablist" aria-label="Outils du studio">
             {tabs.map(([id, label, Icon]) => (
               <button
@@ -431,6 +443,7 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
                 role="tab"
                 id={`tab-${id}`}
                 aria-selected={tab === id}
+                data-tab={id}
                 aria-controls="studio-tab"
                 aria-label={label}
                 title={label}
@@ -471,6 +484,7 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
                   )?.name
                 }
                 onAdd={(k, v) => c.addItem(k, v)}
+                added={added}
               />
             )}
             {tab === 'layers' && (
@@ -511,7 +525,7 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
                   key={d}
                   type="button"
                   aria-pressed={view.device === d}
-                  title={devices[d].detail}
+                  title={`${devices[d].detail} · simulation web, pas un émulateur natif`}
                   onClick={() =>
                     patchView({ device: d, w: devices[d].w, h: devices[d].h })
                   }
@@ -557,6 +571,16 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
             <Button
               variant="outline"
               size="icon"
+              title="Tester l’écran : interactions réelles (clic, saisie, défilement)"
+              aria-label="Tester l’écran"
+              aria-pressed={testing}
+              onClick={() => setTesting(!testing)}
+            >
+              <MousePointerClick size={16} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
               title="Pivoter"
               aria-label="Pivoter"
               disabled={!device.rotate}
@@ -574,12 +598,14 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
               <History size={16} aria-hidden="true" />
             </Button>
             <Button size="sm" onClick={() => setSaving(true)}>
-              <Save size={14} aria-hidden="true" /> Enregistrer
+              <Download size={14} aria-hidden="true" /> Exporter
             </Button>
           </div>
           <p className="studio-status" role="status">
             {c.error ||
               (figmaSync.state !== 'idle' && figmaSync.text) ||
+              (testing &&
+                'Test de l’écran : composants utilisables (clic, saisie, défilement) ; la sélection reprend en quittant le test.') ||
               (auditing
                 ? `Contraste WCAG 2.2 AA : ${fails ? `${fails} non conforme${fails > 1 ? 's' : ''}` : 'aucun écart'}${unknown ? ` · ${unknown} non calculable${unknown > 1 ? 's' : ''}` : ''} · cliquez un contour pour le détail`
                 : c.proposal
@@ -587,6 +613,20 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
                   : c.dirty
                     ? 'Modifications en cours d’enregistrement…'
                     : 'Écran enregistré · ⌘Z annuler · ⇧⌘Z rétablir')}
+            {!c.error && figmaSync.action === 'retry' && (
+              <button type="button" className="link" onClick={figmaSync.retry}>
+                Relancer
+              </button>
+            )}
+            {!c.error && figmaSync.action === 'browser' && (
+              <button
+                type="button"
+                className="link"
+                onClick={figmaSync.browser}
+              >
+                Ouvrir dans le navigateur
+              </button>
+            )}
           </p>
           <div className="preview-area">
             {c.proposal && <span className="preview-flag">Proposition</span>}
@@ -601,6 +641,7 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
               onSelect={select}
               onDrop={onDrop}
               frameRef={frame}
+              interact={testing}
             />
             <PropsBar
               c={c}
@@ -761,7 +802,9 @@ export default function Studio({ scheme }: { scheme: 'light' | 'dark' }) {
             onKeyDown={(e) => e.key === 'Escape' && setSaving(false)}
           >
             <div className="panel-head">
-              <h2 id="save-title">Télécharger l’écran</h2>
+              <h2 id="save-title" className="export-title">
+                Exporter un écran
+              </h2>
               <Button
                 variant="ghost"
                 size="icon"

@@ -12,33 +12,41 @@ import type { Composition } from '../../shared/composition.js';
 import { defaultConfig } from '../../client/design/componentSpecs.js';
 import type { DropEvent } from '../../client/design/CompositionView.js';
 
-// Simulateur : 4 cadres. Dimensions CSS réelles (points) : iPhone 15 Pro
+// Simulateur web (pas un émulateur natif iOS/macOS) : 4 appareils, rendu
+// React réel dans un viewport à leur résolution logique. Dimensions CSS réelles (points) : iPhone 15 Pro
 // 393 × 852, iPad Air 11" 820 × 1180, MacBook Pro 14" 1512 × 982 (réglage
 // par défaut). Zones système (Dynamic Island, barre d'état, indicateur
 // d'accueil, barre de menus) réservées : le contenu n'y passe jamais.
 export const devices = {
   mobile: {
-    label: 'Mobile',
-    detail: 'iPhone 15 Pro',
+    // Identifiant « mobile » conservé (données enregistrées).
+    label: 'iPhone',
+    detail: 'iPhone 15 Pro · 393 × 852 pt',
     w: 393,
     h: 852,
     rotate: true,
   },
   tablet: {
     label: 'iPad',
-    detail: 'iPad Air 11"',
+    detail: 'iPad Air 11" · 820 × 1180 pt',
     w: 820,
     h: 1180,
     rotate: true,
   },
   laptop: {
     label: 'MacBook',
-    detail: 'MacBook Pro 14"',
+    detail: 'MacBook Pro 14" · 1512 × 982 pt',
     w: 1512,
     h: 982,
     rotate: false,
   },
-  screen: { label: 'Screen', detail: 'Libre', w: 1024, h: 768, rotate: true },
+  screen: {
+    label: 'Screen',
+    detail: 'Écran libre, redimensionnable',
+    w: 1024,
+    h: 768,
+    rotate: true,
+  },
 } as const;
 export type DeviceId = keyof typeof devices;
 type Insets = { top: number; right: number; bottom: number; left: number };
@@ -70,17 +78,24 @@ export default function Device({
   onSelect,
   onDrop,
   frameRef,
+  src = '/index.html?preview=1&scenario=compose',
+  interact = false,
 }: {
   view: View;
   onView: (v: Partial<View>) => void;
   tokens?: Tokens;
   scheme: 'light' | 'dark';
-  composition: Composition;
+  composition?: Composition;
   selected?: string | string[];
   proposal: boolean;
   onSelect: (id: string, additive?: boolean) => void;
   onDrop: (drop: DropEvent) => void;
   frameRef: RefObject<HTMLIFrameElement | null>;
+  // Page affichée dans l'appareil (aperçu du studio par défaut).
+  src?: string;
+  // Composants réellement utilisables (clic, saisie, défilement) au lieu
+  // de la sélection d'édition.
+  interact?: boolean;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(1);
@@ -118,8 +133,8 @@ export default function Device({
           screen: 'compose',
           config: defaultConfig,
           composition,
-          selected: proposal ? undefined : selected,
-          interact: false,
+          selected: proposal || interact ? undefined : selected,
+          interact,
           scheme,
         },
         location.origin,
@@ -149,6 +164,7 @@ export default function Device({
     selected,
     proposal,
     scheme,
+    interact,
     onSelect,
     onDrop,
     frameRef,
@@ -219,7 +235,7 @@ export default function Device({
             <iframe
               ref={frameRef}
               title="Aperçu de l’écran"
-              src="/index.html?preview=1&scenario=compose"
+              src={src}
               style={{
                 top: inset.top,
                 left: inset.left,

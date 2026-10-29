@@ -1,5 +1,4 @@
 import { useState, type RefObject } from 'react';
-import { figmaTarget } from '../../shared/figmaTarget.js';
 import type { Composition } from '../../shared/composition.js';
 import { Button } from '../ui.js';
 import { exportReact } from './exportReact.js';
@@ -139,21 +138,24 @@ export default function ExportPanel({
   const [state, setState] = useState<
     { kind: 'idle' } | { kind: 'busy' } | { kind: 'ok' | 'error'; text: string }
   >({ kind: 'idle' });
-  const name = slug(composition.name);
+  const defaults = ['Écran 1', 'Nouvelle page'];
+  // Nom saisi ici : formats affichés seulement quand il est valide.
+  const [title, setTitle] = useState(
+    defaults.includes(composition.name) ? '' : composition.name,
+  );
+  const valid = title.trim().length > 0;
+  const name = slug(title);
   // Envoi et suivi réel de l'import Figma (partagés avec la barre d'aperçu).
   const figma = useFigmaSync();
-  const [sent, setSent] = useState(false);
   async function run() {
+    if (!valid) return;
     setState({ kind: 'busy' });
     try {
       const f = formats.find((x) => x.id === format)!;
       if (format === 'figma') {
-        const r = await figma.send(frameRef, composition, meta);
-        setState({
-          kind: 'ok',
-          text: `Envoyé : ${r.nodes} calques${r.warnings.length ? `, ${r.warnings.length} point(s) signalé(s)` : ''}. Code d’appairage (une seule fois dans le plugin) : ${r.pairing}`,
-        });
-        setSent(true);
+        // Statut affiché par le suivi Figma (ouverture, import, erreur).
+        setState({ kind: 'idle' });
+        await figma.send(frameRef, composition, meta);
         return;
       }
       if (format === 'tsx') {
@@ -188,66 +190,90 @@ export default function ExportPanel({
       setState({ kind: 'error', text: (e as Error).message });
     }
   }
-  const defaults = ['Écran 1', 'Nouvelle page'];
   return (
     <div className="export">
-      <input
-        className="export-name"
-        aria-label="Nom de l’écran"
-        placeholder="Donnez un nom à votre écran…"
-        maxLength={60}
-        autoFocus
-        value={defaults.includes(composition.name) ? '' : composition.name}
-        onChange={(e) => onName(e.target.value || 'Écran 1')}
-      />
-      <fieldset className="export-formats">
-        <legend>Format</legend>
-        {formats.map((f) => (
-          <label key={f.id}>
-            <input
-              type="radio"
-              name="export-format"
-              value={f.id}
-              checked={format === f.id}
-              onChange={() => {
-                setFormat(f.id);
-                setTransparent(false);
-              }}
-            />
-            <span>{f.label}</span>
-            {f.id === 'figma' && (
-              <small>
-                Calques éditables et Auto Layout, créés par le plugin dans le
-                fichier que vous ouvrez (jamais le kit source).
-              </small>
-            )}
-          </label>
-        ))}
-      </fieldset>
-      {format === 'png' && (
-        <label className="export-check">
-          <input
-            type="checkbox"
-            checked={transparent}
-            onChange={(e) => setTransparent(e.target.checked)}
-          />
-          Sans fond (transparent)
-        </label>
+      <label className="export-name-field">
+        <span>Nom de l’écran</span>
+        <input
+          className="export-name"
+          placeholder="Donnez un nom à votre écran…"
+          maxLength={60}
+          autoFocus
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            onName(e.target.value.trim() || 'Écran 1');
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && valid && void run()}
+        />
+      </label>
+      {valid && (
+        <>
+          <fieldset className="export-formats">
+            <legend>Format</legend>
+            {formats.map((f) => (
+              <label key={f.id}>
+                <input
+                  type="radio"
+                  name="export-format"
+                  value={f.id}
+                  checked={format === f.id}
+                  onChange={() => {
+                    setFormat(f.id);
+                    setTransparent(false);
+                  }}
+                />
+                <span>{f.label}</span>
+                {f.id === 'figma' && (
+                  <small>
+                    Calques éditables et Auto Layout, créés par le plugin dans
+                    le fichier que vous ouvrez (jamais le kit source).
+                  </small>
+                )}
+              </label>
+            ))}
+          </fieldset>
+          {format === 'png' && (
+            <label className="export-check">
+              <input
+                type="checkbox"
+                checked={transparent}
+                onChange={(e) => setTransparent(e.target.checked)}
+              />
+              Sans fond (transparent)
+            </label>
+          )}
+          <p className="muted small">
+            {format === 'png' || format === 'jpeg'
+              ? `Rendu de l’écran « ${title.trim()} » en thème clair (${size}).`
+              : `Rendu de l’écran « ${title.trim()} » tel qu’affiché (${size}).`}
+          </p>
+        </>
       )}
-      {sent && (
-        <p className="figma-live" role="status">
-          {figma.text || 'Connexion au plugin…'}{' '}
-          <a href={figmaTarget.url} target="_blank" rel="noreferrer">
-            Ouvrir le fichier Figma
-            <span className="sr-only"> (nouvel onglet)</span>
-          </a>
-        </p>
+      {format === 'figma' && figma.state !== 'idle' && (
+        <div
+          className="figma-live"
+          role={figma.state === 'error' ? 'alert' : 'status'}
+        >
+          <span>{figma.text}</span>
+          {figma.action === 'retry' && (
+            <Button variant="outline" size="sm" onClick={figma.retry}>
+              Relancer
+            </Button>
+          )}
+          {figma.action === 'browser' && (
+            <Button variant="outline" size="sm" onClick={figma.browser}>
+              Ouvrir dans le navigateur
+            </Button>
+          )}
+          {figma.pairing && figma.state === 'busy' && (
+            <small>
+              Première configuration du plugin : saisissez le code{' '}
+              <b>{figma.pairing}</b> dans DS-Studio Bridge.
+            </small>
+          )}
+        </div>
       )}
-      <p className="muted small">
-        {format === 'png' || format === 'jpeg'
-          ? `Rendu de l’écran « ${composition.name} » en thème clair (${size}).`
-          : `Rendu de l’écran « ${composition.name} » tel qu’affiché (${size}).`}
-      </p>
       <div className="row">
         <span
           className={state.kind === 'error' ? 'alert-text' : 'muted small'}
@@ -261,10 +287,10 @@ export default function ExportPanel({
         </span>
         <Button
           size="sm"
-          disabled={state.kind === 'busy'}
+          disabled={!valid || state.kind === 'busy' || figma.state === 'busy'}
           onClick={() => void run()}
         >
-          Valider
+          Exporter
         </Button>
       </div>
     </div>

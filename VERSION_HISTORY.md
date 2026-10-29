@@ -5,6 +5,281 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.44.0 — 2026-10-29
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `pfe-mobile/src/Explore.tsx` et `pfe-mobile/src/Settings.tsx`
+  (nouveaux), `pfe-mobile/src/App.tsx`, `pfe-mobile/src/app.css`,
+  `app/v3/carte/Locate.tsx` (extrait de `app/v3/Carte.tsx`),
+  `app/server/vigilance.ts` (nouveau), `app/server/carteData.ts`,
+  `app/v3/carte/Proches.tsx`, `tests/carteData.test.ts`,
+  `tests/e2e/studio.spec.ts`, `docs/SOURCES_RISQUES.md`, `pfe-mobile/README.md`.
+- **Changement** : app PFE — écran « Où êtes-vous ? » avant la carte
+  (géolocalisation, adresse, dernière adresse ; consentement, Martinique
+  seulement, demandé une fois, modifiable via « Ma position ») ; carte 3D
+  plein écran avec burger flottant, puce « Vigilance actuelle » et tiroir
+  à trois états (7 risques, une couche à la fois) ; menu avec
+  Notifications (permission explicite, test, préférences, sans push ni
+  remplacement de FR-Alert) et Widgets & raccourcis (liens `#danger`,
+  `#explore`, `#offline`, `#plan`, guides iPhone/Android, limite du bouton
+  d’alimentation). Connecteur vigilance Météo-France par moyen autorisé
+  seulement : clé du portail API requise, sinon « Non disponible » avec la
+  raison, jamais un vert ; aucune lecture du site (droits de reproduction).
+- **Vérification** : `npm run check`, `npm test` (71), `npm run build`,
+  `npx playwright test` (44), `npm run scan` (0 alerte).
+
+## 2.43.0 — 2026-10-29
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `pfe-mobile/src/App.tsx`, `pfe-mobile/src/Danger.tsx` et
+  `pfe-mobile/src/crisis.ts` (nouveaux), `pfe-mobile/src/app.css`,
+  `pfe-mobile/README.md`, `app/v3/carte/Proches.tsx`, `app/v3/Carte.tsx`,
+  `docs/SOURCES_RISQUES.md`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Application PFE. Un seul code responsive : sur grand
+  écran, navigation latérale permanente et contenu centré (880 px max),
+  typographie et marges agrandies ; burger sous 900 px. Menu à icônes
+  (Accueil, Ressources hors ligne, Mon plan d’urgence, Comprendre les
+  alertes), état actif, fermeture Échap / clic extérieur ; texte
+  « Accueil » retiré à côté du burger. Lancement : illustration, titre,
+  progression et bouton d’urgence empilés sans chevauchement (urgence
+  accessible sans attendre). Marges communes `--m-pad` avec zones sûres.
+  « Je suis en danger » refondu pour la crise : situation déduite du
+  dernier événement observé (cyclone NHC < 800 km, message tsunami NOAA
+  < 24 h, séisme USGS < 48 h) présentée comme incertaine, changeable
+  d’un clic ; gros bouton « Appeler les secours » (112) distinct des
+  autres numéros (15, 18, 17, SMS 114) ; questions en accordéon (Que
+  faire maintenant ? Dois-je évacuer ? Où me mettre à l’abri ? Où
+  retrouver mes proches ? Comment signaler que je vais bien ?) avec
+  action prioritaire, étapes, détails et sources, sans aucun ordre
+  d’évacuation déduit ; « Prévenir mes proches » (position actuelle ou
+  enregistrée datée, SMS ou partage, jamais annoncé comme envoyé, hors
+  ligne « non envoyé ») ; situations particulières (blessé, enfants,
+  sans parole, immobilisé, sans GPS, sans réseau, batterie faible,
+  consignes contradictoires) ; barre fixe « Appeler mon contact
+  d’urgence » ou ajout rapide ; choix gardés en cas d’interruption.
+  Vigilance : flux officiel Météo-France outre-mer identifié (Licence
+  Ouverte 2.0) mais accessible en direct seulement avec une clé du
+  portail API : non connecté, documenté, « Vigilance non disponible »
+  conservé. « Comprendre les alertes » remplace le libellé long.
+  Tests e2e : parcours PFE mis à jour, scénarios de crise.
+
+## 2.42.0 — 2026-10-29
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/Studio.tsx`, `app/v3/studio/Device.tsx`,
+  `app/v3/v3.css`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Mon espace Design. Onglets gauche (Bibliothèque → Calques
+  → Claude) : onglet actif entièrement rempli de sa couleur
+  (`#FF773D`, `#F55536`, `#FABC3C`) avec texte et pictogramme noirs
+  (contraste ≥ 6:1), liseré supprimé ; inactifs neutres (aucun
+  pictogramme coloré) ; teinte atténuée de la card gauche conservée.
+  Appareils : « Mobile » renommé « iPhone » (identifiant `mobile` et
+  données inchangés) ; info-bulles avec la résolution logique
+  (iPhone 15 Pro 393 × 852 pt, iPad Air 11" 820 × 1180, MacBook Pro 14"
+  1512 × 982) et la mention « simulation web, pas un émulateur natif ».
+  Nouveau bouton « Tester l’écran » : composants réellement utilisables
+  dans l’appareil (clic, saisie, défilement), sélection d’édition
+  suspendue puis reprise ; changement d’appareil sans perte ; état
+  activé noir et blanc. Tests e2e : couleurs des onglets (2 thèmes),
+  4 appareils, saisie réelle en mode test.
+
+## 2.41.0 — 2026-10-29
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/Carte.tsx`, `app/v3/carte/Proches.tsx`,
+  `app/v3/Prevention.tsx`, `app/v3/carte/Downloads.tsx` et
+  `app/v3/carte/Plan.tsx` (nouveaux), `app/v3/studio/Device.tsx`,
+  `app/server/http.ts`, `vite.config.ts`, `tsconfig.json`,
+  `app/v3/v3.css`, `pfe-mobile/` (nouveau : `index.html`, `src/`,
+  `theme/current/`, `theme/future/`, `README.md`),
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : Carte interactive, card droite compacte : « Vous êtes
+  ici » en sous-card grise ; grand titre « Niveau de vigilance actuel »
+  avec niveau global (« Vigilance non disponible », jamais assimilé au
+  vert, aucun niveau officiel n’étant publié en données ouvertes) ; 7
+  tags de risques (pictogramme animé, repère de couleur propre, gris
+  « Non disponible ») ; clic → sélection noir et blanc, animation
+  immersive du phénomène et couche sur la carte (mention « illustration,
+  pas la situation actuelle »), un seul risque, retour « Vue
+  d’ensemble » ; « En savoir plus » → fiche (vigilance, zone, proximité,
+  observations récentes, évolution 10 ans, conséquences, consignes,
+  sources, horodatage). Anciennes cards supprimées après migration ;
+  refresh 60 min / manuel, horloge de Martinique et décompte conservés.
+  Prévention & ressources devient l’atelier PFE : onglets Prototype de
+  l’application (vraie app React `pfe-mobile/` servie sur `/pfe/`, HMR
+  en mode dev, dans le cadre iPhone 15 Pro existant ; audit des paquets
+  de maquettes : aucun retenu, aucune dépendance ajoutée), Me préparer
+  (« Télécharger mes ressources d’urgence » : contenus réels en Cache
+  Storage, tailles, progression, plafond 1 Go, mise à jour /
+  suppression, persistance demandée sans garantie, ressources sans
+  source officielle marquées indisponibles ; « Mon plan d’urgence » :
+  7 étapes courtes, SMS « Je suis en vie » préparé dans la messagerie,
+  aucun suivi de position, informations officielles à noter ; trousse
+  existante conservée), Comprendre les risques, Mon logement. App
+  mobile : lancement animé, accueil 2 actions, urgence (appels `tel:`,
+  consignes, position, abris non inventés), exploration (carte 3D +
+  même logique de vigilance), menu (ressources hors ligne, plan,
+  comprendre). Tests e2e : carte refondue, parcours PFE complet.
+
+## 2.40.0 — 2026-10-29
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/Carte.tsx`, `app/v3/carte/Proches.tsx` (nouveau),
+  `app/v3/carte/Logement.tsx`, `app/v3/carte/Situation.tsx`,
+  `app/v3/carte/MapView.tsx`, `app/v3/carte/scene.ts`,
+  `app/v3/Prevention.tsx`, `app/server/carteData.ts`,
+  `app/server/http.ts`, `app/v3/v3.css`, `docs/SOURCES_RISQUES.md`
+  (nouveau), `tests/carteData.test.ts`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Carte interactive centrée sur la personne. Card droite :
+  onboarding « Où êtes-vous en Martinique ? » (« Me géolocaliser » avec
+  permission du navigateur, précision ≤ 300 m exigée, adresse retrouvée
+  par la BAN puis enregistrement consenti ; refus ou imprécision →
+  saisie manuelle) ou « Saisir une adresse » (autocomplétion BAN après
+  consentement). Puis « Vous êtes ici » (adresse, modifier, supprimer,
+  recentrer) et « Les risques près de chez vous » : 7 lignes
+  (pictogramme animé discrètement selon le phénomène, vigilance
+  officielle grise « Non disponible », observation datée, zone, source,
+  date de publication, proximité calculée du logement) et détail en
+  accordéon (vigilance, zone, proximité, observations, évolution sur
+  10 ans pour les séismes, conséquences, gestes, sources). Carte : couche
+  du risque choisi seule (zones calculées sans effet animé, légende
+  dédiée), séismes observés, balise du logement (sur cette page
+  seulement), « Vue d’ensemble ». Nouveaux flux publics : cyclones
+  actifs NHC/NOAA (distance calculée), messages tsunami NOAA PTWC/NTWC
+  filtrés Caraïbe ; route `situation` (cache par source, anti-doublons,
+  actualisation forcée limitée, réponse périmée datée) ; vérification
+  toutes les 60 min, au retour en ligne et via « Actualiser les
+  données » ; heure de Martinique en direct, dernière vérification et
+  décompte. Légende de vigilance retirée de la carte, déplacée
+  intégralement dans Prévention > Comprendre les risques > « Comprendre
+  les niveaux de vigilance ». Sources documentées par risque
+  (`docs/SOURCES_RISQUES.md`). Tests : 3 unitaires, e2e carte réécrits
+  (onboarding, géolocalisation autorisée / refusée / imprécise, adresse
+  invalide, 7 risques, détail, couche, refresh manuel et 60 min, hors
+  ligne, source en panne, légende déplacée, mobile).
+
+## 2.39.0 — 2026-10-29
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/Studio.tsx`, `app/v3/studio/LibraryPanel.tsx`,
+  `app/v3/studio/ExportPanel.tsx`, `app/v3/studio/useFigmaSync.ts`,
+  `app/server/figmaBridge.ts`, `app/shared/figmaTarget.ts`,
+  `app/v3/v3.css`, `figma-plugin/README.md`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Design. Bibliothèque : après un ajout réussi (clic dans la
+  galerie ou glisser-déposer), filtres de catégorie remis au neutre,
+  recherche gardée. Onglets gauche dans l’ordre Bibliothèque → Calques →
+  Claude, couleurs de catégorie en tokens (`--tab-*`) : actif noir et
+  blanc avec liseré coloré, pictogrammes teintés, card gauche nuancée
+  (7 % clair, 9 % sombre), transition douce. Export : bouton
+  « Exporter », modale « Exporter un écran » avec champ « Nom de
+  l’écran » ; formats affichés seulement après un nom valide (option PNG
+  transparent conservée) ; CTA « Exporter » désactivé sinon. Figma :
+  ouverture de Figma Desktop par le schéma `figma://` déclaré par l’app
+  macOS, repli explicite « Ouvrir dans le navigateur » si elle ne s’ouvre
+  pas ; statuts réduits à « Ouverture de Figma… », « Import confirmé »
+  (après compte rendu du plugin) ou erreur avec action ; diagnostic
+  après 2 min (plugin jamais lancé / ouvert sans import) et « Relancer » ;
+  code d’appairage montré seulement tant que le plugin n’a jamais été
+  appairé (marqueur privé `.ds-studio/figma-paired`), plus de nombre de
+  calques ni de détails techniques. Tests e2e adaptés + nouveau test.
+
+## 2.38.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/Carte.tsx`, `app/v3/Prevention.tsx` (nouveau),
+  `app/v3/carte/MapView.tsx` (nouveau), `app/v3/carte/scene.ts`,
+  `app/v3/carte/risks.ts`, `app/v3/carte/Situation.tsx`,
+  `app/v3/carte/Logement.tsx`, `app/v3/App.tsx`, `app/v3/v3.css`,
+  `tests/e2e/studio.spec.ts`
+- **Résumé** : Animations perdues en 2.37 : l’océan était dessiné après
+  les effets et les masquait (vagues du tsunami, ondes en mer,
+  sargasses, panache) ; ordre de rendu corrigé. Océan uniforme : bleu
+  continu selon la profondeur, turquoise limité à la frange côtière peu
+  profonde, fond visible seulement près des côtes (plus de taches ni de
+  démarcations). Carte interactive recentrée sur « Niveaux de risque
+  actuels » : 7 balises géolocalisées (ajout « Brume de sable »),
+  échelle vert → jaune → orange → rouge → violet en légende repliable,
+  gris « Non disponible » quand aucune vigilance officielle n’est
+  publiée en données ouvertes (aucune couleur ni animation de danger
+  inventée) ; séismes observés USGS en 3D avec ondulations discrètes
+  (observation, pas alerte) ; fiche niveau / zone / source /
+  horodatage / consignes. Nouvelle page « Prévention & ressources »
+  (`shield-check`) : onglets Comprendre les risques (7 simulations, dont
+  brume de sable : voile et particules poussées par les alizés,
+  densité réglable, seuils PM10), Me préparer, Mon logement (déplacés
+  sans perte). Carte 3D partagée (`MapView`), logement synchronisé entre
+  pages, navigation croisée avec onglet ciblé. Tests e2e réécrits
+  (niveaux, sources, océan, 7 simulations, logement, trousse, repli).
+
+## 2.37.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/Carte.tsx`, `app/v3/carte/scene.ts`,
+  `app/v3/carte/risks.ts`, `app/v3/carte/Situation.tsx`,
+  `app/v3/carte/Logement.tsx`, `app/v3/carte/Preparer.tsx`,
+  `app/v3/carte/Coupe.tsx` (nouveaux), `app/server/carteData.ts`
+  (nouveau), `app/server/http.ts`, `app/v3/v3.css`,
+  `tests/carteData.test.ts`, `tests/e2e/studio.spec.ts`
+- **Résumé** : Carte interactive en observatoire + simulateur. Onglets
+  « Situation actuelle », « Comprendre les risques », « Me préparer »,
+  carte prioritaire et panneau sobre. Trois natures d’information
+  jamais mélangées : officiel / exposition géographique / simulation.
+  Données réelles via le serveur local (cache, horodatage, « périmées »
+  si source injoignable) : séismes USGS (10 ans, graphique annuel,
+  « Activité observée en hausse » = constat chiffré), risques par
+  commune Géorisques, géocodage Base Adresse Nationale. Sans API
+  publique (vigilance Météo-France outre-mer, statut OVSM, sargasses,
+  refuges) : « Données indisponibles » + lien officiel, rien d’inventé.
+  Mon logement : consentement explicite, adresse envoyée seulement à la
+  BAN (corps de requête, jamais dans une URL), gardée sur l’appareil,
+  modifiable et supprimable ; faits calculés sur le MNT (altitude,
+  distances mer / cours d’eau / Pelée) et niveau simulé séparé. 3D :
+  océan plein cadre (houle, reflets, transparence côtière, écume, aucun
+  bord de dalle), 6e risque « Fortes pluies » (écoulements D8 après
+  comblement des dépressions, pluie, éclairs), volcan paramétrable
+  (panache selon le vent, nuée suivant la pente réelle, projections),
+  sargasses organiques, séismes observés en 3D, balise du logement.
+  Coupe animée subduction → séisme → tsunami. Me préparer : trousse
+  72 h selon le foyer (eau 6 L/pers.), besoins, compléments par risque,
+  progression gardée, contacts d’urgence, autorités.
+  Tests : 5 unitaires (données serveur), 3 e2e (situation, logement et
+  confidentialité, océan plein cadre, 6 simulations, scénario, coupe,
+  trousse, source indisponible, repli sans WebGL, mobile).
+
+## 2.36.0 — 2026-10-28
+
+- **Type** : minor (branche `v3-dashboard` ; dépendances `three` 0.186.1
+  et `@types/three` 0.186.0)
+- **Fichiers** : `app/v3/Carte.tsx`, `app/v3/carte/scene.ts`,
+  `app/v3/carte/risks.ts`, `app/v3/carte/assets.d.ts`,
+  `app/v3/carte/martinique-dem.png` + `.json` (données),
+  `scripts/fetch-martinique-dem.mjs`, `app/v3/App.tsx`, `app/v3/v3.css`,
+  `app/server/http.ts` (type `.png`), `tests/e2e/studio.spec.ts`,
+  `package.json`, `package-lock.json`
+- **Résumé** : Page « Carte interactive » (Lucide `map`) : en-tête et
+  grande card plein écran, sans défilement. Martinique en vraie 3D
+  (Three.js, chargé à l’ouverture de la page) à partir d’un MNT réel
+  géoréférencé : AWS Terrain Tiles, terre SRTM (zoom 11, ~74 m), mer
+  ETOPO1 / GEBCO (zoom 10, lissée) ; script de récupération
+  reproductible. Relief ×2, fonds ×0,5 (annoncé). Couleurs selon
+  altitude et pente (sable, cultures, forêt, sommets, roche), fonds par
+  profondeur, mer translucide, soleil et ombres portées, socle en coupe
+  (strates). Vue quasi zénithale inclinée, nord en haut, cadrage auto,
+  parallaxe légère, rotation et zoom bornés, recentrage, clavier
+  (flèches, + / −, 0), `prefers-reduced-motion` (rendu à la demande).
+  Cinq risques, une couche à la fois, légende faible / modéré / élevé :
+  tsunami (vagues venant de l’est, littoral ≤ 10 m), séisme (épicentre
+  réel du 29/11/2007, USGS, ondes, vibration, foyer hors échelle),
+  volcanisme (Pelée, panache illustratif, distances), cyclone
+  (trajectoire fictive animée et pilotable, vortex anti-horaire, vents),
+  sargasses (andains dérivant vers l’ouest, échouements atlantiques).
+  Zones calculées sur le relief réel, hypothèses écrites ; survol :
+  surbrillance et micro-label ; clic : fiche Quoi / Où / Risque /
+  Conséquences / Prévention / Source. Mention « Simulation pédagogique :
+  ni prévision ni alerte », sources. Sans WebGL : fiches consultables.
+  Tests e2e : altitudes réelles, 5 couches, fiches, survol / clic de
+  zone, trajectoire, clavier, page sans défilement, repli sans WebGL.
+
 ## 2.35.0 — 2026-10-28
 
 - **Type** : minor (branche `v3-dashboard`)

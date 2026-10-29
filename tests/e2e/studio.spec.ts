@@ -1323,22 +1323,24 @@ test('v3 : espace Design, DnD imbriqué, Auto Layout, appareils, exports', async
   ).toBeVisible();
   await page
     .getByRole('group', { name: 'Appareil' })
-    .getByRole('button', { name: 'Mobile' })
+    .getByRole('button', { name: 'iPhone' })
     .click();
   await expect(page.locator('.device--mobile .island')).toBeVisible();
   await expect(frame.locator('.cmp-item')).toHaveCount(5);
-  // Exports réels depuis « Enregistrer » ; le nom se saisit dans la modale.
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Télécharger l’écran' });
+  // Exports réels depuis « Exporter » ; formats visibles après le nom.
+  await page.getByRole('button', { name: 'Exporter', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Exporter un écran' });
+  await expect(dialog.getByRole('button', { name: 'Exporter' })).toBeDisabled();
+  await expect(dialog.getByRole('radio')).toHaveCount(0);
   await dialog.getByRole('textbox', { name: 'Nom de l’écran' }).fill('Accueil');
   await expect(dialog.getByRole('radio', { name: /Figma/ })).toBeEnabled();
   await dialog.getByRole('radio', { name: 'Composant React/TSX' }).check();
   let download = page.waitForEvent('download');
-  await dialog.getByRole('button', { name: 'Valider' }).click();
+  await dialog.getByRole('button', { name: 'Exporter' }).click();
   expect((await download).suggestedFilename()).toBe('accueil.tsx');
   await dialog.getByRole('radio', { name: 'Image PNG' }).check();
   download = page.waitForEvent('download');
-  await dialog.getByRole('button', { name: 'Valider' }).click();
+  await dialog.getByRole('button', { name: 'Exporter' }).click();
   expect((await download).suggestedFilename()).toMatch(/\.png$/);
   await expect(dialog.getByRole('status')).toContainText('téléchargé');
   await dialog.getByRole('button', { name: 'Fermer' }).click();
@@ -1609,24 +1611,25 @@ test('v3 : couleur de fond et audit de contraste WCAG', async ({ page }) => {
   await expect(frame.locator('[data-contrast]')).toHaveCount(0);
   // Export Figma : scène mesurée envoyée au serveur, lue par le plugin
   // (origine « null ») avec le code d'appairage ; refusée sans.
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  const save = page.getByRole('dialog', { name: 'Télécharger l’écran' });
+  await page.getByRole('button', { name: 'Exporter', exact: true }).click();
+  const save = page.getByRole('dialog', { name: 'Exporter un écran' });
+  await save.getByRole('textbox', { name: 'Nom de l’écran' }).fill('Contraste');
   await save.getByRole('radio', { name: /Figma/ }).check();
-  // Plugin fermé : le clic ouvre le fichier Figma cible (aucun accès réseau
-  // réel pendant le test).
-  await page
-    .context()
-    .route('https://www.figma.com/**', (r) =>
-      r.fulfill({ status: 200, body: '' }),
-    );
-  const popup = page.waitForEvent('popup');
-  await save.getByRole('button', { name: 'Valider' }).click();
-  expect((await popup).url()).toContain('zw2u0ScSwnWJR5a0wLdlEC');
-  const status = save.getByRole('status').filter({ hasText: 'Envoyé' });
-  await expect(status).toContainText('Code d’appairage');
-  const code = /([0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4})/.exec(
-    (await status.textContent())!,
-  )![1];
+  // Plugin fermé : Figma Desktop est demandé (figma://) ; s'il ne s'ouvre
+  // pas, repli explicite vers le navigateur. Jamais de succès simulé.
+  const sent = page.waitForResponse(
+    (r) => r.url().endsWith('/api/figma/scene') && r.ok(),
+  );
+  await save.getByRole('button', { name: 'Exporter' }).click();
+  const code = (await (await sent).json()).pairing as string;
+  const live = save.locator('.figma-live');
+  // Plugin jamais configuré : code d'appairage montré une seule fois.
+  await expect(live).toContainText(`saisissez le code ${code}`);
+  await expect(live).toContainText('Figma Desktop ne s’est pas ouvert');
+  await expect(
+    live.getByRole('button', { name: 'Ouvrir dans le navigateur' }),
+  ).toBeVisible();
+  await expect(live).not.toContainText('calques');
   const url = '/api/figma/scene';
   const denied = await page.request.get(url, {
     headers: { Origin: 'null', 'X-DS-Figma': 'AAAA-BBBB-CCCC' },
@@ -1663,11 +1666,7 @@ test('v3 : couleur de fond et audit de contraste WCAG', async ({ page }) => {
     headers: { Origin: 'null' },
   });
   expect(otherRoute.status()).toBe(403);
-  // Statut réel : plugin fermé, puis plugin connecté qui rend compte.
-  await expect(save.locator('.figma-live')).toContainText('Plugin');
-  await expect(
-    save.getByRole('link', { name: /Ouvrir le fichier Figma/ }),
-  ).toHaveAttribute('href', /zw2u0ScSwnWJR5a0wLdlEC/);
+  // Statut réel : plugin connecté qui rend compte.
   const meta = await page.request.get(`${local}/api/figma/scene/meta`, {
     headers: { Origin: 'null', 'X-DS-Figma': code },
   });
@@ -1685,9 +1684,8 @@ test('v3 : couleur de fond et audit de contraste WCAG', async ({ page }) => {
     },
   });
   expect(told.status()).toBe(200);
-  await expect(save.locator('.figma-live')).toContainText(
-    'Importé dans Figma (12 calques)',
-  );
+  await expect(live).toContainText('Import confirmé');
+  await expect(live).not.toContainText('12 calques');
 });
 
 test('v3 : onglets d’écrans, couleurs de repère et suppression', async ({
@@ -1900,8 +1898,9 @@ test('v3 : export image en thème clair, PNG sans fond, aperçu inchangé', asyn
       };
     }, src);
   };
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Télécharger l’écran' });
+  await page.getByRole('button', { name: 'Exporter', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Exporter un écran' });
+  await dialog.getByRole('textbox', { name: 'Nom de l’écran' }).fill('Accueil');
   const check = dialog.getByRole('checkbox', {
     name: 'Sans fond (transparent)',
   });
@@ -1909,7 +1908,7 @@ test('v3 : export image en thème clair, PNG sans fond, aperçu inchangé', asyn
   await expect(check).not.toBeChecked();
   const exportAs = async (type: string) => {
     const download = page.waitForEvent('download');
-    await dialog.getByRole('button', { name: 'Valider' }).click();
+    await dialog.getByRole('button', { name: 'Exporter' }).click();
     return inspect((await (await download).path())!, type);
   };
   // PNG opaque : fond clair, dimensions exactes (×2).
@@ -1945,7 +1944,7 @@ test('v3 : barre d’aperçu, icônes seules et « Actualiser Figma »', async (
   const refresh = bar.getByRole('button', { name: 'Actualiser Figma' });
   const rotate = bar.getByRole('button', { name: /Pivoter/ });
   const versions = bar.getByRole('button', { name: /Versions/ });
-  const save = bar.getByRole('button', { name: 'Enregistrer' });
+  const save = bar.getByRole('button', { name: 'Exporter' });
   // Icônes seules, carrés identiques ; Enregistrer tout à droite, une ligne.
   for (const b of [refresh, rotate, versions]) {
     await expect(b).toHaveText('');
@@ -1953,7 +1952,7 @@ test('v3 : barre d’aperçu, icônes seules et « Actualiser Figma »', async (
     const box = (await b.boundingBox())!;
     expect([box.width, box.height]).toEqual([32, 32]);
   }
-  await expect(bar.locator('> *').last()).toHaveText('Enregistrer');
+  await expect(bar.locator('> *').last()).toHaveText('Exporter');
   const y = async (l: typeof save) => {
     const b = (await l.boundingBox())!;
     return b.y + b.height / 2;
@@ -1974,11 +1973,6 @@ test('v3 : barre d’aperçu, icônes seules et « Actualiser Figma »', async (
   await dialog.getByRole('button', { name: 'Fermer' }).click();
   // Actualiser : écran envoyé en mise à jour explicite, succès seulement
   // après le compte rendu du plugin.
-  await page
-    .context()
-    .route('https://www.figma.com/**', (r) =>
-      r.fulfill({ status: 200, body: '' }),
-    );
   // Réponse acceptée (le client rejoue seul après validation de session).
   const sent = page.waitForResponse(
     (r) => r.url().endsWith('/api/figma/scene') && r.ok(),
@@ -2004,7 +1998,7 @@ test('v3 : barre d’aperçu, icônes seules et « Actualiser Figma »', async (
     },
     data: { state: 'imported', screenId: scene.screenId, message: '3 calques' },
   });
-  await expect(status).toContainText('Importé dans Figma (3 calques)');
+  await expect(status).toContainText('Import confirmé');
   await expect(
     bar.getByRole('button', { name: 'Figma synchronisé' }),
   ).toBeVisible();
@@ -2043,7 +2037,7 @@ test('v3 : « Ajuster » montre l’écran entier, sans défilement, centré', a
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto('/?vue=design');
-    for (const name of ['Mobile', 'iPad', 'MacBook', 'Screen']) {
+    for (const name of ['iPhone', 'iPad', 'MacBook', 'Screen']) {
       await devicesGroup.getByRole('button', { name }).click();
       await expect.poll(fits, { message: `${name} ${width}` }).toBe(true);
       if (name !== 'MacBook') {
@@ -2131,7 +2125,7 @@ test('v3 : card Preview, padding de la card gauche, icône Pivoter, chat dépla�
   const rotate = page.getByRole('button', { name: 'Pivoter', exact: true });
   const icon = rotate.locator('svg');
   for (const [name, id] of [
-    ['Mobile', 'mobile'],
+    ['iPhone', 'mobile'],
     ['iPad', 'tablet'],
     ['MacBook', 'laptop'],
     ['Screen', 'screen'],
@@ -2178,4 +2172,1044 @@ test('v3 : card Preview, padding de la card gauche, icône Pivoter, chat dépla�
   const d = (await dialog.boundingBox())!;
   expect(d.y).toBeGreaterThanOrEqual(0);
   expect(d.y + d.height).toBeLessThanOrEqual(508 - 11);
+});
+
+// Carte : API externes simulées (tests hors ligne et déterministes).
+async function mockCarte(
+  page: Page,
+  opts: { seismes?: number; cyclones?: number } = {},
+) {
+  const now = Date.now();
+  const events = [
+    {
+      id: 'a',
+      time: new Date(now - 5 * 86400000).toISOString(),
+      mag: 4.5,
+      depth: 54,
+      place: '56 km ENE of Sainte-Marie, Martinique',
+      url: 'u',
+      lat: 14.85,
+      lon: -61.05,
+    },
+    {
+      id: 'b',
+      time: new Date(now - 400 * 86400000).toISOString(),
+      mag: 3.1,
+      depth: 140,
+      place: 'Martinique',
+      url: 'u',
+      lat: 14.7,
+      lon: -61.2,
+    },
+  ];
+  const stamp = { fetchedAt: new Date(now).toISOString(), stale: false };
+  await page.route('**/api/carte/situation**', (r) =>
+    r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        checkedAt: new Date().toISOString(),
+        seismes: opts.seismes
+          ? { ok: false, error: 'Source indisponible (HTTP 503).' }
+          : {
+              ok: true,
+              data: {
+                source: 'USGS',
+                url: 'https://earthquake.usgs.gov/',
+                ...stamp,
+                events,
+              },
+            },
+        cyclones: opts.cyclones
+          ? { ok: false, error: 'Source indisponible (HTTP 503).' }
+          : {
+              ok: true,
+              data: {
+                source: 'NHC',
+                url: 'https://www.nhc.noaa.gov/',
+                ...stamp,
+                storms: [],
+              },
+            },
+        tsunami: {
+          ok: true,
+          data: {
+            source: 'NOAA',
+            url: 'https://www.tsunami.gov/',
+            ...stamp,
+            messages: [],
+          },
+        },
+      }),
+    }),
+  );
+  await page.route('**/api/carte/reverse', (r) =>
+    r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        source: 'BAN',
+        label: '71 Rue Victor Hugo 97200 Fort-de-France',
+        city: 'Fort-de-France',
+        citycode: '97209',
+        distanceM: 4,
+      }),
+    }),
+  );
+  await page.route('**/api/carte/commune?**', (r) =>
+    r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        source: 'Géorisques',
+        url: 'https://www.georisques.gouv.fr/',
+        fetchedAt: new Date(now).toISOString(),
+        stale: false,
+        commune: 'FORT-DE-FRANCE',
+        risques: ['Inondation', 'Séisme', 'Eruption volcanique'],
+        zoneSismique: '5 - FORTE',
+        catnat: [
+          { date: '18/09/2017', risque: 'Inondations et/ou Coulées de Boue' },
+        ],
+      }),
+    }),
+  );
+  await page.route('**/api/carte/geocode', (r) =>
+    r.fulfill(
+      /xyz/.test(r.request().postData() ?? '')
+        ? {
+            contentType: 'application/json',
+            body: JSON.stringify({ source: 'BAN', results: [] }),
+          }
+        : {
+            contentType: 'application/json',
+            body: JSON.stringify({
+              source: 'Base Adresse Nationale',
+              results: [
+                {
+                  label: 'Rue Victor Hugo 97200 Fort-de-France',
+                  city: 'Fort-de-France',
+                  citycode: '97209',
+                  lat: 14.604343,
+                  lon: -61.07106,
+                  score: 0.81,
+                  precision: 'street',
+                },
+              ],
+            }),
+          },
+    ),
+  );
+}
+
+test('v3 : carte, vous êtes ici, vigilance, 7 tags, animation, en savoir plus', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  const urls: string[] = [];
+  page.on('request', (r) => urls.push(r.url()));
+  await mockCarte(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=carte');
+  await expect(page.locator('.carte-view')).toHaveAttribute(
+    'data-ready',
+    'true',
+    { timeout: 30000 },
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollHeight <= innerHeight &&
+        document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  // Océan plein cadre.
+  const shot = await page.locator('.carte-stage').screenshot();
+  const px = await page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    return [
+      [img.width - 14, img.height - 14],
+      [img.width - 14, img.height / 2],
+      [14, img.height / 2],
+    ].map(([x, y]) => [...ctx.getImageData(x, y, 1, 1).data]);
+  }, shot.toString('base64'));
+  for (const [r, , b] of px) expect(b).toBeGreaterThan(r);
+  // Sans localisation : onboarding ; niveau global jamais inventé.
+  await expect(
+    page.getByRole('group', { name: 'Où êtes-vous en Martinique ?' }),
+  ).toBeVisible();
+  const vig = page.getByRole('region', { name: 'Niveau de vigilance actuel' });
+  await expect(vig.locator('.vig-global')).toContainText(
+    'Vigilance non disponible',
+  );
+  await expect(vig.locator('.vig-global')).toContainText(
+    'Ce n’est pas un niveau vert',
+  );
+  await expect(
+    vig
+      .getByRole('group', { name: 'Risques : afficher sur la carte' })
+      .getByRole('button'),
+  ).toHaveCount(7);
+  const tag = (n: string) =>
+    vig.getByRole('button', { name: `${n} : vigilance non disponible` });
+  for (const n of [
+    'Séisme',
+    'Volcanisme',
+    'Tsunami',
+    'Cyclone',
+    'Fortes pluies',
+    'Brume de sable',
+    'Sargasses',
+  ])
+    await expect(tag(n)).toBeVisible();
+  await expect(
+    page.getByRole('group', { name: /Vigilance officielle/ }),
+  ).toHaveCount(0);
+  // Horloge de Martinique, vérification, décompte ; refresh manuel.
+  await expect(page.locator('.proches-clock')).toContainText(
+    'heure de Martinique',
+  );
+  await expect(vig.locator('[role="status"]')).toContainText(
+    /prochaine dans (59:\d\d|60:00)/,
+  );
+  const forced = page.waitForRequest((r) =>
+    r.url().includes('/api/carte/situation?force=1'),
+  );
+  await page.getByRole('button', { name: 'Actualiser les données' }).click();
+  await forced;
+  // Hors ligne : échec explicite, données précédentes datées.
+  await page.context().setOffline(true);
+  await page.getByRole('button', { name: 'Actualiser les données' }).click();
+  await expect(vig.locator('[role="status"]')).toContainText(
+    'Échec de la vérification (Hors ligne) : données du',
+  );
+  await page.context().setOffline(false);
+  // Adresse invalide puis valide.
+  await page.getByRole('button', { name: 'Saisir une adresse' }).click();
+  const address = page.getByRole('textbox', { name: 'Adresse en Martinique' });
+  await expect(address).toBeDisabled();
+  await page.getByRole('checkbox', { name: /J’accepte/ }).check();
+  await address.fill('xyz introuvable');
+  await expect(page.getByRole('alert')).toContainText(
+    'Aucune adresse trouvée en Martinique',
+  );
+  await address.fill('rue Victor Hugo Fort-de-France');
+  await page.getByRole('button', { name: /Rue Victor Hugo 97200/ }).click();
+  const here = page.getByRole('region', { name: 'Vous êtes ici' });
+  await expect(here).toContainText('Rue Victor Hugo 97200 Fort-de-France');
+  await expect(page.locator('.carte-pin--home')).toBeVisible();
+  expect(urls.some((u) => /victor|hugo/i.test(u))).toBe(false);
+  await here
+    .getByRole('button', { name: 'Recentrer sur mon logement' })
+    .click();
+  // Sous-card grise distincte du panneau.
+  expect(
+    await page.evaluate(() => {
+      const bg = (s: string) =>
+        getComputedStyle(document.querySelector(s)!).backgroundColor;
+      return (
+        bg('.here') !== bg('.carte-panel') && bg('.here') !== 'rgba(0, 0, 0, 0)'
+      );
+    }),
+  ).toBe(true);
+  // Tag : noir et blanc, animation et couche, un seul ; fiche ; retour.
+  await tag('Tsunami').click();
+  await expect(tag('Tsunami')).toHaveAttribute('aria-pressed', 'true');
+  await expect(tag('Tsunami')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+  await expect(
+    page.getByRole('group', { name: 'Légende : Tsunami' }),
+  ).toContainText('illustration du phénomène');
+  const sel = vig.locator('.vig-selected');
+  await expect(sel).toContainText(
+    'Aucun message récent des centres d’alerte NOAA',
+  );
+  await expect(sel).toContainText('d’altitude');
+  await vig.getByRole('button', { name: 'En savoir plus' }).click();
+  const detail = vig.locator('.proches-detail');
+  for (const t of [
+    'Vigilance officielle',
+    'Proximité de votre logement',
+    'Observations récentes',
+    'Consignes',
+    'Sources et horodatage',
+  ])
+    await expect(detail).toContainText(t);
+  await expect(
+    detail.getByRole('link', { name: /tsunami.gov/ }),
+  ).toHaveAttribute('href', 'https://www.tsunami.gov/');
+  await tag('Séisme').click();
+  await expect(vig.locator('[aria-pressed="true"]')).toHaveCount(1);
+  await expect(
+    page.getByRole('group', { name: 'Légende : Tsunami' }),
+  ).toHaveCount(0);
+  await vig.getByRole('button', { name: 'En savoir plus' }).click();
+  await expect(detail).toContainText('M 4.5');
+  await expect(detail).toContainText('Évolution datée (10 ans)');
+  await expect(sel).toContainText('Dernier épicentre à');
+  await page.getByRole('button', { name: 'Vue d’ensemble' }).click();
+  await expect(vig.locator('[aria-pressed="true"]')).toHaveCount(0);
+  await tag('Volcanisme').click();
+  await expect(sel).toContainText('Sommet de la montagne Pelée à');
+  // Légende pédagogique : dans Comprendre les risques.
+  await page.getByRole('button', { name: /Comprendre les alertes/ }).click();
+  const levels = page.getByRole('region', {
+    name: 'Comprendre les niveaux de vigilance',
+  });
+  for (const t of [
+    'Pas de vigilance particulière',
+    'Soyez attentif',
+    'Soyez très vigilant',
+    'Vigilance absolue',
+    'Confinement (cyclone)',
+    'Non disponible',
+    'profondeur du foyer',
+  ])
+    await expect(levels).toContainText(t);
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto('/?vue=carte');
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+    .toBe(375);
+  expect(errors).toEqual([]);
+});
+
+test.describe('v3 : carte, géolocalisation', () => {
+  test.use({
+    permissions: ['geolocation'],
+    geolocation: { latitude: 14.6043, longitude: -61.0711, accuracy: 20 },
+  });
+  test('autorisée et précise : position proposée puis enregistrée', async ({
+    page,
+  }) => {
+    await mockCarte(page);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/?vue=carte');
+    await page.getByRole('button', { name: 'Me géolocaliser' }).click();
+    const found = page.getByRole('group', { name: 'Position trouvée' });
+    await expect(found).toContainText('71 Rue Victor Hugo');
+    await expect(found).toContainText('± 20 m');
+    expect(
+      await page.evaluate(() => localStorage.getItem('ds-v3-logement')),
+    ).toBeNull();
+    await found.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(
+      page.getByRole('region', { name: 'Vous êtes ici' }),
+    ).toContainText('71 Rue Victor Hugo');
+  });
+});
+test.describe('v3 : carte, géolocalisation imprécise', () => {
+  test.use({
+    permissions: ['geolocation'],
+    geolocation: { latitude: 14.6043, longitude: -61.0711, accuracy: 900 },
+  });
+  test('précision insuffisante : saisie manuelle proposée', async ({
+    page,
+  }) => {
+    await mockCarte(page);
+    await page.goto('/?vue=carte');
+    await page.getByRole('button', { name: 'Me géolocaliser' }).click();
+    await expect(page.getByRole('alert')).toContainText(
+      'trop imprécise (± 900 m)',
+    );
+  });
+});
+test('v3 : carte, géolocalisation refusée et actualisation toutes les 60 min', async ({
+  page,
+}) => {
+  await mockCarte(page, { cyclones: 503 });
+  await page.clock.install();
+  let calls = 0;
+  page.on(
+    'request',
+    (r) => r.url().includes('/api/carte/situation') && calls++,
+  );
+  await page.goto('/?vue=carte');
+  const vig = page.getByRole('region', { name: 'Niveau de vigilance actuel' });
+  await vig
+    .getByRole('button', { name: 'Cyclone : vigilance non disponible' })
+    .click();
+  await expect(vig.locator('.vig-selected')).toContainText(
+    'Données indisponibles (Source indisponible (HTTP 503).)',
+  );
+  await page.context().clearPermissions();
+  await page.getByRole('button', { name: 'Me géolocaliser' }).click();
+  await expect(page.getByRole('alert')).toContainText(/refusé|introuvable/);
+  const before = calls;
+  await page.clock.fastForward('01:00:05');
+  await expect.poll(() => calls).toBeGreaterThan(before);
+});
+
+test('v3 : prévention, 7 simulations, logement privé synchronisé, trousse', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => {
+    if (m.type() === 'error' && /THREE|WebGL|shader/i.test(m.text()))
+      errors.push(m.text());
+  });
+  const urls: string[] = [];
+  page.on('request', (r) => urls.push(r.url()));
+  await mockCarte(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=prevention&onglet=comprendre');
+  await expect(page.locator('.carte-view')).toHaveAttribute(
+    'data-ready',
+    'true',
+    { timeout: 30000 },
+  );
+  const h = await page.evaluate(() => {
+    const c = (
+      window as unknown as {
+        __carte: { heightAt: (a: number, b: number) => number };
+      }
+    ).__carte;
+    return [
+      c.heightAt(14.8094, -61.1653),
+      c.heightAt(14.58, -61.08),
+      c.heightAt(14.6, -61.3),
+    ];
+  });
+  expect(h[0]).toBeGreaterThan(1200);
+  expect(h[1]).toBeLessThan(0);
+  expect(h[2]).toBeLessThan(-1500);
+  const group = page.getByRole('group', { name: 'Simulation affichée' });
+  await expect(group.getByRole('button')).toHaveCount(7);
+  for (const name of [
+    'Séisme',
+    'Volcanisme',
+    'Tsunami',
+    'Cyclone',
+    'Fortes pluies',
+    'Brume de sable',
+    'Sargasses',
+  ]) {
+    await group.getByRole('button', { name }).click();
+    await expect(group.locator('[aria-pressed="true"]')).toHaveCount(1);
+    await expect(
+      page.getByRole('group', { name: `Légende : ${name}` }),
+    ).toContainText('Niveaux simulés');
+    await expect(
+      page.getByText('Simulation pédagogique : ni prévision ni alerte'),
+    ).toBeVisible();
+  }
+  await group.getByRole('button', { name: 'Brume de sable' }).click();
+  await page.getByRole('slider', { name: /Densité de poussières/ }).fill('3');
+  await expect(page.getByText('Densité de poussières : forte')).toBeVisible();
+  // Volcan : scénario, survol et clic d'une zone simulée.
+  await group.getByRole('button', { name: 'Volcanisme' }).click();
+  await page.getByRole('button', { name: 'Projections' }).click();
+  const pin = page.getByRole('button', { name: /Montagne Pelée/ });
+  const b = (await pin.boundingBox())!;
+  const x = b.x + b.width / 2 + 6;
+  const y = b.y + b.height + 14;
+  await page.mouse.move(x, y);
+  await page.mouse.move(x + 1, y + 1);
+  await expect(page.locator('.carte-hint')).toContainText('zone simulée');
+  await page.mouse.click(x + 1, y + 1);
+  await expect(
+    page.getByRole('dialog', { name: /Volcanisme · zone simulée/ }),
+  ).toContainText('Point choisi');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /Voir la coupe/ }).click();
+  await expect(page.getByRole('dialog', { name: /Coupe/ })).toContainText(
+    '2 cm par an',
+  );
+  await page.keyboard.press('Escape');
+  await group.getByRole('button', { name: 'Cyclone' }).click();
+  await page.getByRole('slider', { name: /trajectoire fictive/ }).fill('60');
+  await expect(page.getByText('Œil (trajectoire fictive)')).toBeVisible();
+  // Mon logement : consentement, adresse jamais dans une URL.
+  await page.getByRole('tab', { name: 'Mon logement' }).click();
+  await page.getByRole('button', { name: 'Configurer mon logement' }).click();
+  const address = page.getByRole('textbox', { name: 'Adresse en Martinique' });
+  await expect(address).toBeDisabled();
+  await page.getByRole('checkbox', { name: /J’accepte/ }).check();
+  await address.fill('rue Victor Hugo Fort-de-France');
+  await page.getByRole('button', { name: /Localiser/ }).click();
+  await page.getByRole('button', { name: /Rue Victor Hugo 97200/ }).click();
+  const facts = page.getByRole('region', { name: 'Mon logement' });
+  await expect(facts).toContainText('Altitude');
+  await expect(facts).toContainText('5 - FORTE');
+  await expect(facts).toContainText('DICRIM');
+  expect(urls.some((u) => /victor|hugo/i.test(u))).toBe(false);
+  // Balise du logement : jamais ici, seulement sur la Carte.
+  await expect(page.locator('.carte-pin--home')).toHaveCount(0);
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: 'Supprimer mon logement' }).click();
+  expect(
+    await page.evaluate(() => localStorage.getItem('ds-v3-logement')),
+  ).toBeNull();
+  // Me préparer : quantités selon le foyer, progression gardée.
+  await page.getByRole('tab', { name: 'Me préparer' }).click();
+  await page.getByRole('spinbutton', { name: 'Adultes' }).fill('3');
+  await expect(page.getByText(/Eau potable : 18 L/)).toBeVisible();
+  await page.getByRole('checkbox', { name: /Radio à piles/ }).check();
+  await page.reload();
+  await expect(page.getByRole('tab', { name: 'Me préparer' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(
+    page.getByRole('checkbox', { name: /Radio à piles/ }),
+  ).toBeChecked();
+  expect(errors).toEqual([]);
+});
+
+test('v3 : carte, source indisponible et repli sans WebGL', async ({
+  page,
+}) => {
+  await mockCarte(page, { seismes: 503 });
+  await page.addInitScript(() => {
+    const get = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      type: string,
+      ...rest: unknown[]
+    ) {
+      return /webgl/.test(type)
+        ? null
+        : (get as (...a: unknown[]) => unknown).call(this, type, ...rest);
+    } as typeof get;
+  });
+  await page.goto('/?vue=carte');
+  await expect(
+    page.getByText('La 3D (WebGL) n’est pas disponible'),
+  ).toBeVisible({ timeout: 30000 });
+  const vig = page.getByRole('region', { name: 'Niveau de vigilance actuel' });
+  await vig
+    .getByRole('button', { name: 'Séisme : vigilance non disponible' })
+    .click();
+  await expect(vig.locator('.vig-selected')).toContainText(
+    'Données indisponibles',
+  );
+});
+
+test('v3 : design, filtres neutres après ajout, onglets colorés, 2 thèmes', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=design');
+  const tabs = page.getByRole('tablist', { name: 'Outils du studio' });
+  await expect(tabs.getByRole('tab')).toHaveText([
+    'Bibliothèque',
+    'Calques',
+    'Claude',
+  ]);
+  // Ajout réussi depuis la galerie : catégorie retirée, recherche gardée.
+  await page
+    .getByRole('tablist', { name: 'Écrans' })
+    .getByRole('button', { name: 'Nouvel écran' })
+    .click();
+  const frame = page.frameLocator('iframe[title="Aperçu de l’écran"]');
+  await expect(frame.locator('.cmp-item')).toHaveCount(0);
+  const search = page.getByRole('searchbox', {
+    name: 'Rechercher un composant',
+  });
+  await search.fill('b');
+  await page.getByRole('button', { name: 'Bouton', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Retirer le filtre Bouton' }),
+  ).toBeVisible();
+  await page
+    .frameLocator('iframe[title="Galerie des composants du DS"]')
+    .locator('.cmp-pick')
+    .first()
+    .click();
+  await expect(frame.locator('.cmp-item')).toHaveCount(1);
+  await expect(
+    page.getByRole('button', { name: 'Retirer le filtre Bouton' }),
+  ).toHaveCount(0);
+  await expect(search).toHaveValue('b');
+  // Couleur de catégorie : actif rempli de sa couleur (texte noir),
+  // inactifs neutres sans liseré ; card teintée ; 2 thèmes.
+  const panel = page.locator('.side-panel');
+  const look = async (name: string) => {
+    const tab = tabs.getByRole('tab', { name });
+    await tab.click();
+    await page.waitForTimeout(350);
+    const other = tabs.getByRole('tab', { selected: false }).first();
+    return {
+      bg: await tab.evaluate((el) => getComputedStyle(el).backgroundColor),
+      fg: await tab.evaluate((el) => getComputedStyle(el).color),
+      line: await tab.evaluate((el) => getComputedStyle(el).boxShadow),
+      idleIcon: await other
+        .locator('svg')
+        .evaluate((el) => getComputedStyle(el).color),
+      idleText: await other.evaluate((el) => getComputedStyle(el).color),
+      card: await panel.evaluate((el) => getComputedStyle(el).backgroundColor),
+    };
+  };
+  for (const theme of ['Sombre', 'Clair']) {
+    await page.getByRole('button', { name: theme }).click();
+    const l = await look('Bibliothèque');
+    const c = await look('Calques');
+    const k = await look('Claude');
+    expect([l.bg, c.bg, k.bg]).toEqual([
+      'rgb(255, 119, 61)',
+      'rgb(245, 85, 54)',
+      'rgb(250, 188, 60)',
+    ]);
+    for (const t of [l, c, k]) {
+      expect(t.fg).toBe('rgb(0, 0, 0)');
+      expect(t.line).toBe('none');
+      expect(t.idleIcon).toBe(t.idleText);
+    }
+    expect(new Set([l.card, c.card, k.card]).size).toBe(3);
+  }
+});
+
+test('v3 : PFE, prototype iPhone, parcours, ressources hors ligne, plan', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await mockCarte(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=prevention');
+  await expect(
+    page.getByRole('tab', { name: 'Prototype de l’application' }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.device--mobile .island')).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: /Ouvrir l’application seule/ }),
+  ).toHaveAttribute('href', '/pfe/');
+  const app = page.frameLocator('iframe[title="Aperçu de l’écran"]');
+  // Lancement puis accueil : deux actions principales.
+  await expect(
+    app.getByRole('button', { name: /Je suis en danger/ }),
+  ).toBeVisible({ timeout: 15000 });
+  await expect(
+    app.getByRole('button', { name: /Explorer les risques/ }),
+  ).toBeVisible();
+  // Urgence : numéros réels (téléphone), consignes, abris non inventés.
+  await app.getByRole('button', { name: /Je suis en danger/ }).click();
+  await expect(
+    app.getByRole('link', { name: /Appeler les secours/ }),
+  ).toHaveAttribute('href', 'tel:112');
+  await app
+    .getByRole('group', { name: 'Choisir la situation' })
+    .getByRole('button', { name: 'Tsunami' })
+    .click();
+  await expect(app.locator('.d-q[data-open]')).toContainText(
+    'Monter immédiatement',
+  );
+  await app.getByRole('button', { name: /Où me mettre à l’abri/ }).click();
+  await expect(app.locator('.d-q[data-open]')).toContainText(
+    'non publiés en données ouvertes',
+  );
+  await app.getByRole('button', { name: 'Menu' }).click();
+  await app.getByRole('button', { name: 'Accueil' }).click();
+  // Explorer : « Où êtes-vous ? » d'abord (aucune adresse), puis carte
+  // plein écran, vigilance flottante, tiroir des 7 risques.
+  await app.getByRole('button', { name: /Explorer les risques/ }).click();
+  await expect(
+    app.getByRole('button', { name: 'Me géolocaliser' }),
+  ).toBeVisible();
+  await app.getByRole('button', { name: 'Saisir une adresse' }).click();
+  await app.getByRole('checkbox', { name: /J’accepte/ }).check();
+  await app
+    .getByRole('textbox', { name: 'Adresse en Martinique' })
+    .fill('rue Victor Hugo Fort-de-France');
+  await app.getByRole('button', { name: /Rue Victor Hugo 97200/ }).click();
+  await expect(app.locator('.carte-view')).toHaveAttribute(
+    'data-ready',
+    'true',
+    { timeout: 30000 },
+  );
+  await expect(
+    app.getByRole('button', { name: /Vigilance actuelle : non disponible/ }),
+  ).toBeVisible();
+  await expect(app.locator('.carte-pin--home')).toBeVisible();
+  const peek = app.getByRole('group', { name: 'Aperçu des 7 risques' });
+  await expect(peek.getByRole('button')).toHaveCount(7);
+  await peek
+    .getByRole('button', { name: 'Volcanisme : vigilance non disponible' })
+    .click();
+  await expect(app.getByText('Illustration du phénomène')).toBeVisible();
+  const vig = app.getByRole('region', { name: 'Niveau de vigilance actuel' });
+  await expect(vig.locator('.vig-global')).toContainText(
+    'Vigilance non disponible',
+  );
+  // Menu : rubriques avec icônes.
+  await app.getByRole('button', { name: 'Menu' }).click();
+  const menu = app.getByRole('navigation', { name: 'Menu' });
+  await expect(menu.getByRole('button')).toHaveText([
+    'Accueil',
+    'Ma position',
+    'Ressources hors ligne',
+    'Mon plan d’urgence',
+    'Comprendre les alertes',
+    'Notifications',
+    'Widgets & raccourcis',
+  ]);
+  await menu.getByRole('button', { name: 'Ressources hors ligne' }).click();
+  // Téléchargements réels, tailles, consultation sans réseau.
+  await expect(
+    app.getByRole('checkbox', { name: /Points de rassemblement/ }),
+  ).toBeDisabled();
+  await app.getByRole('button', { name: 'Télécharger la sélection' }).click();
+  await expect(app.getByText(/Téléchargé : .*(Ko|o)/).first()).toBeVisible();
+  await expect(
+    app.locator('.dl-list li').filter({ hasText: 'Carte de la Martinique' }),
+  ).toContainText(/Téléchargé : \d/);
+  await page.context().setOffline(true);
+  await app.getByRole('button', { name: 'Contacts', exact: true }).click();
+  await expect(
+    app
+      .getByRole('region', { name: 'Contenu hors ligne' })
+      .or(app.locator('.m-offline')),
+  ).toContainText('112');
+  await page.context().setOffline(false);
+  await app
+    .getByRole('button', {
+      name: 'Supprimer : Contacts d’urgence et autorités',
+    })
+    .click();
+  await expect(
+    app.locator('.dl-list li').filter({ hasText: 'Contacts d’urgence' }),
+  ).not.toContainText('Téléchargé');
+  // Plan d'urgence : message préparé dans la messagerie, gardé localement.
+  await app.getByRole('button', { name: 'Menu' }).click();
+  await app.getByRole('button', { name: 'Mon plan d’urgence' }).click();
+  await app
+    .getByRole('textbox', { name: 'Téléphone' })
+    .fill('+596 696 00 00 00');
+  await expect(
+    app.getByRole('link', { name: /Je suis en vie/ }),
+  ).toHaveAttribute('href', /^sms:\+596696000000/);
+  await app.getByRole('button', { name: 'Suivant' }).click();
+  await expect(
+    app.getByRole('region', { name: 'Évacuation de mon secteur' }),
+  ).toContainText('DICRIM');
+  expect(
+    await page.evaluate(() => localStorage.getItem('ds-v3-plan')),
+  ).toContain('596');
+  // Me préparer dans DS-Studio : mêmes deux sous-cards.
+  await page.getByRole('tab', { name: 'Me préparer' }).click();
+  await expect(
+    page.getByRole('region', { name: 'Télécharger mes ressources d’urgence' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Mon plan d’urgence' }),
+  ).toContainText('Préparer le message « Je suis en vie »');
+  expect(errors).toEqual([]);
+});
+
+test('v3 : design, iPhone et autres appareils, tester l’écran en vrai', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?vue=design');
+  const group = page.getByRole('group', { name: 'Appareil' });
+  await expect(group.getByRole('button')).toHaveText([
+    'iPhone',
+    'iPad',
+    'MacBook',
+    'Screen',
+  ]);
+  await expect(group.getByRole('button', { name: 'iPhone' })).toHaveAttribute(
+    'title',
+    /393 × 852 pt.*pas un émulateur natif/,
+  );
+  await page
+    .getByRole('tablist', { name: 'Écrans' })
+    .getByRole('button', { name: 'Nouvel écran' })
+    .click();
+  const frame = page.frameLocator('iframe[title="Aperçu de l’écran"]');
+  await expect(
+    page.getByRole('tablist', { name: 'Écrans' }).getByRole('tab').last(),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(frame.locator('.cmp-section')).toHaveCount(1);
+  await expect(frame.locator('.cmp-item')).toHaveCount(0);
+  await frame
+    .locator('.cmp-section > .cmp-section-body')
+    .first()
+    .evaluate((el) => {
+      const dt = new DataTransfer();
+      dt.setData(
+        'application/x-ds-block',
+        JSON.stringify({ kind: 'field', variant: 'text' }),
+      );
+      const r = el.getBoundingClientRect();
+      for (const type of ['dragover', 'drop'])
+        el.dispatchEvent(
+          new DragEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer: dt,
+            clientX: r.left + 4,
+            clientY: r.bottom - 2,
+          }),
+        );
+    });
+  await expect(frame.locator('.cmp-item')).toHaveCount(1);
+  // Test réel : saisie dans le champ, sans sélection d'édition.
+  const test = page.getByRole('button', { name: 'Tester l’écran' });
+  await test.click();
+  await expect(test).toHaveAttribute('aria-pressed', 'true');
+  await expect(test).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+  await expect(page.locator('.studio-status')).toContainText('Test de l’écran');
+  const input = frame.locator('.cmp-item input').first();
+  await input.fill('Audrey');
+  await expect(input).toHaveValue('Audrey');
+  await expect(frame.locator('.is-selected')).toHaveCount(0);
+  // Changer d'appareil : même écran, aucun contenu perdu.
+  for (const name of ['iPad', 'MacBook', 'Screen', 'iPhone']) {
+    await group.getByRole('button', { name }).click();
+    await expect(frame.locator('.cmp-item')).toHaveCount(1);
+  }
+  await test.click();
+  await expect(test).toHaveAttribute('aria-pressed', 'false');
+  await frame.locator('.cmp-item').first().click();
+  await expect(frame.locator('.is-selected')).toHaveCount(1);
+});
+
+test('v3 : PFE, je suis en danger, scénarios de crise', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  // Message tsunami NOAA récent pour la Caraïbe (simulé pour le test).
+  await mockCarte(page);
+  await page.route('**/api/carte/situation**', (r) =>
+    r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        checkedAt: new Date().toISOString(),
+        seismes: { ok: false, error: 'Source indisponible.' },
+        cyclones: {
+          ok: true,
+          data: {
+            source: 'NHC',
+            url: 'u',
+            fetchedAt: new Date().toISOString(),
+            stale: false,
+            storms: [],
+          },
+        },
+        tsunami: {
+          ok: true,
+          data: {
+            source: 'NOAA',
+            url: 'u',
+            fetchedAt: new Date().toISOString(),
+            stale: false,
+            messages: [
+              {
+                center: 'PTWC',
+                title: 'Test',
+                category: 'Information',
+                updated: new Date().toISOString(),
+                url: 'u',
+              },
+            ],
+          },
+        },
+      }),
+    }),
+  );
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  // Petit écran, une main.
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto('/pfe/');
+  // Accès urgence sans attendre le lancement.
+  await page.getByRole('button', { name: /Je suis en danger/ }).click();
+  // Risque détecté automatiquement, incertitude affichée.
+  await expect(
+    page.getByRole('button', { name: /Tsunami/ }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Situation', exact: true }),
+  ).toContainText('Ce n’est pas une alerte officielle');
+  await expect(page.locator('.d-q[data-open]')).toContainText(
+    'Que faire maintenant ?',
+  );
+  // Secours et contact : deux actions distinctes, contact persistant.
+  await expect(
+    page.getByRole('link', { name: /Appeler les secours/ }),
+  ).toHaveAttribute('href', 'tel:112');
+  await expect(page.getByRole('link', { name: /114/ })).toHaveAttribute(
+    'href',
+    'sms:114',
+  );
+  const dock = page.locator('.d-dock');
+  await dock
+    .getByRole('button', { name: 'Ajouter un contact d’urgence' })
+    .click();
+  await dock.getByRole('textbox', { name: 'Nom du contact' }).fill('Maman');
+  await dock
+    .getByRole('textbox', { name: 'Téléphone du contact' })
+    .fill('0696 00 00 00');
+  await dock.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(
+    dock.getByRole('link', { name: /Appeler mon contact d’urgence/ }),
+  ).toHaveAttribute('href', 'tel:0696000000');
+  // Évacuer : jamais d'ordre inventé.
+  await page.getByRole('button', { name: /Dois-je évacuer/ }).click();
+  await expect(page.locator('.d-q[data-open]')).toContainText(
+    'Aucun ordre d’évacuation officiel n’est connu',
+  );
+  // Le contact reste visible en bas pendant le défilement.
+  await page
+    .locator('.danger-body')
+    .evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await expect(
+    dock.getByRole('link', { name: /Appeler mon contact/ }),
+  ).toBeInViewport();
+  // Prévenir mes proches hors ligne : prêt, non envoyé.
+  await page.context().setOffline(true);
+  const sms = page
+    .getByRole('region', { name: 'Prévenir mes proches' })
+    .getByRole('link', { name: 'Par SMS' });
+  await expect(sms).toHaveAttribute('href', /^sms:0696000000/);
+  await sms.evaluate((a) =>
+    a.addEventListener('click', (e) => e.preventDefault()),
+  );
+  await sms.click();
+  await expect(
+    page.getByRole('region', { name: 'Prévenir mes proches' }),
+  ).toContainText('non envoyé');
+  await page.context().setOffline(false);
+  // Situations particulières.
+  await page.getByRole('button', { name: 'Je ne peux pas parler' }).click();
+  await expect(page.locator('.d-q[data-open]')).toContainText('SMS au 114');
+  // Interruption : choix gardés au rechargement.
+  await page
+    .getByRole('button', { name: /Tsunami/ })
+    .first()
+    .click();
+  await page
+    .getByRole('group', { name: 'Choisir la situation' })
+    .getByRole('button', { name: 'Cyclone' })
+    .click();
+  await page.reload();
+  await page.getByRole('button', { name: /Je suis en danger/ }).click();
+  await expect(
+    page.getByRole('button', { name: /Cyclone/ }).first(),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(360);
+  // Grand écran : navigation latérale, pas de burger, contenu centré.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(
+    page
+      .locator('.m-side')
+      .getByRole('button', { name: 'Ressources hors ligne' }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Menu' })).toBeHidden();
+  expect(
+    await page
+      .locator('.danger-body')
+      .evaluate((el) => el.getBoundingClientRect().width),
+  ).toBeLessThanOrEqual(880);
+  expect(errors).toEqual([]);
+});
+
+test('v3 : PFE, position, carte plein écran, tiroir, notifications, raccourcis', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await mockCarte(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 393, height: 852 });
+  // Lien direct : rubrique ouverte sans attendre le lancement.
+  await page.goto('/pfe/#shortcuts');
+  await expect(
+    page.getByRole('heading', { name: 'Widgets & raccourcis' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Impossible depuis une application web/),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Tester' }).first().click();
+  await expect(
+    page.getByRole('link', { name: /Appeler les secours/ }),
+  ).toBeVisible();
+  // Notifications : autorisation explicite, jamais d'alerte simulée.
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: 'Notifications' }).click();
+  await expect(page.getByText(/ne les remplace pas/)).toBeVisible();
+  await expect(page.getByText(/pas de service push/)).toBeVisible();
+  // Position : 3 choix, dernière adresse proposée une fois enregistrée.
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: 'Ma position' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Me géolocaliser' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Saisir une adresse' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Utiliser ma dernière adresse/ }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'Saisir une adresse' }).click();
+  await page.getByRole('checkbox', { name: /J’accepte/ }).check();
+  await page
+    .getByRole('textbox', { name: 'Adresse en Martinique' })
+    .fill('rue Victor Hugo Fort-de-France');
+  await page.getByRole('button', { name: /Rue Victor Hugo 97200/ }).click();
+  await expect(page.locator('.carte-view')).toHaveAttribute(
+    'data-ready',
+    'true',
+    { timeout: 30000 },
+  );
+  // Plein écran : carte sous les éléments flottants, tiroir réduit.
+  const box = (s: string) => page.locator(s).boundingBox();
+  expect((await box('.carte-stage'))!.height).toBeGreaterThan(780);
+  await expect(page.locator('.m-explore')).toHaveAttribute(
+    'data-sheet',
+    'peek',
+  );
+  const handle = page.getByRole('button', { name: 'Agrandir le panneau' });
+  await handle.focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('.m-explore')).toHaveAttribute(
+    'data-sheet',
+    'half',
+  );
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('.m-explore')).toHaveAttribute(
+    'data-sheet',
+    'full',
+  );
+  await expect(
+    page.getByRole('region', { name: 'Niveau de vigilance actuel' }),
+  ).toContainText('clé du portail API Météo-France');
+  await page.getByRole('button', { name: 'Réduire le panneau' }).click();
+  await expect(page.locator('.m-explore')).toHaveAttribute(
+    'data-sheet',
+    'peek',
+  );
+  // Vigilance flottante → détail complet.
+  await page
+    .getByRole('button', { name: /Vigilance actuelle : non disponible/ })
+    .click();
+  await expect(page.locator('.m-explore')).toHaveAttribute(
+    'data-sheet',
+    'full',
+  );
+  // Explorer à nouveau : pas de redemande de position.
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: 'Accueil' }).click();
+  await page.getByRole('button', { name: /Explorer les risques/ }).click();
+  await expect(page.locator('.m-explore')).toBeVisible();
+  // Dernière adresse : proposée, modifiable, utilisable.
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: 'Ma position' }).click();
+  await expect(
+    page.getByRole('region', { name: 'Ma dernière adresse' }),
+  ).toContainText('Rue Victor Hugo');
+  await page
+    .getByRole('button', { name: /Utiliser ma dernière adresse/ })
+    .click();
+  await expect(page.locator('.m-explore')).toBeVisible();
+  expect(errors).toEqual([]);
 });

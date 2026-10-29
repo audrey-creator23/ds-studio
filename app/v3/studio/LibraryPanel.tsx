@@ -33,13 +33,18 @@ export default function LibraryPanel({
   tokens,
   target,
   onAdd,
+  added,
 }: {
   tokens?: Tokens;
   target?: string;
   onAdd: (kind: BlockKind, variant: string) => void;
+  added?: number;
 }) {
   const [search, setSearch] = useState('');
   const [picked, setPicked] = useState<BlockKind[]>([]);
+  useEffect(() => {
+    if (added) setPicked([]);
+  }, [added]);
   const query = search.trim().toLowerCase();
   const idle = !picked.length && !query;
   const shown = blockKinds.filter(
@@ -90,8 +95,11 @@ export default function LibraryPanel({
       if (
         e.data?.type === 'ds-pick' &&
         blockKinds.includes(e.data.kind as BlockKind)
-      )
+      ) {
         add.current(e.data.kind as BlockKind, String(e.data.variant));
+        // Ajout réussi : catégories remises à l'état neutre (recherche gardée).
+        setPicked([]);
+      }
     };
     addEventListener('message', onMessage);
     return () => removeEventListener('message', onMessage);

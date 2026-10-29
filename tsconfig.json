@@ -15,6 +15,7 @@
   "include": [
     "app",
     "connectors",
+    "pfe-mobile",
     "tests",
     "scripts/*.ts",
     "vite.config.ts",
