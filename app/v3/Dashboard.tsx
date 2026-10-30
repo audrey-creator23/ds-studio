@@ -29,7 +29,7 @@ import {
   Progress,
 } from './ui.js';
 
-// Dashboard projet (v3). L'activité du volcan suit les dates du PFE ; les
+// Dashboard projet (v3). L'activité du volcan suit les étapes du PFE ; les
 // rendus suivent le statut réel de leur étape (même source que la
 // checklist des Étapes du PFE), jamais les dates.
 const start = milestones[0].date;

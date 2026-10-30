@@ -10,7 +10,14 @@ export const fakeComposer: Composer = {
   async status() {
     return { available: true, detail: 'Compositeur simulé (tests).' };
   },
-  async compose(_system, turns) {
+  async compose(_system, turns, _signal, _model, _progress, extras) {
+    // Trace des options reçues (tests de bout en bout seulement).
+    const trace = [
+      extras?.skill && `skill ${extras.skill.invoke}`,
+      extras?.repoRoot && 'lecture du projet',
+    ]
+      .filter(Boolean)
+      .join(', ');
     const last = turns.at(-1)!.text;
     const current = JSON.parse(
       last.match(/<composition>\n([\s\S]*)\n<\/composition>/)![1],
@@ -92,12 +99,15 @@ export const fakeComposer: Composer = {
       );
     return {
       output: {
-        reply: 'Voici une proposition avec les composants existants.',
+        reply:
+          'Voici une proposition avec les composants existants.' +
+          (trace ? ` [${trace}]` : ''),
         needsInput: false,
         sections,
       },
       stopReason: 'end_turn',
       usage,
+      skillLoaded: extras?.skill ? true : null,
     };
   },
 };

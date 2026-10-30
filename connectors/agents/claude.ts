@@ -53,6 +53,13 @@ export interface Assistant {
 // Avancement d'une composition : statut et début de la réponse.
 export type ComposeProgress = { status?: string; reply?: string };
 // Composition de page : sortie JSON structurée, validée ensuite côté serveur.
+// Options de session Claude Code, sur accord explicite : un skill installé
+// (plugin local `dir`, appelé par `invoke`, ex. « /caveman:caveman ») pour
+// ce message seulement ; lecture seule du projet (`repoRoot`).
+export type ComposeExtras = {
+  skill?: { dir: string; invoke: string };
+  repoRoot?: string;
+};
 export interface Composer {
   status(): Promise<{ available: boolean; detail: string }>;
   compose(
@@ -61,10 +68,13 @@ export interface Composer {
     signal: AbortSignal,
     model: ClaudeModel,
     onProgress?: (p: ComposeProgress) => void,
+    extras?: ComposeExtras,
   ): Promise<{
     output: ComposeOutput | null;
     stopReason: string | null;
     usage: { input: number; output: number };
+    // Preuve de chargement du skill (Claude Code) ; absent ailleurs.
+    skillLoaded?: boolean | null;
   }>;
 }
 

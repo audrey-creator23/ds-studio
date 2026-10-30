@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useSavedState } from '../localStore.js';
+import { planKey, type PersonalPlan } from './preparationModel.js';
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,8 +16,6 @@ import { Button } from '../ui.js';
 // avec ses proches ; les informations officielles (évacuation, points de
 // rassemblement, PC sécurité, radio) se notent depuis les sources
 // officielles, jamais devinées.
-type Plan = Record<string, string>;
-const KEY = 'ds-v3-plan';
 const prefecture = 'https://www.martinique.gouv.fr/';
 type Step = {
   id: string;
@@ -88,23 +88,13 @@ const steps: Step[] = [
 ];
 const risksToRead = ['Volcanisme', 'Séisme', 'Tsunami', 'Cyclone'];
 
-export default function Plan() {
-  const [plan, setPlan] = useState<Plan>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(KEY) ?? '{}');
-    } catch {
-      return {};
-    }
-  });
+const emptyPlan: PersonalPlan = {};
+export default function Plan({ sections }: { sections?: string[] }) {
+  const [plan, setPlan, error] = useSavedState(planKey, emptyPlan);
   const [i, setI] = useState(0);
-  useEffect(() => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(plan));
-    } catch {
-      // Stockage indisponible : plan gardé pour la session.
-    }
-  }, [plan]);
-  const step = steps[i];
+  const shown = sections
+    ? steps.filter((s) => sections.includes(s.id))
+    : [steps[i]];
   const done = steps.filter((s) =>
     s.fields.length
       ? s.fields.every((f) => plan[f.id]?.trim())
@@ -113,95 +103,108 @@ export default function Plan() {
   const set = (id: string, v: string) => setPlan((p) => ({ ...p, [id]: v }));
   return (
     <div className="plan">
-      <progress
-        max={steps.length}
-        value={done}
-        aria-label={`${done} étapes complètes sur ${steps.length}`}
-      />
-      <small className="carte-stamp">
-        {done} / {steps.length} étapes complètes · gardé sur cet appareil
-        uniquement
-      </small>
-      <ol className="plan-steps" aria-label="Étapes du plan">
-        {steps.map((s, k) => (
-          <li key={s.id}>
-            <button
-              type="button"
-              aria-current={k === i ? 'step' : undefined}
-              onClick={() => setI(k)}
-              title={s.title}
-            >
-              {k + 1}
-            </button>
-          </li>
-        ))}
-      </ol>
-      <section className="plan-step" aria-label={step.title}>
-        <h4>{step.title}</h4>
-        <p className="small">{step.help}</p>
-        {step.fields.map((f) => (
-          <label key={f.id} className="plan-field">
-            <span>{f.label}</span>
-            <input
-              className="input input-sm"
-              type={f.type ?? 'text'}
-              placeholder={f.placeholder}
-              value={plan[f.id] ?? ''}
-              onChange={(e) => set(f.id, e.target.value)}
-            />
-          </label>
-        ))}
-        {step.id === 'vie' && plan.contactTel?.trim() && (
-          <a
-            className="button plan-sms"
-            data-variant="outline"
-            data-size="sm"
-            href={`sms:${plan.contactTel.replace(/\s/g, '')}?&body=${encodeURIComponent('Je suis en vie et en sécurité.')}`}
-          >
-            <MessageSquare size={14} aria-hidden="true" /> Préparer le message «
-            Je suis en vie »
-          </a>
-        )}
-        {step.id === 'risques' &&
-          risksToRead.map((r) => (
-            <label key={r} className="plan-check">
+      {error && (
+        <p role="alert" className="alert-text">
+          {error}
+        </p>
+      )}
+      {!sections && (
+        <>
+          <progress
+            max={steps.length}
+            value={done}
+            aria-label={`${done} étapes complètes sur ${steps.length}`}
+          />
+          <small className="carte-stamp">
+            {done} / {steps.length} étapes complètes · gardé sur cet appareil
+            uniquement
+          </small>
+          <ol className="plan-steps" aria-label="Étapes du plan">
+            {steps.map((s, k) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  aria-current={k === i ? 'step' : undefined}
+                  onClick={() => setI(k)}
+                  title={s.title}
+                >
+                  {k + 1}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+      {shown.map((step) => (
+        <section key={step.id} className="plan-step" aria-label={step.title}>
+          <h4>{step.title}</h4>
+          <p className="small">{step.help}</p>
+          {step.fields.map((f) => (
+            <label key={f.id} className="plan-field">
+              <span>{f.label}</span>
               <input
-                type="checkbox"
-                checked={plan[`lu-${r}`] === '1'}
-                onChange={(e) => set(`lu-${r}`, e.target.checked ? '1' : '')}
+                className="input input-sm"
+                type={f.type ?? 'text'}
+                placeholder={f.placeholder}
+                value={plan[f.id] ?? ''}
+                onChange={(e) => set(f.id, e.target.value)}
               />
-              J’ai relu les gestes : {r}
             </label>
           ))}
-        {step.link && (
-          <a
-            className="carte-link"
-            href={step.link.url}
-            target="_blank"
-            rel="noreferrer"
+          {step.id === 'vie' && plan.contactTel?.trim() && (
+            <a
+              className="button plan-sms"
+              data-variant="outline"
+              data-size="sm"
+              href={`sms:${plan.contactTel.replace(/\s/g, '')}?&body=${encodeURIComponent('Je suis en vie et en sécurité.')}`}
+            >
+              <MessageSquare size={14} aria-hidden="true" /> Préparer le message
+              « Je suis en vie »
+            </a>
+          )}
+          {step.id === 'risques' &&
+            risksToRead.map((r) => (
+              <label key={r} className="plan-check">
+                <input
+                  type="checkbox"
+                  checked={plan[`lu-${r}`] === '1'}
+                  onChange={(e) => set(`lu-${r}`, e.target.checked ? '1' : '')}
+                />
+                J’ai relu les gestes : {r}
+              </label>
+            ))}
+          {step.link && (
+            <a
+              className="carte-link"
+              href={step.link.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {step.link.label} <ExternalLink size={12} aria-hidden="true" />
+              <span className="sr-only"> (nouvel onglet)</span>
+            </a>
+          )}
+        </section>
+      ))}
+      {!sections && (
+        <div className="row">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={i === 0}
+            onClick={() => setI(i - 1)}
           >
-            {step.link.label} <ExternalLink size={12} aria-hidden="true" />
-            <span className="sr-only"> (nouvel onglet)</span>
-          </a>
-        )}
-      </section>
-      <div className="row">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={i === 0}
-          onClick={() => setI(i - 1)}
-        >
-          <ChevronLeft size={14} aria-hidden="true" /> Précédent
-        </Button>
-        <Button
-          size="sm"
-          disabled={i === steps.length - 1}
-          onClick={() => setI(i + 1)}
-        >
-          Suivant <ChevronRight size={14} aria-hidden="true" />
-        </Button>
-      </div>
+            <ChevronLeft size={14} aria-hidden="true" /> Précédent
+          </Button>
+          <Button
+            size="sm"
+            disabled={i === steps.length - 1}
+            onClick={() => setI(i + 1)}
+          >
+            Suivant <ChevronRight size={14} aria-hidden="true" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

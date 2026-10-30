@@ -1,0 +1,10 @@
+{
+  "name": "caveman",
+  "version": "4.0.1",
+  "description": "Skills caveman (Markdown seul, sans hooks) copiés depuis https://github.com/JuliusBrussee/caveman @ v4.0.1.",
+  "author": {
+    "name": "Julius Brussee"
+  },
+  "repository": "https://github.com/JuliusBrussee/caveman",
+  "license": "Apache-2.0"
+}

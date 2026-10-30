@@ -14,7 +14,8 @@ export function useComposeChat(c: CompositionState) {
   const [live, setLive] = useState<{ status?: string; reply?: string }>({});
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
-  async function send(text = draft.trim(), context = '') {
+  // `skill` : skill accepté pour CE message (chargé par Claude Code).
+  async function send(text = draft.trim(), context = '', skill?: string) {
     if (!text || pending) return;
     c.setError('');
     setPending(true);
@@ -28,10 +29,13 @@ export function useComposeChat(c: CompositionState) {
         question: boolean;
         proposal: Composition | null;
         changes: string[];
+        skill?: string | null;
+        skillLoaded?: boolean | null;
       }>(
         'compose',
         {
           message: (context ? `${context}\n\n` : '') + text,
+          ...(skill ? { skill } : {}),
           composition: { ...c.draft, updatedAt: undefined },
           history: turns.slice(-10).map(({ role, text }) => ({
             role,
@@ -48,7 +52,14 @@ export function useComposeChat(c: CompositionState) {
       setDraft('');
       setTurns((t) => [
         ...t,
-        { role: 'assistant', text: r.reply, question: r.question },
+        {
+          role: 'assistant',
+          // Skill : chargement confirmé ou non par Claude Code, jamais supposé.
+          text: r.skill
+            ? `${r.reply}\n\nSkill ${r.skill} : ${r.skillLoaded ? 'chargé par Claude Code' : 'chargement non confirmé par Claude Code'}.`
+            : r.reply,
+          question: r.question,
+        },
       ]);
       c.setProposal(
         r.proposal

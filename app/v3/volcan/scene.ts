@@ -75,13 +75,15 @@ export async function createVolcan(
     const e = Math.hypot(i - CROP / 2, j - CROP / 2) / (CROP / 2);
     const f = 1 - Math.min(1, Math.max(0, (e - 0.62) / 0.3)) ** 1.5;
     const h = demAt(i, j);
-    if (h <= 0) return h * f - (1 - f) * 60;
+    // Sans océan (demande) : la mer devient une plaine basse, fondue dans
+    // la brume ; aucun bord de dalle visible.
+    if (h <= 0) return 8 * f;
     const r = Math.hypot(i - cx, j - cz) * PX_M;
     const detail = 14 * vn(i * 0.9, j * 0.9) + 6 * vn(i * 2.7, j * 2.3);
     return (
       (h + detail * Math.min(1, h / 200) - 70 * Math.exp(-((r / 230) ** 2))) *
-        f -
-      (1 - f) * 60
+        f +
+      (1 - f) * 8
     );
   };
   const S = CROP * U;
@@ -116,8 +118,8 @@ export async function createVolcan(
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
   const summitY = at(0, 0);
-  const target = new THREE.Vector3(0, summitY * 0.62, 0);
-  scene.fog = new THREE.Fog(0xcfdde8, 16, 48);
+  const target = new THREE.Vector3(0, summitY * 0.6, 0);
+  scene.fog = new THREE.Fog(0xf7e6cc, 9, 24);
 
   // Terrain : couleurs par altitude, pente et bruit (forêt, savane
   // d'altitude, roche et cendre près du sommet).
@@ -128,13 +130,13 @@ export async function createVolcan(
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
   const col = new THREE.Color();
-  const forest = new THREE.Color('#2f5a2a');
-  const forest2 = new THREE.Color('#4d7a35');
-  const high = new THREE.Color('#7d8a55');
-  const rock = new THREE.Color('#6e6258');
-  const ashC = new THREE.Color('#4a4440');
-  const sand = new THREE.Color('#b9a888');
-  const seabed = new THREE.Color('#2c5a6a');
+  const forest = new THREE.Color('#4f5a26');
+  const forest2 = new THREE.Color('#7a6c2e');
+  const high = new THREE.Color('#a8865a');
+  const rock = new THREE.Color('#7a5640');
+  const ashC = new THREE.Color('#4a3328');
+  const sand = new THREE.Color('#c9a874');
+  const seabed = new THREE.Color('#b8955f');
   for (let k = 0; k < pos.count; k++) {
     const x = pos.getX(k);
     const z = pos.getZ(k);
@@ -181,7 +183,7 @@ export async function createVolcan(
         float steep = 1. - clamp(vWN.y, 0., 1.);
         float n = noise(vWP * 38.) * .6 + noise(vWP * 110.) * .4;
         float strata = .5 + .5 * sin(vWP.y * 90. + noise(vWP * 12.) * 6.);
-        vec3 rockC = vec3(.36, .31, .27) * (.8 + .3 * strata);
+        vec3 rockC = vec3(.42, .3, .22) * (.8 + .3 * strata);
         if (vWP.y > .03) {
           diffuseColor.rgb = mix(diffuseColor.rgb * (.78 + .4 * n), rockC, smoothstep(.45, .75, steep));
           diffuseColor.rgb *= 1. - .25 * smoothstep(.2, .5, steep) * (1. - n);
@@ -191,21 +193,6 @@ export async function createVolcan(
   const terrain = new THREE.Mesh(geo, terrainMat);
   terrain.castShadow = terrain.receiveShadow = true;
   scene.add(terrain);
-
-  // Mer (baie de Saint-Pierre à l'ouest), opaque : dessinée avant les
-  // fumées, elle ne les recouvre jamais.
-  const sea = new THREE.Mesh(
-    new THREE.PlaneGeometry(120, 120),
-    new THREE.MeshStandardMaterial({
-      color: '#1d4f68',
-      roughness: 0.25,
-      metalness: 0.1,
-    }),
-  );
-  sea.rotation.x = -Math.PI / 2;
-  sea.position.y = 0.004;
-  sea.receiveShadow = true;
-  scene.add(sea);
 
   // Végétation et roches : instances (une géométrie, un appel de rendu).
   const rnd = (() => {
@@ -253,8 +240,8 @@ export async function createVolcan(
     (m) => 0.038 - m * 0.000015,
     (m) =>
       new THREE.Color().setHSL(
-        0.27 + rnd() * 0.06,
-        0.45,
+        0.14 + rnd() * 0.06,
+        0.42,
         0.16 + rnd() * 0.08 + m * 0.00004,
       ),
   );
@@ -285,8 +272,8 @@ export async function createVolcan(
     vertexShader: /* glsl */ `varying vec3 vP; void main() { vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
     fragmentShader: /* glsl */ `uniform float uDay, uGlow; varying vec3 vP;
       void main() { float h = clamp(vP.y * 1.6, 0., 1.);
-        vec3 day = mix(vec3(.86,.9,.93), vec3(.33,.55,.8), h);
-        vec3 night = mix(vec3(.09,.07,.12), vec3(.01,.015,.04), h);
+        vec3 day = mix(vec3(.97,.9,.8), vec3(.96,.74,.47), h);
+        vec3 night = mix(vec3(.2,.08,.05), vec3(.03,.015,.015), h);
         vec3 c = mix(night, day, uDay);
         c += vec3(1.,.38,.12) * uGlow * (1. - uDay * .7) * exp(-h * 5.) * .35;
         gl_FragColor = vec4(c, 1.); }`,
@@ -336,7 +323,7 @@ export async function createVolcan(
   });
   sun.shadow.bias = -0.0008;
   scene.add(sun);
-  const hemi = new THREE.HemisphereLight('#cfe3ff', '#3a3226', 1.1);
+  const hemi = new THREE.HemisphereLight('#ffe6c8', '#3a2a20', 1.1);
   scene.add(hemi);
   // Palette DS dans les lumières, fumées et lave : #F55536 #FF773D #F19143 #FABC3C.
   const crater = new THREE.PointLight('#ff773d', 0, 4.5, 1.8);
@@ -401,7 +388,7 @@ export async function createVolcan(
         float size = (0.9 + 2. * life + h * 0.3) * (vap > .5 ? .5 : 1.);
         gl_PointSize = size * uScale / -mv.z;
         vA = on * smoothstep(0., .04, life) * (1. - smoothstep(.55, 1., life)) * (vap > .5 ? .5 : .45 + .3 * uP.z);
-        vec3 white = mix(vec3(.93), vec3(.55,.56,.64), uQ.x);
+        vec3 white = mix(vec3(.96,.92,.86), vec3(.6,.5,.45), uQ.x);
         vec3 grey = mix(vec3(.26,.24,.23), vec3(.22,.2,.22), uQ.x);
         vC = mix(white, grey, uP.z * (1. - vap) * (.8 + .2 * life));
         // Éclairée par-dessous (lueur du cratère, surtout la nuit).
@@ -450,7 +437,7 @@ export async function createVolcan(
         gl_Position = projectionMatrix * mv;
         gl_PointSize = (2.5 + seed.w * 2.) * uScale / -mv.z;
         vA = sin(life * 3.1416) * .22 * (1. - uP.z * .5);
-        vC = mix(vec3(.97), vec3(.35,.37,.45), uQ.x);
+        vC = mix(vec3(.98,.93,.86), vec3(.4,.28,.24), uQ.x);
         vS = seed;
       }`,
     /* glsl */ `varying float vA; varying vec3 vC; varying vec4 vS;
@@ -615,7 +602,7 @@ export async function createVolcan(
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     // Cadrage : volcan entier, non coupé, quel que soit le format.
-    base.r = 12 * Math.max(1, 1.9 / camera.aspect);
+    base.r = 8.2 * Math.max(1, 1.7 / camera.aspect);
     camera.updateProjectionMatrix();
     for (const p of [smoke, ejecta, mist, burst])
       p.mat.uniforms.uScale.value = h * dpr * 0.9;
@@ -651,7 +638,7 @@ export async function createVolcan(
       ? 0.92 + 0.08 * Math.sin(time * 2.1) * Math.sin(time * 1.3)
       : 1;
     sun.intensity = 2.6 * day + 0.5 * night;
-    sun.color.set(day > 0.5 ? '#fff2dc' : '#9fb4ff');
+    sun.color.set(day > 0.5 ? '#fff2dc' : '#d8c4bc');
     sun.position.set(day > 0.5 ? -14 : 12, 18, day > 0.5 ? 10 : -8);
     hemi.intensity = 0.45 + 0.65 * day;
     crater.intensity =
@@ -663,9 +650,9 @@ export async function createVolcan(
     (moon.material as THREE.MeshBasicMaterial).opacity = night;
     sun.castShadow = day > 0.3;
     (scene.fog as THREE.Fog).color.setRGB(
-      0.81 * day + 0.06 * night,
-      0.87 * day + 0.05 * night,
-      0.91 * day + 0.09 * night,
+      0.97 * day + 0.2 * night,
+      0.9 * day + 0.08 * night,
+      0.8 * day + 0.05 * night,
     );
     renderer.toneMappingExposure = 1 + night * 0.25;
     for (const p of [smoke, ejecta, mist, burst]) {

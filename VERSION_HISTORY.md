@@ -5,6 +5,98 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.48.0 — 2026-10-30
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `skills/` (nouveau : `superpowers`, `caveman`, `ponytail`),
+  `scripts/vendor-skills.mjs` + `.d.mts`, `app/server/skills.ts` (nouveau),
+  `app/server/http.ts`, `connectors/agents/{claude,claudeCli,fakeComposer}.ts`,
+  `app/client/design/useComposeChat.ts`, `app/v3/studio/SkillsBar.tsx`
+  (nouveau), `app/v3/studio/StudioChat.tsx`, `app/v3/v3.css`,
+  `tests/skills.test.ts`, `tests/e2e/studio.spec.ts`.
+- **Sources** (vérifiées sur l’API GitHub le 30/10/2026) :
+  - `obra/superpowers` v7.0.1 (Jesse Vincent, MIT) : 5 skills sur 15
+    (`using-superpowers`, `brainstorming`, `writing-plans`,
+    `systematic-debugging`, `verification-before-completion`) ;
+  - `JuliusBrussee/caveman` v4.0.1 (Julius Brussee, Apache-2.0) : `caveman` ;
+  - `DietrichGebert/ponytail` v5.3.3 (Dietrich Gebert, MIT) : `ponytail`.
+- **Changement** :
+  - Installation (accord donné) : `SKILL.md` et `LICENSE` seulement, audités
+    puis vérifiés par SHA-256 ; manifeste de plugin minimal sans hooks ;
+    aucun script distant exécuté (les plugins officiels de caveman et
+    ponytail exécutent des hooks Node à chaque session ; ponytail écrit dans
+    `~/.config` et propose un webhook : écartés).
+  - Onglet Claude du studio : barre « Skills · N/7 actifs » repliable
+    (nom, version, coût estimé, description, interrupteur) ; état côté
+    serveur (`.ds-studio/skills.json`), **tout désactivé par défaut** ;
+    suggestion selon la demande, jamais chargée sans clic ; accord demandé
+    avant chaque envoi avec un skill (coût affiché), pour ce message
+    seulement.
+  - Activation réelle : skill transmis à Claude Code par `--plugin-dir`
+    et appelé par `/plugin:skill` ; le serveur refuse un skill inactif ;
+    preuve de chargement lue dans l’événement `init` de Claude Code et
+    affichée (« chargé » / « non confirmé ») ; skills réservés à Claude
+    Code (la clé API brute n’en a pas).
+  - Lecture du projet (optionnelle, désactivée par défaut) : Read / Grep /
+    Glob sur ce dépôt via `--add-dir`, `.env*`, `.ds-studio`, `.git` et
+    `node_modules` refusés ; aucune écriture, aucun shell.
+- **Vérification** :
+  - `claude plugin validate` : validation passée pour les 3 plugins ;
+  - `npm test` (81) : empreintes et état ;
+  - `npx playwright test` (50), dont un test de bout en bout des skills
+    avec le compositeur simulé ;
+  - `npm run check`, `npm run build`, `npm run scan` (0 alerte) ;
+  - **un seul appel réel** (accord donné) : caveman via Claude Code, sans
+    erreur (6 918 tokens en entrée, 469 en sortie). Le chargement n’est
+    pas formellement prouvé pour cet appel, fait avant l’ajout de la
+    preuve `init`.
+  - Non testés en réel : ponytail, superpowers, lecture du projet.
+
+## 2.47.0 — 2026-10-30
+
+- **Type** : minor (branche `v3-dashboard`) ; reprise d’un travail Codex
+  non commité, audité puis corrigé par Claude Code.
+- **Fichiers (Codex, conservés)** : `app/v3/carte/Preparation.tsx`,
+  `app/v3/carte/preparationModel.ts`, `app/v3/localStore.ts` (nouveaux) ;
+  `app/v3/carte/{Preparer,Plan,Downloads,Logement,Places}.tsx`,
+  `app/v3/Prevention.tsx`, `pfe-mobile/src/App.tsx` (splash), `app/v3/v3.css`,
+  `tests/{localStore,preparation}.test.ts`, `tests/e2e/studio.spec.ts`.
+- **Fichiers (corrections Claude Code)** : `app/v3/Notes.tsx`,
+  `app/v3/volcan/scene.ts`, `pfe-mobile/src/Explore.tsx`, `app/v3/v3.css`,
+  `tests/e2e/studio.spec.ts`, `PROJECT_HANDOFF.md`.
+- **Changement** :
+  - Me préparer (Codex) : parcours guidé en 7 étapes (accueil
+    « Commencer / Reprendre mon plan », menu « Mon plan » à états,
+    « Informations utiles » en lecture seule, une tâche à la fois avec
+    « Pourquoi c’est important ? », Précédent / Passer / Valider,
+    « Votre préparation » X/7) ; validation seulement si les critères sont
+    réels (cache présent, téléphone valide…), migration des données
+    existantes sans validation inventée ; mobile : menu en tiroir.
+  - Stockage (Codex) : écriture locale avec copie de session et message
+    si le navigateur refuse le stockage.
+  - Mon logement (Codex) : adresse sur deux lignes (retour après
+    « Lotissement / Résidence … »), « Enregistré le » retiré de l’interface
+    (gardé en stockage), adresse complète accessible si longue.
+  - Splash (Codex) : barre pilotée image par image, sans saut.
+  - Corrections (audit) :
+    - Mes notes : colonnes CSS (4e colonne vide, ordre vertical) →
+      grille auto-fit en ordre de lecture, hauteur selon le contenu, sans
+      démonter les notes ;
+    - cases à cocher et boutons radio : bleu du navigateur → sélection
+      noir / blanc de la DA ;
+    - Me préparer sur mobile : padding imbriqué retiré ;
+    - card vigilance PFE : une ligne en trop (masquait le bouton
+      « Limites des communes ») → source « Météo-France · département ·
+      heure », périmètre dans l’info-bulle et le libellé accessible ;
+    - volcan (note de l’utilisatrice : « plus zoomé, sans océan, marron au
+      rouge ») : océan retiré (plaine fondue dans la brume), palette
+      chaude beige / ocre / brun / rouge, ciel et brume chauds, cadrage
+      resserré ;
+    - lien « Comprendre les alertes » aligné sur le contenu du panneau.
+- **Vérification** : `npm run check`, `npm test` (79), `npm run build`,
+  `npx playwright test` (49), `npm run scan` (0 alerte) ; captures desktop,
+  mobile, clair et sombre.
+
 ## 2.46.0 — 2026-10-29
 
 - **Type** : minor (branche `v3-dashboard`)

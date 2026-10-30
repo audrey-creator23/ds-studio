@@ -11,6 +11,7 @@ import {
 import type {
   ChatTurn,
   ClaudeModel,
+  ComposeExtras,
   Composer,
   ComposeProgress,
 } from './claude.js';
@@ -100,6 +101,7 @@ export class ClaudeCliComposer implements Composer {
     signal: AbortSignal,
     model: ClaudeModel,
     onProgress?: (p: ComposeProgress) => void,
+    extras: ComposeExtras = {},
   ) {
     const bin = findClaude();
     if (!bin) throw readable('Claude Code introuvable sur ce Mac.');
@@ -122,6 +124,31 @@ export class ClaudeCliComposer implements Composer {
         : []),
       last.text,
     ].join('\n');
+    // Skill accepté pour ce message : plugin local chargé par le mécanisme
+    // officiel (--plugin-dir) et appelé par sa commande ; sinon rien.
+    const skillArgs = extras.skill ? ['--plugin-dir', extras.skill.dir] : [];
+    const input = extras.skill ? `${extras.skill.invoke} ${prompt}` : prompt;
+    // Lecture seule du projet : Read / Grep / Glob seulement, autorisés sans
+    // question, secrets et état privé refusés ; aucune écriture, aucun shell.
+    const root = extras.repoRoot;
+    const repoArgs = root
+      ? [
+          '--add-dir',
+          root,
+          '--allowedTools',
+          'Read',
+          'Grep',
+          'Glob',
+          '--settings',
+          JSON.stringify({
+            permissions: {
+              deny: ['.env*', '.ds-studio/**', 'node_modules/**', '.git/**']
+                .map((g) => `/${path.join(root, g)}`)
+                .flatMap((g) => [`Read(${g})`, `Grep(${g})`, `Glob(${g})`]),
+            },
+          }),
+        ]
+      : [];
     const env = { ...process.env };
     delete env.ANTHROPIC_API_KEY;
     const child = spawn(
@@ -139,7 +166,9 @@ export class ClaudeCliComposer implements Composer {
         '--model',
         model,
         '--tools',
-        '',
+        root ? 'Read,Grep,Glob' : '',
+        ...skillArgs,
+        ...repoArgs,
         '--strict-mcp-config',
         '--permission-mode',
         'dontAsk',
@@ -149,11 +178,12 @@ export class ClaudeCliComposer implements Composer {
     );
     const abort = () => child.kill('SIGINT');
     signal.addEventListener('abort', abort);
-    child.stdin.end(prompt);
+    child.stdin.end(input);
     onProgress?.({ status: 'Claude Code réfléchit…' });
     let buffer = '';
     let partial = '';
     let result: Record<string, unknown> | undefined;
+    let loaded = '';
     let stderr = '';
     child.stderr.on('data', (d) => (stderr = (stderr + d).slice(-2000)));
     child.stdout.on('data', (chunk: Buffer) => {
@@ -169,6 +199,13 @@ export class ClaudeCliComposer implements Composer {
           continue;
         }
         if (ev.type === 'result') result = ev;
+        // Preuve de chargement : ce que Claude Code déclare à l'ouverture.
+        if (ev.type === 'system' && ev.subtype === 'init')
+          loaded = JSON.stringify([
+            ev.slash_commands ?? [],
+            ev.skills ?? [],
+            ev.plugins ?? [],
+          ]);
         if (ev.type === 'system' && ev.subtype === 'api_retry')
           onProgress?.({
             status: `Nouvelle tentative (${ev.attempt}/${ev.max_retries})…`,
@@ -204,6 +241,10 @@ export class ClaudeCliComposer implements Composer {
           (usage.cache_creation_input_tokens ?? 0),
         output: usage.output_tokens ?? 0,
       },
+      // Skill demandé présent dans la session (null : pas de skill demandé).
+      skillLoaded: extras.skill
+        ? loaded.includes(extras.skill.invoke.slice(1).split(':')[1])
+        : null,
     };
   }
 }
@@ -236,6 +277,16 @@ export class AutoComposer implements Composer {
     return (await this.pick()).status();
   }
   async compose(...args: Parameters<Composer['compose']>) {
+    const extras = args[5];
+    // Skills et lecture du projet : Claude Code seulement (la clé API brute
+    // n'a ni skills ni outils dans DS-Studio).
+    if (extras?.skill || extras?.repoRoot) {
+      if (!(await this.cli.status()).available)
+        throw new Error(
+          'Skills et lecture du projet : Claude Code doit être installé et connecté sur ce Mac.',
+        );
+      return this.cli.compose(...args);
+    }
     return (await this.pick()).compose(...args);
   }
 }

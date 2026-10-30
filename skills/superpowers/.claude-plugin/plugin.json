@@ -1,0 +1,10 @@
+{
+  "name": "superpowers",
+  "version": "7.0.1",
+  "description": "Skills superpowers (Markdown seul, sans hooks) copiés depuis https://github.com/obra/superpowers @ v7.0.1.",
+  "author": {
+    "name": "Jesse Vincent"
+  },
+  "repository": "https://github.com/obra/superpowers",
+  "license": "MIT"
+}

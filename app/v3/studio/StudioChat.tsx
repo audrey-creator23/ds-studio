@@ -4,6 +4,7 @@ import { blockSpecs } from '../../shared/composition.js';
 import type { CompositionState } from '../../client/design/useComposition.js';
 import { useComposeChat } from '../../client/design/useComposeChat.js';
 import { Button } from '../ui.js';
+import SkillsBar, { type Skill } from './SkillsBar.js';
 
 // Chat du studio : conversation, proposition éventuelle et saisie, rien
 // d'autre. Contexte envoyé : l'écran et, si « Cibler » est coché, l'élément
@@ -11,6 +12,19 @@ import { Button } from '../ui.js';
 export default function StudioChat({ c }: { c: CompositionState }) {
   const chat = useComposeChat(c);
   const [target, setTarget] = useState(true);
+  const [skill, setSkill] = useState<Skill | null>(null);
+  // Accord explicite avant chaque chargement d'un skill (un message).
+  const submit = () => {
+    if (
+      skill &&
+      !confirm(
+        `Charger le skill « ${skill.skill} » (${skill.plugin}, ≈ ${skill.tokens.toLocaleString('fr-FR')} tokens) dans la session Claude pour ce message ?`,
+      )
+    )
+      return;
+    void chat.send(undefined, context, skill?.id);
+    setSkill(null);
+  };
   const log = useRef<HTMLDivElement>(null);
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight });
@@ -91,9 +105,10 @@ export default function StudioChat({ c }: { c: CompositionState }) {
         className="composer"
         onSubmit={(e) => {
           e.preventDefault();
-          void chat.send(undefined, context);
+          submit();
         }}
       >
+        <SkillsBar draft={chat.draft} chosen={skill} onChoose={setSkill} />
         {selection && (
           <label className="chip-toggle">
             <input
@@ -119,7 +134,7 @@ export default function StudioChat({ c }: { c: CompositionState }) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                void chat.send(undefined, context);
+                submit();
               }
             }}
           />

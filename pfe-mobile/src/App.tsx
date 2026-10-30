@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell,
   BookOpen,
@@ -75,30 +75,41 @@ function Splash({
 }) {
   // Barre continue 0 → 90 % en 2,4 s, puis 100 % seulement quand la page
   // est réellement prête (polices, ressources) : jamais de fin simulée.
-  const [p, setP] = useState(0);
+  const bar = useRef<HTMLElement>(null);
   useEffect(() => {
-    const ms = reducedMotion() ? 600 : 2400;
+    const reduced = reducedMotion();
+    const ms = reduced ? 600 : 2600;
     let end: ReturnType<typeof setTimeout>;
-    const raf = requestAnimationFrame(() => setP(0.9));
-    const loaded = new Promise((r) =>
-      document.readyState === 'complete'
-        ? r(null)
-        : addEventListener('load', r, { once: true }),
-    );
+    let raf = 0;
+    let loaded = document.readyState === 'complete';
+    let fontsReady = !document.fonts;
+    const onLoad = () => {
+      loaded = true;
+    };
+    if (!loaded) addEventListener('load', onLoad, { once: true });
     let live = true;
-    void Promise.all([
-      new Promise((r) => setTimeout(r, ms)),
-      loaded,
-      document.fonts?.ready,
-    ]).then(() => {
-      if (!live) return;
-      setP(1);
-      end = setTimeout(onDone, reducedMotion() ? 0 : 300);
+    void document.fonts?.ready.then(() => {
+      if (live) fontsReady = true;
     });
+    let previous = performance.now();
+    let p = 0;
+    const frame = (time: number) => {
+      const dt = Math.min(100, Math.max(0, time - previous));
+      previous = time;
+      // Après une attente à 90 %, reprendre depuis cette valeur, sans
+      // bond à 100 %. Aucun chargement terminé n'est simulé.
+      p = Math.min(loaded && fontsReady ? 1 : 0.9, p + dt / ms);
+      if (bar.current)
+        bar.current.style.transform = `scaleX(${reduced && p < 1 ? 0 : p})`;
+      if (p < 1) raf = requestAnimationFrame(frame);
+      else end = setTimeout(onDone, reduced ? 0 : 150);
+    };
+    raf = requestAnimationFrame(frame);
     return () => {
       live = false;
       cancelAnimationFrame(raf);
       clearTimeout(end);
+      removeEventListener('load', onLoad);
     };
   }, [onDone]);
   return (
@@ -115,12 +126,7 @@ function Splash({
         <small>Prototype PFE</small>
       </div>
       <span className="m-loader" aria-hidden="true">
-        <i
-          style={{
-            transform: `scaleX(${p})`,
-            transitionDuration: p === 1 ? '0.3s' : '2.4s',
-          }}
-        />
+        <i ref={bar} style={{ transform: 'scaleX(0)', transition: 'none' }} />
       </span>
       <button type="button" className="m-urgent" onClick={onUrgent}>
         <Siren size={18} aria-hidden="true" /> Je suis en danger

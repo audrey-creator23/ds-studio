@@ -1,3 +1,4 @@
+import { skillStore } from './skills.js';
 import http from 'node:http';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -79,6 +80,7 @@ export async function createStudioServer(options: {
       new ClaudeCliComposer(store.directory),
     );
   const compositions = new CompositionStore(store.directory);
+  const skills = skillStore(root, store.directory);
   const figmaBridge = new FigmaBridge(store.directory);
   const carteData = new CarteData();
   // Source externe indisponible : 503 lisible (jamais de valeur inventée).
@@ -259,6 +261,11 @@ export async function createStudioServer(options: {
               model: await chat.model(),
             });
           if (url.pathname === '/api/state') return send(200, store.snapshot());
+          if (url.pathname === '/api/skills')
+            return send(200, {
+              skills: await skills.list(),
+              ...(await skills.state()),
+            });
           if (url.pathname === '/api/figma/status')
             return send(200, await figmaBridge.status());
           if (url.pathname === '/api/export')
@@ -459,10 +466,19 @@ export async function createStudioServer(options: {
             warnings: scene.warnings,
           });
         }
+        if (url.pathname === '/api/skills') {
+          try {
+            return send(200, await skills.save(body));
+          } catch (e) {
+            throw new StudioError((e as Error).message, 400);
+          }
+        }
         if (url.pathname === '/api/compose') {
           const b = z
             .object({
               message: z.string().trim().min(1).max(4000),
+              // Skill accepté pour CE message (doit être actif).
+              skill: z.string().max(80).optional(),
               composition: compositionSchema,
               history: z
                 .array(
@@ -479,6 +495,15 @@ export async function createStudioServer(options: {
             .parse(body);
           const ready = await composer.status();
           if (!ready.available) throw new StudioError(ready.detail, 503);
+          const skillState = await skills.state();
+          const skill = b.skill
+            ? await skills.resolve(b.skill).catch(() => {
+                throw new StudioError(
+                  'Ce skill n’est pas actif : activez-le dans l’onglet Claude.',
+                  400,
+                );
+              })
+            : undefined;
           if (chatBusy)
             throw new StudioError('Une réponse de Claude est en cours.', 429);
           chatBusy = true;
@@ -513,6 +538,13 @@ export async function createStudioServer(options: {
               controller.signal,
               await chat.model(),
               streaming ? (p) => line({ type: 'progress', ...p }) : undefined,
+              {
+                skill: skill && {
+                  dir: skill.dir,
+                  invoke: `/${skill.plugin}:${skill.skill}`,
+                },
+                repoRoot: skillState.repoRead ? root : undefined,
+              },
             );
             if (!result.output)
               throw new StudioError(
@@ -542,6 +574,8 @@ export async function createStudioServer(options: {
               proposal: changes.length ? proposal : null,
               changes,
               usage: result.usage,
+              skill: skill?.id ?? null,
+              skillLoaded: result.skillLoaded ?? null,
             };
             if (!streaming) return send(200, payload);
             line({ type: 'done', ...payload });

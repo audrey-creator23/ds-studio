@@ -3,6 +3,7 @@ import { Download, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '../ui.js';
 import demUrl from './martinique-dem.png';
 import { authorities, contacts, kitBase, kitNeeds, risks } from './risks.js';
+import { useSavedState } from '../localStore.js';
 
 // Ressources d'urgence hors ligne : contenus réels choisis par
 // l'utilisatrice, téléchargés dans le stockage du navigateur (Cache
@@ -13,6 +14,19 @@ import { authorities, contacts, kitBase, kitNeeds, risks } from './risks.js';
 const CACHE = 'pfe-ressources-v1';
 const META = 'ds-v3-ressources';
 const LIMIT = 1024 ** 3;
+export const resourcesChanged = 'pfe-resources-changed';
+export async function cachedResources() {
+  if (!('caches' in window)) return [];
+  const cache = await caches.open(CACHE);
+  const found = await Promise.all(
+    items
+      .filter((i) => !i.unavailable)
+      .map(async (i) =>
+        (await cache.match(`/pfe-offline/${i.id}`)) ? i.id : null,
+      ),
+  );
+  return found.filter((id): id is string => id !== null);
+}
 type Item = {
   id: string;
   label: string;
@@ -73,13 +87,7 @@ export const items: Item[] = [
   },
 ];
 type Meta = Record<string, { size: number; at: string }>;
-const readMeta = (): Meta => {
-  try {
-    return JSON.parse(localStorage.getItem(META) ?? '{}');
-  } catch {
-    return {};
-  }
-};
+const emptyMeta: Meta = {};
 const fmt = (n: number) =>
   n < 1024
     ? `${n} o`
@@ -99,7 +107,7 @@ export async function readOffline(id: string) {
 }
 
 export default function Downloads() {
-  const [meta, setMeta] = useState<Meta>(readMeta);
+  const [meta, setMeta, storageError] = useSavedState(META, emptyMeta);
   const [pick, setPick] = useState<string[]>([
     'consignes',
     'contacts',
@@ -109,16 +117,23 @@ export default function Downloads() {
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [msg, setMsg] = useState('');
   const [persisted, setPersisted] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
   const supported = typeof window !== 'undefined' && 'caches' in window;
   useEffect(() => {
-    try {
-      localStorage.setItem(META, JSON.stringify(meta));
-    } catch {
-      // Préférence facultative.
-    }
-  }, [meta]);
-  useEffect(() => {
-    void navigator.storage?.persisted?.().then(setPersisted);
+    void navigator.storage
+      ?.persisted?.()
+      .then(setPersisted)
+      .catch(() => undefined);
+    // Les métadonnées seules ne prouvent pas la présence des ressources.
+    void cachedResources()
+      .then((ids) =>
+        setMeta((m) =>
+          Object.fromEntries(
+            Object.entries(m).filter(([id]) => ids.includes(id)),
+          ),
+        ),
+      )
+      .catch(() => setMsg('Stockage des ressources inaccessible.'));
   }, []);
   const used = Object.values(meta).reduce((n, m) => n + m.size, 0);
 
@@ -148,48 +163,64 @@ export default function Downloads() {
     setMsg('');
     if (!navigator.onLine)
       return setMsg('Hors ligne : téléchargement impossible.');
-    // Persistance demandée au navigateur (il peut refuser).
-    if (navigator.storage?.persist)
-      setPersisted(await navigator.storage.persist());
-    const cache = await caches.open(CACHE);
-    // Total courant (les ressources remplacées ne comptent qu'une fois).
-    let total = used - ids.reduce((n, id) => n + (meta[id]?.size ?? 0), 0);
-    for (const id of ids) {
-      const item = items.find((i) => i.id === id)!;
-      try {
-        setProgress((p) => ({ ...p, [id]: 0 }));
-        const blob = await get(item);
-        const estimate = await navigator.storage?.estimate?.();
-        const free =
-          estimate?.quota != null
-            ? estimate.quota - (estimate.usage ?? 0)
-            : Infinity;
-        if (total + blob.size > LIMIT)
-          throw new Error('limite de 1 Go atteinte');
-        if (blob.size > free)
-          throw new Error('espace du navigateur insuffisant');
-        await cache.put(
-          `/pfe-offline/${id}`,
-          new Response(blob, { headers: { 'Content-Type': blob.type } }),
-        );
-        total += blob.size;
-        setMeta((m) => ({
-          ...m,
-          [id]: { size: blob.size, at: new Date().toISOString() },
-        }));
-      } catch (e) {
-        setMsg(`${item.label} : échec (${(e as Error).message}).`);
-      } finally {
-        setProgress((p) => {
-          const { [id]: _, ...rest } = p;
-          return rest;
-        });
+    setBusy(true);
+    try {
+      // Persistance demandée au navigateur (il peut refuser).
+      if (navigator.storage?.persist)
+        setPersisted(await navigator.storage.persist().catch(() => false));
+      const cache = await caches.open(CACHE);
+      // Total courant (les ressources remplacées ne comptent qu'une fois).
+      let total = used - ids.reduce((n, id) => n + (meta[id]?.size ?? 0), 0);
+      for (const id of ids) {
+        const item = items.find((i) => i.id === id)!;
+        try {
+          setProgress((p) => ({ ...p, [id]: 0 }));
+          const blob = await get(item);
+          const estimate = await navigator.storage?.estimate?.();
+          const free =
+            estimate?.quota != null
+              ? estimate.quota - (estimate.usage ?? 0)
+              : Infinity;
+          if (total + blob.size > LIMIT)
+            throw new Error('limite de 1 Go atteinte');
+          if (blob.size > free)
+            throw new Error('espace du navigateur insuffisant');
+          await cache.put(
+            `/pfe-offline/${id}`,
+            new Response(blob, { headers: { 'Content-Type': blob.type } }),
+          );
+          total += blob.size;
+          setMeta((m) => ({
+            ...m,
+            [id]: { size: blob.size, at: new Date().toISOString() },
+          }));
+          dispatchEvent(new Event(resourcesChanged));
+        } catch (e) {
+          setMsg(`${item.label} : échec (${(e as Error).message}).`);
+        } finally {
+          setProgress((p) => {
+            const { [id]: _, ...rest } = p;
+            return rest;
+          });
+        }
       }
+    } catch {
+      setMsg(
+        'Stockage des ressources indisponible : aucun téléchargement confirmé.',
+      );
+    } finally {
+      setBusy(false);
     }
   }
   async function remove(id: string) {
-    await (await caches.open(CACHE)).delete(`/pfe-offline/${id}`);
-    setMeta(({ [id]: _, ...rest }) => rest);
+    if (!confirm('Supprimer cette ressource téléchargée ?')) return;
+    try {
+      await (await caches.open(CACHE)).delete(`/pfe-offline/${id}`);
+      setMeta(({ [id]: _, ...rest }) => rest);
+      dispatchEvent(new Event(resourcesChanged));
+    } catch {
+      setMsg('Suppression impossible : stockage inaccessible.');
+    }
   }
   if (!supported)
     return (
@@ -199,6 +230,16 @@ export default function Downloads() {
     );
   return (
     <div className="dl">
+      <p className="carte-stamp">
+        Ces contenus sont conservés sur cet appareil. Sans service worker,
+        l’application doit rester ouverte : son redémarrage hors ligne n’est pas
+        garanti.
+      </p>
+      {storageError && (
+        <p role="alert" className="alert-text">
+          {storageError}
+        </p>
+      )}
       <ul className="dl-list">
         {items.map((i) => {
           const m = meta[i.id];
@@ -242,6 +283,7 @@ export default function Downloads() {
                     size="icon"
                     title="Mettre à jour"
                     aria-label={`Mettre à jour : ${i.label}`}
+                    disabled={busy}
                     onClick={() => void download([i.id])}
                   >
                     <RefreshCw size={14} aria-hidden="true" />
@@ -251,6 +293,7 @@ export default function Downloads() {
                     size="icon"
                     title="Supprimer"
                     aria-label={`Supprimer : ${i.label}`}
+                    disabled={busy}
                     onClick={() => void remove(i.id)}
                   >
                     <Trash2 size={14} aria-hidden="true" />
@@ -271,6 +314,7 @@ export default function Downloads() {
         <Button
           size="sm"
           disabled={
+            busy ||
             !pick.some((id) => !items.find((i) => i.id === id)?.unavailable)
           }
           onClick={() =>

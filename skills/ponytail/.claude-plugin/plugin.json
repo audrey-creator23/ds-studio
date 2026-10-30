@@ -1,0 +1,10 @@
+{
+  "name": "ponytail",
+  "version": "5.3.3",
+  "description": "Skills ponytail (Markdown seul, sans hooks) copiés depuis https://github.com/DietrichGebert/ponytail @ v5.3.3.",
+  "author": {
+    "name": "Dietrich Gebert"
+  },
+  "repository": "https://github.com/DietrichGebert/ponytail",
+  "license": "MIT"
+}

@@ -17,6 +17,7 @@ import { Button } from '../ui.js';
 import Logement, { readHome, writeHome, type Home } from './Logement.js';
 import { communeAt } from './communes.js';
 import { MAX_ACCURACY } from './Locate.js';
+import { readSaved, writeSaved, useSavedState } from '../localStore.js';
 
 // Mes lieux : logement principal (stockage existant `ds-v3-logement`,
 // inchangé : migration sans perte) + autres lieux (`ds-v3-lieux`). Tout
@@ -42,11 +43,14 @@ const KEY = 'ds-v3-lieux';
 
 function readOthers(): Place[] {
   try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? '[]');
+    const v = readSaved<Place[]>(KEY, []);
     return Array.isArray(v)
       ? v.filter(
           (p) =>
-            p?.id && /^972\d{2}$/.test(p.citycode) && Number.isFinite(p.lat),
+            p?.id &&
+            /^972\d{2}$/.test(p.citycode) &&
+            Number.isFinite(p.lat) &&
+            Number.isFinite(p.lon),
         )
       : [];
   } catch {
@@ -54,11 +58,7 @@ function readOthers(): Place[] {
   }
 }
 function writeOthers(list: Place[]) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(list));
-  } catch {
-    // Stockage indisponible : gardé pour la session.
-  }
+  writeSaved(KEY, list);
   dispatchEvent(new Event('ds-home'));
 }
 export function readPlaces(): Place[] {
@@ -154,6 +154,8 @@ export default function Places({
   onPickOnMap: (draft: Partial<Place>) => void;
 }) {
   const places = usePlaces();
+  const [, , storageError] = useSavedState<Place[]>(KEY, []);
+  const [, , homeError] = useSavedState<Home | null>('ds-v3-logement', null);
   const [edit, setEdit] = useState<Partial<Place> | null>(
     () => readPlaces().find((p) => p.id === editId) ?? null,
   );
@@ -167,6 +169,11 @@ export default function Places({
     );
   return (
     <div className="places">
+      {(storageError || homeError) && (
+        <p role="alert" className="alert-text">
+          {storageError || homeError}
+        </p>
+      )}
       {places.length === 0 && (
         <p className="carte-na">Aucun lieu enregistré sur cet appareil.</p>
       )}

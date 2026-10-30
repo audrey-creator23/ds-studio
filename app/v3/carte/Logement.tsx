@@ -4,6 +4,7 @@ import { Stamp, useLoad, type Commune } from './Situation.js';
 import type { Exposure } from './scene.js';
 import { request } from '../../client/api.js';
 import { Button } from '../ui.js';
+import { readSaved, writeSaved, useSavedState } from '../localStore.js';
 
 // Mon logement : adresse en Martinique localisée par la Base Adresse
 // Nationale (service public), avec consentement explicite. L'adresse est
@@ -23,11 +24,22 @@ export type Home = {
 };
 type Result = Omit<Home, 'savedAt'> & { score: number; precision: string };
 const KEY = 'ds-v3-logement';
+export function addressLines(label: string) {
+  // Séparer le quartier et le code postal d'une résidence/lotissement,
+  // sans couper un nom de rue ni changer l'adresse enregistrée.
+  const split = /\b(?:lotissement|résidence)\b/i.test(label)
+    ? /^(.*\S)\s+(\S+\s+\d{5}\b.*)$/.exec(label)
+    : null;
+  return split ? [split[1], split[2]] : [label];
+}
 
 export function readHome(): Home | null {
   try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-    return v && /^972\d{2}$/.test(v.citycode) && Number.isFinite(v.lat)
+    const v = readSaved<Home | null>(KEY, null);
+    return v &&
+      /^972\d{2}$/.test(v.citycode) &&
+      Number.isFinite(v.lat) &&
+      Number.isFinite(v.lon)
       ? v
       : null;
   } catch {
@@ -35,12 +47,7 @@ export function readHome(): Home | null {
   }
 }
 export function writeHome(home: Home | null) {
-  try {
-    if (home) localStorage.setItem(KEY, JSON.stringify(home));
-    else localStorage.removeItem(KEY);
-  } catch {
-    // Stockage indisponible : gardé pour la session seulement.
-  }
+  writeSaved(KEY, home);
   dispatchEvent(new Event('ds-home'));
 }
 // Même logement dans toutes les pages (Carte, Prévention, autres onglets).
@@ -82,6 +89,7 @@ export default function Logement({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [results, setResults] = useState<Result[]>();
+  const [, , storageError] = useSavedState<Home | null>(KEY, null);
   // Autocomplétion : recherche après une courte pause de frappe.
   useEffect(() => {
     if (!consent || q.trim().length < 5) return;
@@ -117,6 +125,11 @@ export default function Logement({
     const city = home.label.includes(home.city) ? '' : home.city;
     return (
       <div className="carte-home">
+        {storageError && (
+          <p role="alert" className="alert-text">
+            {storageError}
+          </p>
+        )}
         <header>
           <House size={15} aria-hidden="true" />
           <strong>{name}</strong>
@@ -147,15 +160,22 @@ export default function Logement({
           </Button>
         </header>
         <p className="carte-home-addr" title={home.label}>
-          {home.label}
+          {addressLines(home.label).map((line, i) => (
+            <span key={i}>{line}</span>
+          ))}
         </p>
+        {home.label.length > 60 && (
+          <details className="carte-address-full">
+            <summary>Adresse complète</summary>
+            {home.label}
+          </details>
+        )}
         <footer>
           <small
             className="muted"
             title="Gardé uniquement dans le stockage de ce navigateur, sur cet appareil ; jamais envoyé ni partagé."
           >
-            {city && `${city} · `}Enregistré le{' '}
-            {new Date(home.savedAt).toLocaleDateString('fr-FR')}
+            {city}
           </small>
           {action}
         </footer>

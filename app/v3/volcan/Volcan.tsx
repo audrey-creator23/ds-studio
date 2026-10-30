@@ -73,7 +73,7 @@ export default function Volcan({
   useEffect(() => engine.current?.setNight(night), [night, state]);
   useEffect(() => engine.current?.setAnimated(anim), [anim, state]);
   return (
-    <div className="volcan">
+    <div className="volcan" data-paused={!anim || undefined}>
       <div
         className="stage volcan-stage"
         ref={host}

@@ -151,7 +151,7 @@ export default function Explore({
           type="button"
           className="m-vig"
           onClick={() => setSheet('full')}
-          aria-label={`Vigilance actuelle : non disponible. Zone concernée : ${zone}. Voir le détail`}
+          aria-label={`Vigilance actuelle : non disponible. Zone concernée : ${zone} (adresse consultée ; périmètre officiel : département de la Martinique). Voir le détail`}
         >
           <small>Vigilance actuelle</small>
           <b>
@@ -160,10 +160,10 @@ export default function Explore({
           <span className="m-vig-zone" title={zone}>
             Zone concernée : {zone}
           </span>
-          <small>
+          <small title="Adresse consultée ; la vigilance officielle couvre tout le département.">
             {d
-              ? `Météo-France · Martinique · vérifié ${at(d.checkedAt, false)}`
-              : 'Météo-France · Martinique'}
+              ? `Météo-France · département · ${at(d.checkedAt, false)}`
+              : 'Météo-France · département'}
           </small>
         </button>
       </div>

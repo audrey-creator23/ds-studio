@@ -326,26 +326,35 @@ function NoteCard({
   );
 }
 
-// Bento : colonnes de largeur égale (auto-fit ≥ 260 px), notes réparties
-// dans l'ordre de lecture (épinglées d'abord), hauteur selon le contenu.
+// Bento : grille auto-fit, ordre de lecture (épinglées d'abord), chaque
+// note s'étend sur autant de rangées fines que sa hauteur (peu de vide).
+// Le parent React reste stable : un redimensionnement ou un tri ne
+// démonte jamais une note (brouillon en cours conservé).
 function Board({ children }: { children: ReactNode[] }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [cols, setCols] = useState(1);
   useEffect(() => {
-    const el = ref.current!;
-    const ro = new ResizeObserver(() =>
-      setCols(Math.max(1, Math.floor((el.clientWidth + 16) / (260 + 16)))),
-    );
-    ro.observe(el);
-    return () => ro.disconnect();
+    const grid = ref.current!;
+    const fit = () => {
+      for (const el of grid.children as HTMLCollectionOf<HTMLElement>)
+        el.style.gridRowEnd = `span ${Math.ceil((el.offsetHeight + 16) / 8)}`;
+    };
+    const ro = new ResizeObserver(fit);
+    const watch = () => {
+      ro.disconnect();
+      for (const el of grid.children) ro.observe(el);
+      fit();
+    };
+    const mo = new MutationObserver(watch);
+    mo.observe(grid, { childList: true });
+    watch();
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
   }, []);
   return (
     <div className="notes-board" ref={ref}>
-      {Array.from({ length: cols }, (_, c) => (
-        <div key={c} className="notes-col">
-          {children.filter((_, i) => i % cols === c)}
-        </div>
-      ))}
+      {children}
     </div>
   );
 }

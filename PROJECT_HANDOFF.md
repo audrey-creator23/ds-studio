@@ -2,7 +2,7 @@
 
 Document de transmission pour reprendre le projet dans une nouvelle session
 d’IA (Claude Code, OpenCode, Codex…) sans repartir de zéro.
-Rédigé le **29/10/2026**. Il correspond à la **version 2.46.0**, sur la
+Rédigé le **29/10/2026**, mis à jour le **30/10/2026**. Il correspond à la **version 2.48.0**, sur la
 branche `v3-dashboard`. Il doit être **mis à jour à chaque tâche**.
 
 ## 0. Lire d’abord — niveau de confiance des informations
@@ -136,7 +136,8 @@ que disent ces entrées.
 | `18a7e19` | 28/10 | 2.33.0 → 2.34.1 |
 | `b0e5a7d` | 28/10 | 2.34.2 → 2.35.0 (poussé) |
 | `96a520d` | 29/10 | 2.36.0 → 2.44.0 (commité et **poussé** sur accord) |
-| *(non commité)* | 29/10 | **2.45.0 et 2.46.0** : dans l’arbre de travail |
+| `cf93bc4` | 29/10 | 2.45.0 → 2.46.0 (commité, **non poussé**) |
+| *(non commité)* | 30/10 | **2.47.0** (Codex + corrections) et **2.48.0** (skills Claude) |
 
 `main` pointe sur `9ef1cba` (2.17.0) ; `v3-dashboard` sur `96a520d`, à jour
 avec `origin/v3-dashboard`. Aucune PR connue.
@@ -228,6 +229,11 @@ avec `origin/v3-dashboard`. Aucune PR connue.
   - Mes notes en post-it Bento ;
   - volcan 3D sur le relief réel ;
   - splash continu.
+- **2.47.0** (30/10) : reprise d’un travail **Codex** non commité
+  (parcours « Me préparer » en 7 étapes, stockage local avec repli de
+  session, adresse du logement sur 2 lignes, splash image par image),
+  audité puis corrigé (notes en grille Bento, cases dans la DA, card
+  vigilance PFE, volcan sans océan en palette chaude, padding mobile).
 - **2.46.0** : frise « Échéances à venir » liée aux 6 phases du volcan
   (aperçu), bouton « Suivre ma progression », réalisme et VFX renforcés,
   correctifs de la boucle de rendu, ce document.
@@ -530,10 +536,13 @@ Fichiers : `app/v3/volcan/scene.ts`, `Volcan.tsx`, `phases.ts`.
 - **Relief réel de la montagne Pelée** :
   - fenêtre de 168 px du MNT de la carte, environ 12,5 km, centrée sur le
     sommet (14,8094 N ; −61,1658 O) ;
-  - exagération ×1,8, cuvette sommitale, bords qui plongent sous la mer ;
+  - exagération ×1,8, cuvette sommitale ; **sans océan** depuis 2.47.0
+    (demande : la mer devient une plaine basse fondue dans la brume) ;
   - maillage de 256 × 256, ou 150 en basse consommation.
 - **Couleurs et détail** :
-  - couleurs par altitude et pente : forêt, savane d’altitude, roche,
+  - couleurs par altitude et pente, **palette chaude** depuis 2.47.0
+    (demande « marron au rouge ») : végétation olive / ocre, savane beige,
+    roche brune,
     cendre ;
   - détail procédural au pixel (`onBeforeCompile`) : strates, ravines,
     taches de végétation.
@@ -541,7 +550,7 @@ Fichiers : `app/v3/volcan/scene.ts`, `Volcan.tsx`, `phases.ts`.
   - ~5000 arbres (cônes) en `InstancedMesh` ;
   - ~360 roches émissives (« roches chaudes »).
 - **Environnement** :
-  - mer opaque ;
+  - ciel et brume chauds (beige, pêche ; nuit brun-rouge) ;
   - ciel en dégradé jour/nuit, étoiles, lune ;
   - soleil avec ombres, lumière hémisphérique ;
   - lumière de cratère `#FF773D`.
@@ -742,29 +751,85 @@ Sources détaillées : `docs/SOURCES_RISQUES.md`.
 
 ---
 
-## 10. État exact au 29/10/2026 (v2.46.0)
+## 9 bis. Skills Claude (Superpowers, Caveman, Ponytail) — 2.48.0
 
-- **Terminé et testé** [VÉRIFIÉ] : tout ce qui est décrit en §4 à §8,
-  sauf les points ci-dessous. Résultats :
+- **Sources [VÉRIFIÉ]** (API GitHub, 30/10/2026) :
+
+| Plugin | Dépôt | Version | Licence |
+| --- | --- | --- | --- |
+| Superpowers | `obra/superpowers` | v7.0.1 | MIT (Jesse Vincent) |
+| Caveman | `JuliusBrussee/caveman` | v4.0.1 | Apache-2.0 (Julius Brussee) |
+| Ponytail | `DietrichGebert/ponytail` | v5.3.3 | MIT (Dietrich Gebert) |
+
+- **Installation** (choix de l’utilisatrice) :
+  - `SKILL.md` et `LICENSE` seuls, dans `skills/<plugin>/skills/<skill>/` ;
+  - un manifeste minimal `.claude-plugin/plugin.json`, sans hooks ;
+  - script `scripts/vendor-skills.mjs` : versions figées et empreintes
+    SHA-256 (réinstallation : `node scripts/vendor-skills.mjs`) ;
+  - Superpowers réduit à 5 skills.
+- **Écarté et pourquoi** : les plugins officiels de caveman et ponytail
+  exécutent des hooks Node à chaque session ; ponytail écrit aussi dans
+  `~/.config` et propose un webhook. Le serveur d’aperçu de
+  `brainstorming` n’est pas installé.
+- **Contenu audité** :
+  - Markdown d’instructions uniquement ;
+  - les exemples shell de `systematic-debugging` restent inertes (aucun
+    outil shell) ;
+  - `using-superpowers` pousse à enchaîner les skills : c’est bloqué, car
+    l’outil Skill n’est pas fourni.
+- **Architecture**
+  - `app/server/skills.ts` détecte les skills : description,
+    `tokens ≈ octets / 4`.
+  - L’état est gardé dans `.ds-studio/skills.json` :
+    `{ active, repoRead }`, tout faux par défaut.
+  - Routes : `GET` et `POST /api/skills` ; `/api/compose` accepte
+    `skill` (uniquement s’il est actif).
+  - `connectors/agents/claudeCli.ts` ajoute `--plugin-dir` et préfixe le
+    prompt par `/plugin:skill`. Il lit l’événement `init`, d’où
+    `skillLoaded`.
+  - La lecture du projet ajoute
+    `--tools Read,Grep,Glob --add-dir <root> --allowedTools …`, avec des
+    règles `deny` (`.env*`, `.ds-studio`, `.git`, `node_modules`) passées
+    par `--settings`.
+  - `AutoComposer` impose Claude Code quand un skill ou la lecture du
+    projet sont demandés.
+- **Interface** (`app/v3/studio/SkillsBar.tsx`) :
+  - au-dessus de la saisie de l’onglet Claude ;
+  - suggestion par mots clés ;
+  - accord par `confirm` avant chaque envoi avec un skill, coût affiché ;
+  - le skill choisi vaut pour un seul message.
+- **Tests**
+  - Unitaires : empreintes, état par défaut, refus d’un skill inconnu ou
+    inactif.
+  - e2e (compositeur simulé, qui renvoie une trace des options reçues) :
+    détection, activation persistante, accord refusé ou donné, un message
+    seulement, lecture du projet transmise.
+  - **Un seul appel réel** (caveman, accord donné) : sans erreur, mais
+    chargement non formellement prouvé. La preuve `init` a été ajoutée
+    après cet appel ; la présence des champs `slash_commands`, `skills` et
+    `plugins` dans l’`init` reste **[HYPOTHÈSE]**.
+- **Limites**
+  - Chaque message est un nouvel appel `claude -p` sans session
+    persistante : les modes « persistants » (caveman, ponytail) doivent
+    être rechargés à chaque message, avec coût et accord.
+  - Skills indisponibles avec la clé API brute.
+  - Écriture dans le dépôt non prévue : la lecture seule a été choisie.
+  - Non testés en réel : ponytail, superpowers, lecture du projet.
+
+---
+
+## 10. État exact au 30/10/2026 (v2.48.0)
+
+- **Terminé et testé** [VÉRIFIÉ] : tout ce qui est décrit en §4 à §8 et
+  en §11, sauf les points ci-dessous. Résultats :
   - `npm run check` : OK ;
-  - `npm test` : 74/74 ;
-  - `npx playwright test` : 45/45 ;
+  - `npm test` : 81/81 ;
+  - `npx playwright test` : 50/50 ;
   - `npm run scan` : 0 alerte ;
   - build : OK.
-- **Non commité** : 2.45.0 et 2.46.0, avec ces fichiers :
-  - modifiés : `VERSION_HISTORY.md`, `app/shared/steps.ts`,
-    `app/v3/{Carte,Dashboard,Notes,Timeline}.tsx` ;
-  - carte : `app/v3/carte/{Locate,Logement,MapView}.tsx`,
-    `app/v3/carte/{risks,scene}.ts` ;
-  - styles : `app/v3/v3.css`, `pfe-mobile/src/app.css` ;
-  - app PFE : `pfe-mobile/src/{App,Explore}.tsx` ;
-  - docs et paquets : `docs/SOURCES_RISQUES.md`, `pfe-mobile/README.md`,
-    `package.json`, `package-lock.json` ;
-  - tests : `tests/e2e/studio.spec.ts` ;
-  - nouveaux : `app/v3/carte/{Places.tsx,communes.ts,dem.ts}`,
-    `app/v3/carte/martinique-communes.json`, `app/v3/volcan/`,
-    `scripts/fetch-martinique-communes.mjs`,
-    `tests/carteCommunes.test.ts`, `PROJECT_HANDOFF.md`.
+- **Git** : 2.45.0 → 2.46.0 commitées dans `cf93bc4` (**non poussé**).
+  **2.47.0 et 2.48.0 non commitées** : travail Codex + corrections
+  Claude Code (§11), skills Claude (§9 bis).
 - **Partiel / limites**
   - Volcan non photoréaliste, photo de référence non reçue (§6.5).
   - Vigilance Météo-France non connectée (clé absente).
@@ -791,53 +856,71 @@ Sources détaillées : `docs/SOURCES_RISQUES.md`.
 
 ---
 
-## 11. Dernière demande (2.46.0) — détail
+## 11. Dernière demande (2.47.0) — reprise du travail Codex
 
-**[DEMANDE]** :
+**[DEMANDE]** (30/10/2026) : reprendre et corriger le travail de Codex,
+qui ne convenait ni visuellement ni fonctionnellement.
 
-- lier chaque clic sur « Échéances à venir » à une phase animée du
-  volcan ;
-- volcan photoréaliste fidèle à une photo ;
-- 6 phases ;
-- « Suivre ma progression » ;
-- statuts inchangés ;
-- Jour/Nuit conservé ;
-- interactions ;
-- performance et repli ;
-- tests ;
-- ce `PROJECT_HANDOFF.md`.
+- **Exigence de méthode** : auditer chaque point en suivant la grille
+  attendu → état actuel → défaut → correction → test.
+- **Points à couvrir** :
+  - app PFE : vigilance, contrôles, dock, communes, Pelée, Mes lieux ;
+  - Mes notes ;
+  - card Mon logement ;
+  - panneau droit de la Carte ;
+  - volcan et jalons ;
+  - splash ;
+  - **refonte de « Me préparer »** en parcours guidé de 7 étapes, sur
+    3 zones en desktop et en tiroir sur mobile.
+- **Contraintes** : respecter strictement la DA, contrôle qualité
+  desktop / mobile / clair / sombre, ne rien simuler.
 
-**Réalisé** [VÉRIFIÉ] :
+**Constat Git** [VÉRIFIÉ] : à la reprise, Codex avait laissé 16 fichiers
+modifiés et 5 nouveaux, **non commités**, et `package.json` en 2.47.0 sans
+entrée dans `VERSION_HISTORY.md`. Tout a été **conservé**.
 
-- **Synchronisation frise → volcan**
-  - `Dashboard.tsx` : `picked` = index du jalon choisi.
-  - `Volcan.tsx` : props `preview` et `onFollow`, bouton « Suivre ma
-    progression », libellé `aria-live`, attribut `data-phase`.
-  - `Timeline.tsx` : libellé « aperçu du volcan ».
-- **Rendu du volcan** (`scene.ts`)
-  - Détail procédural du terrain, LOD.
-  - Explosions, palette DS.
-  - Transitions plus rapides, coulées en ~8 s, cadrage élargi.
-- **Correctifs**
-  - Boucle de rendu unique : la chute à ~6 i/s venait d’une boucle qui se
-    dédoublait à chaque ajustement de résolution.
-  - Pas de temps jamais négatif : le jour/nuit dérivait.
-  - Mer opaque : elle recouvrait la base des fumées.
-  - Brume déplacée sur les flancs.
-- **Tests**
-  - Les 6 clics donnent les phases 1 → 6 avec libellés.
-  - Retour à la progression réelle ; KPI inchangés.
-  - Jour/Nuit persistant.
-  - Animations réduites et repli sans WebGL (nouveau test).
-- **Captures** des 6 phases, de jour et de nuit, faites en Chromium avec
-  GPU ; 60 i/s.
+**Apports Codex conservés** :
 
-**Non réalisé ou à vérifier** :
+- `Preparation.tsx` et `preparationModel.ts` : parcours de 7 étapes, avec
+  validation sur critères réels et migration sans fausse validation.
+- `localStore.ts` : copie de session si le stockage est refusé.
+- Adresse du logement sur 2 lignes ; « Enregistré le » retiré de
+  l’interface.
+- Splash piloté image par image.
+- Tests : `localStore`, `preparation`, et 4 tests e2e (préparation,
+  migration, brouillon des notes, splash).
 
-- photoréalisme (textures PBR) ;
-- fidélité à la photo (non reçue) ;
-- essai sur mobile réel ;
-- revue visuelle par l’utilisatrice.
+**Audit et corrections Claude Code** [VÉRIFIÉ] :
+
+| Exigence | Défaut constaté | Correction | Test |
+| --- | --- | --- | --- |
+| Notes : grille Bento, peu de vide | Colonnes CSS : 4e colonne vide, ordre vertical | Grille auto-fit, rangées de 8 px, `grid-row-end` mesuré, parent stable | e2e notes (grille + span), test brouillon Codex OK |
+| DA : sélection noir / blanc | Cases et boutons radio en bleu navigateur | `accent-color` sur `--selected` ; blanc en sombre | Capture clair / sombre |
+| Mobile : pas de cards imbriquées | Padding de `.preparation` en plus de la card | Padding retiré à ≤ 760 px | Capture mobile |
+| Vigilance PFE compacte | Ligne Codex en trop qui masquait « Limites des communes » | « Météo-France · département · heure » ; périmètre dans l’info-bulle et l’`aria-label` | e2e PFE + capture |
+| Volcan : note « plus zoomé, sans océan, marron au rouge » | Océan, île en disque, palette verte et bleue | Océan supprimé (plaine dans la brume), palette beige / ocre / brun / rouge, ciel chaud, cadrage serré | Captures phases 1 → 6, jour / nuit |
+| Panneau droit aligné | « Comprendre les alertes » décalé de 13 px | Marge négative du bouton fantôme | Capture |
+
+**Vérifié sans changement nécessaire** :
+
+- dock à 5 actions ;
+- carte plein écran ;
+- Mes lieux ;
+- card Mon logement ;
+- splash ;
+- frise → volcan ;
+- parcours « Me préparer » sur desktop ;
+- 34 communes et Pelée (tests existants).
+
+**Non vérifiable ici / limites** :
+
+- photoréalisme du volcan (stylisé) ; la fumée forme encore un nuage
+  au-dessus d’une colonne peu dense ;
+- essai sur un téléphone réel ;
+- lecteur d’écran réel (seuls les rôles et libellés sont vérifiés) ;
+- la refonte « Me préparer » est de Codex : vérifiée par captures et
+  tests, pas reprise étape par étape ;
+- vigilance officielle toujours non connectée.
 
 ---
 
@@ -845,8 +928,8 @@ Sources détaillées : `docs/SOURCES_RISQUES.md`.
 
 1. Ouvrir le dossier du dépôt (chez l’utilisatrice :
    `~/Desktop/DS-Studio-codex-v2`), branche `v3-dashboard`.
-2. `git status` : 2.45.0 et 2.46.0 sont **non commitées**. Demander :
-   « Je commite 2.45.0 → 2.46.0 sur v3-dashboard ? ». Ne commiter et ne
+2. `git status` : 2.47.0 et 2.48.0 sont **non commitées** (et `cf93bc4`
+   non poussé). Demander : « Je commite 2.47.0 → 2.48.0 sur v3-dashboard ? ». Ne commiter et ne
    pousser **que sur accord explicite**.
 3. `npm install` si besoin, puis `npm run build` et
    `npm run --silent service -- restart`. Ouvrir
@@ -891,7 +974,7 @@ Sources détaillées : `docs/SOURCES_RISQUES.md`.
 ```
 Tu reprends le projet DS-Studio d'Audrey Noiran (dépôt privé GitHub
 audrey-creator23/ds-studio, dossier local ~/Desktop/DS-Studio-codex-v2, branche
-v3-dashboard, version 2.46.0 au 29/10/2026). Réponds en français, de façon
+v3-dashboard, version 2.48.0 au 30/10/2026). Réponds en français, de façon
 très concise (« CAVEMAX » : code et tokens minimaux, rendu premium, zéro
 régression, réutiliser l'existant, zéro duplication, pas de refonte inutile).
 
@@ -938,14 +1021,17 @@ Règles absolues :
 - Sépare toujours faits vérifiés, demandes, hypothèses et inconnus ; ne
   prétends jamais qu'une chose fonctionne sans l'avoir exécutée.
 
-État : 2.45.0 et 2.46.0 sont NON COMMITÉES (dernier commit 96a520d, poussé).
-74 tests unitaires et 45 e2e passent. Limites connues : volcan stylisé (pas
+État : 2.47.0 (travail Codex repris + corrections) et 2.48.0 (skills
+Superpowers / Caveman / Ponytail dans l'onglet Claude, Markdown seul,
+désactivés par défaut, accord par message) sont NON COMMITÉES ; dernier
+commit cf93bc4 non poussé. 81 tests unitaires et 50 e2e passent. Chaque
+utilisation réelle d'un skill demande l'accord de l'utilisatrice. Limites connues : volcan stylisé (pas
 photoréaliste, photo de référence de la Pelée jamais reçue), vigilance non
 connectée, Géorisques indisponible (ECONNRESET), pas de push ni de service
 worker, pas d'essai sur iPhone réel.
 
 Première action : faire `git status`, résumer l'état, demander si je dois
-commiter 2.45.0 → 2.46.0, puis demander la prochaine priorité. Si une
+commiter 2.47.0 → 2.48.0, puis demander la prochaine priorité. Si une
 décision passée doit être justifiée, demande de joindre les conversations
 manquantes (l'historique des échanges antérieurs à 2.44.0 n'est connu que
 par VERSION_HISTORY.md et les commits).

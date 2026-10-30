@@ -20,9 +20,7 @@ import MapView, {
   type Pin,
 } from './carte/MapView.js';
 import Logement, { HomeFacts, useHome } from './carte/Logement.js';
-import Preparer from './carte/Preparer.js';
-import Downloads from './carte/Downloads.js';
-import Plan from './carte/Plan.js';
+import Preparation from './carte/Preparation.js';
 import Device from './studio/Device.js';
 import Coupe from './carte/Coupe.js';
 import type { CarteScene, Exposure, Hover, Volcano } from './carte/scene.js';
@@ -150,7 +148,9 @@ export default function Prevention({ go }: { go: Go }) {
   };
 
   return (
-    <div className="page carte">
+    <div
+      className={`page carte${tab === 'preparer' ? ' carte--preparation' : ''}`}
+    >
       <header className="page-header">
         <h1 id="page-title" tabIndex={-1}>
           Prévention & ressources
@@ -346,30 +346,7 @@ export default function Prevention({ go }: { go: Go }) {
                 </small>
               </div>
             )}
-            {tab === 'preparer' && (
-              <div className="carte-panel-body prep-grid">
-                <section
-                  className="carte-block prep-card"
-                  aria-label="Télécharger mes ressources d’urgence"
-                >
-                  <h3>Télécharger mes ressources d’urgence</h3>
-                  <Downloads />
-                </section>
-                <section
-                  className="carte-block prep-card"
-                  aria-label="Mon plan d’urgence"
-                >
-                  <h3>Mon plan d’urgence</h3>
-                  <Plan />
-                </section>
-                <section
-                  className="prep-wide"
-                  aria-label="Ma trousse d’urgence"
-                >
-                  <Preparer />
-                </section>
-              </div>
-            )}
+            {tab === 'preparer' && <Preparation />}
             {tab === 'logement' && (
               <div className="carte-panel-body">
                 <Logement home={home} />

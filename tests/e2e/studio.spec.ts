@@ -1569,6 +1569,9 @@ test('v3 : mes notes, épinglées, persistantes, rappel', async ({ page }) => {
   await card.getByRole('button', { name: 'Valider' }).click();
   await expect(note).toHaveCount(0);
   await expect(card).toContainText('Relire la note de cadrage');
+  // Bento : grille auto-fit, hauteur selon le contenu (rangées fines).
+  await expect(page.locator('.notes-board')).toHaveCSS('display', 'grid');
+  await expect(card).toHaveAttribute('style', /grid-row-end: span \d+/);
   // Papier plein de la teinte (coin replié découpé dans le dégradé).
   await expect(card).toHaveCSS('background-image', /rgb\(250, 188, 60\)/);
   await page.reload();
@@ -2753,9 +2756,18 @@ test('v3 : prévention, 7 simulations, logement privé synchronisé, trousse', a
   expect(
     await page.evaluate(() => localStorage.getItem('ds-v3-logement')),
   ).toBeNull();
-  // Me préparer : quantités selon le foyer, progression gardée.
+  // Me préparer : parcours guidé, anciennes données conservées.
   await page.getByRole('tab', { name: 'Me préparer' }).click();
+  await page.getByRole('button', { name: 'Commencer', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Mon plan', exact: true })
+    .getByRole('button', { name: /Mon foyer/ })
+    .click();
   await page.getByRole('spinbutton', { name: 'Adultes' }).fill('3');
+  await page
+    .getByRole('navigation', { name: 'Mon plan', exact: true })
+    .getByRole('button', { name: /Trousse d’urgence/ })
+    .click();
   await expect(page.getByText(/Eau potable : 18 L/)).toBeVisible();
   await page.getByRole('checkbox', { name: /Radio à piles/ }).check();
   await page.reload();
@@ -2989,6 +3001,7 @@ test('v3 : PFE, prototype iPhone, parcours, ressources hors ligne, plan', async 
       .or(app.locator('.m-offline')),
   ).toContainText('112');
   await page.context().setOffline(false);
+  page.once('dialog', (d) => void d.accept());
   await app
     .getByRole('button', {
       name: 'Supprimer : Contacts d’urgence et autorités',
@@ -3013,14 +3026,22 @@ test('v3 : PFE, prototype iPhone, parcours, ressources hors ligne, plan', async 
   expect(
     await page.evaluate(() => localStorage.getItem('ds-v3-plan')),
   ).toContain('596');
-  // Me préparer dans DS-Studio : mêmes deux sous-cards.
+  // Me préparer dans DS-Studio : parcours partagé avec les données du prototype.
   await page.getByRole('tab', { name: 'Me préparer' }).click();
+  await page.getByRole('button', { name: 'Reprendre mon plan' }).click();
   await expect(
     page.getByRole('region', { name: 'Télécharger mes ressources d’urgence' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('region', { name: 'Mon plan d’urgence' }),
-  ).toContainText('Préparer le message « Je suis en vie »');
+    page.getByRole('navigation', { name: 'Mon plan', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Mon plan', exact: true })
+    .getByRole('button', { name: /Mes proches/ })
+    .click();
+  await expect(
+    page.getByRole('link', { name: /Je suis en vie/ }),
+  ).toHaveAttribute('href', /^sms:\+596696/);
   expect(errors).toEqual([]);
 });
 
@@ -3385,4 +3406,355 @@ test('v3 : PFE, position, carte plein écran, tiroir, notifications, raccourcis'
     'Widgets & raccourcis',
   ]);
   expect(errors).toEqual([]);
+});
+
+test('v3 : préparation guidée, sept étapes, validation réelle, reprise et modification', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(60000);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await mockCarte(page);
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto('/?vue=prevention&onglet=preparer');
+  await expect(
+    page.getByRole('heading', {
+      name: 'Commencer à paramétrer mon plan d’urgence',
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole('spinbutton')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Commencer', exact: true }).click();
+  const progress = page.getByRole('progressbar', {
+    name: 'Progression du plan d’urgence',
+  });
+  const nav = page.getByRole('navigation', { name: 'Mon plan', exact: true });
+  await expect(progress).toHaveAttribute('aria-valuenow', '0');
+  await page.getByRole('button', { name: 'Valider et continuer' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Ressources hors ligne', exact: true }),
+  ).toBeVisible();
+  await expect(progress).toHaveAttribute('aria-valuenow', '0');
+  await page.getByRole('button', { name: 'Télécharger la sélection' }).click();
+  await expect(
+    page.locator('.dl-list li').filter({ hasText: 'Carte de la Martinique' }),
+  ).toContainText(/Téléchargé : \d/);
+  await expect(
+    page.locator('.dl-list li').filter({ hasText: 'Contacts d’urgence' }),
+  ).toContainText(/Téléchargé : \d/);
+  await page.getByRole('button', { name: 'Valider et continuer' }).click();
+  await page.getByRole('spinbutton', { name: 'Adultes' }).fill('3');
+  await page.getByRole('checkbox', { name: 'Bébé', exact: true }).check();
+  await page.getByRole('button', { name: 'Valider et continuer' }).click();
+  await page
+    .getByRole('textbox', { name: 'Nom de la personne' })
+    .fill('Contact de test');
+  await page
+    .getByRole('textbox', { name: 'Téléphone', exact: true })
+    .fill('+596 696 00 00 00');
+  await page
+    .getByRole('textbox', { name: 'Point de ralliement famille / voisins' })
+    .fill('Rendez-vous convenu avec mon foyer');
+  await expect(
+    page.getByRole('link', { name: /Je suis en vie/ }),
+  ).toHaveAttribute('href', /^sms:\+596696/);
+  await page.getByRole('button', { name: 'Valider et continuer' }).click();
+  await expect(page.getByText(/Eau potable : 18 L/)).toBeVisible();
+  await expect(page.getByText('Lait, biberons et couches')).toBeVisible();
+  for (const checkbox of await page
+    .getByRole('region', { name: 'Trousse d’urgence', exact: true })
+    .getByRole('checkbox')
+    .all())
+    await checkbox.check();
+  await page
+    .getByRole('textbox', { name: 'Réserves et ressources sûres' })
+    .fill('Réserves du foyer (test)');
+  await page.getByRole('button', { name: 'Valider et continuer' }).click();
+  await page.getByRole('button', { name: 'Configurer mon logement' }).click();
+  await page.getByRole('checkbox', { name: /J’accepte/ }).check();
+  await page
+    .getByRole('textbox', { name: 'Adresse en Martinique' })
+    .fill('rue Victor Hugo Fort-de-France');
+  await page.getByRole('button', { name: /Rue Victor Hugo 97200/ }).click();
+  await page
+    .getByRole('textbox', { name: 'Zone et itinéraire d’évacuation officiels' })
+    .fill('Notes du DICRIM à vérifier avant utilisation');
+  await page
+    .getByRole('textbox', {
+      name: 'Point de rassemblement officiel',
+      exact: true,
+    })
+    .fill('Indication notée par le foyer (test)');
+  await page
+    .getByRole('textbox', { name: /Lien de la source officielle/ })
+    .fill('https://www.martinique.gouv.fr/');
+  await page.getByRole('button', { name: 'Valider et continuer' }).click();
+  await page
+    .getByRole('textbox', { name: 'Radio et fréquence à écouter' })
+    .fill('Note personnelle de test, aucune fréquence inventée');
+  await page
+    .getByRole('textbox', { name: /Lien officiel confirmant/ })
+    .fill('https://www.martinique.gouv.fr/');
+  await page.getByRole('button', { name: 'Valider et continuer' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Récapitulatif', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Terminer mon plan' }).click();
+  await expect(progress).toHaveAttribute('aria-valuenow', '100');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Votre plan est complété' }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('preparation-desktop.png'),
+    fullPage: true,
+  });
+  // Les fiches d'information ne changent ni l'étape ni les validations.
+  await nav.getByRole('button', { name: 'Radio & fréquences' }).click();
+  await expect(
+    page.getByText('Aucune fréquence vérifiée n’est intégrée.', {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Revenir à mon étape' }).click();
+  await page.reload();
+  await expect(progress).toHaveAttribute('aria-valuenow', '100');
+  const stored = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('ds-v3-plan')!),
+  );
+  expect(stored.nourriture).toContain('Réserves');
+  await nav.getByRole('button', { name: /Mon foyer/ }).click();
+  await page.getByRole('spinbutton', { name: 'Adultes' }).fill('4');
+  await expect(progress).toHaveAttribute('aria-valuenow', '57');
+  // Mobile/tablette et thèmes : progression compacte, navigation au clavier,
+  // aucune donnée privée réelle dans les captures.
+  for (const width of [320, 375, 430, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+    if (width < 760) {
+      await expect(
+        page.getByRole('button', { name: /Mon plan ·/ }),
+      ).toBeVisible();
+      await page.getByRole('button', { name: /Mon plan ·/ }).click();
+      await expect(nav).toBeVisible();
+      await nav.getByRole('button', { name: /Mon foyer/ }).click();
+      await expect(nav).toBeHidden();
+    }
+  }
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.evaluate(() => document.documentElement.classList.add('dark'));
+  await page.screenshot({
+    path: testInfo.outputPath('preparation-mobile-dark.png'),
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
+});
+
+test('v3 : préparation, migration sans validation fictive, passer et reprendre sans perte', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('ds-v3-plan')) {
+      localStorage.setItem(
+        'ds-v3-plan',
+        JSON.stringify({
+          contactNom: 'Ancien contact',
+          contactTel: '0696000000',
+          partage: 'Accord familial',
+          nourriture: 'Anciennes réserves',
+        }),
+      );
+      localStorage.setItem(
+        'ds-v3-trousse',
+        JSON.stringify({
+          adults: 2,
+          children: 1,
+          needs: ['animaux'],
+          done: ['radio'],
+        }),
+      );
+    }
+  });
+  await page.goto('/?vue=prevention&onglet=preparer');
+  await page.getByRole('button', { name: 'Reprendre mon plan' }).click();
+  await expect(
+    page.getByRole('progressbar', { name: 'Progression du plan d’urgence' }),
+  ).toHaveAttribute('aria-valuenow', '0');
+  await page.getByRole('button', { name: 'Passer pour l’instant' }).click();
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Mon plan', exact: true })
+      .getByRole('button', { name: /Ressources hors ligne/ }),
+  ).toContainText('À compléter');
+  await expect(page.getByRole('spinbutton', { name: 'Adultes' })).toHaveValue(
+    '2',
+  );
+  await page.getByRole('button', { name: 'Valider et continuer' }).click();
+  await expect(
+    page.getByRole('textbox', { name: 'Nom de la personne' }),
+  ).toHaveValue('Ancien contact');
+  await page.reload();
+  await expect(
+    page.getByRole('textbox', { name: 'Nom de la personne' }),
+  ).toHaveValue('Ancien contact');
+  const kit = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('ds-v3-trousse')!),
+  );
+  expect(kit.done).toContain('radio');
+  expect(kit.needs).toContain('animaux');
+});
+
+test('v3 : notes multiples, brouillon conservé pendant redimensionnement et réordonnancement', async ({
+  page,
+}) => {
+  await page.goto('/?vue=notes');
+  for (const text of ['Note A stabilité', 'Note B stabilité']) {
+    await page.getByRole('button', { name: 'Nouvelle note' }).click();
+    await page.getByRole('textbox', { name: 'Texte de la note' }).fill(text);
+    await page.getByRole('button', { name: 'Valider', exact: true }).click();
+  }
+  const a = page.locator('.note').filter({ hasText: 'Note A stabilité' });
+  await a.hover();
+  await a.getByRole('button', { name: 'Modifier la note' }).click();
+  await page
+    .getByRole('textbox', { name: 'Texte de la note' })
+    .fill('Brouillon à conserver');
+  for (const width of [375, 1440, 430]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expect(
+      page.getByRole('textbox', { name: 'Texte de la note' }),
+    ).toHaveValue('Brouillon à conserver');
+  }
+  const b = page.locator('.note').filter({ hasText: 'Note B stabilité' });
+  await b.hover();
+  await b.getByRole('button', { name: 'Désépingler' }).click();
+  await expect(
+    page.getByRole('textbox', { name: 'Texte de la note' }),
+  ).toHaveValue('Brouillon à conserver');
+  await page.getByRole('button', { name: 'Annuler', exact: true }).click();
+  await expect(
+    page.getByText('Note A stabilité', { exact: true }),
+  ).toBeVisible();
+  for (const text of ['Note A stabilité', 'Note B stabilité']) {
+    const card = page.locator('.note').filter({ hasText: text });
+    await card.hover();
+    page.once('dialog', (d) => void d.accept());
+    await card.getByRole('button', { name: 'Supprimer la note' }).click();
+  }
+});
+
+test('PFE : splash continu, durée bornée, urgence disponible sans attendre', async ({
+  page,
+}) => {
+  await page.goto('/pfe/', { waitUntil: 'domcontentloaded' });
+  const urgent = page
+    .locator('.m-splash')
+    .getByRole('button', { name: /Je suis en danger/ });
+  await expect(urgent).toBeVisible();
+  const samples = await page.evaluate(async () => {
+    const values: number[] = [];
+    const start = performance.now();
+    while (document.querySelector('.m-loader i')) {
+      const el = document.querySelector<HTMLElement>('.m-loader i')!;
+      values.push(
+        Number(/scaleX\(([^)]+)\)/.exec(el.style.transform)?.[1] ?? 0),
+      );
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    return { values, duration: performance.now() - start };
+  });
+  expect(samples.duration).toBeGreaterThan(1800);
+  expect(samples.duration).toBeLessThan(3500);
+  expect(samples.values.length).toBeGreaterThan(15);
+  expect(Math.max(...samples.values)).toBe(1);
+  for (let i = 1; i < samples.values.length; i++) {
+    expect(samples.values[i]).toBeGreaterThanOrEqual(samples.values[i - 1]);
+    expect(samples.values[i] - samples.values[i - 1]).toBeLessThan(0.15);
+  }
+  await expect(
+    page.getByRole('button', { name: /Explorer les risques/ }),
+  ).toBeVisible();
+});
+
+test('v3 : design, skills Claude désactivés par défaut, accord par message', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // Détection : les 7 skills installés dans skills/ (versions figées).
+  const list = await (await page.request.get('/api/skills')).json();
+  expect(list.skills.map((s: { id: string }) => s.id)).toEqual([
+    'caveman:caveman',
+    'ponytail:ponytail',
+    'superpowers:brainstorming',
+    'superpowers:systematic-debugging',
+    'superpowers:using-superpowers',
+    'superpowers:verification-before-completion',
+    'superpowers:writing-plans',
+  ]);
+  expect(list.active).toEqual([]);
+  expect(list.repoRead).toBe(false);
+  await page.goto('/?vue=design');
+  const tabs = page.getByRole('tablist', { name: 'Outils du studio' });
+  await tabs.getByRole('tab', { name: 'Claude' }).click();
+  const input = page.getByRole('textbox', { name: 'Message à Claude' });
+  // Suggestion selon la demande, inutilisable tant que le skill est inactif.
+  await input.fill('Fais une réponse courte : ajoute un bouton');
+  const hint = page.getByRole('button', { name: /Suggestion : caveman/ });
+  await expect(hint).toBeDisabled();
+  // Activation réelle (enregistrée côté serveur), persistante.
+  await page.getByRole('button', { name: /Skills · 0\/7 actifs/ }).click();
+  const panel = page.locator('#skills-panel');
+  // Enregistrement serveur réussi (après renouvellement éventuel du jeton).
+  const saved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith('/api/skills') &&
+      r.request().method() === 'POST' &&
+      r.status() === 200,
+  );
+  await panel.getByRole('switch', { name: /caveman/ }).check();
+  await saved;
+  await expect(
+    page.getByRole('button', { name: /Skills · 1\/7/ }),
+  ).toBeVisible();
+  await page.reload();
+  await tabs.getByRole('tab', { name: 'Claude' }).click();
+  await input.fill('Fais une réponse courte : ajoute un bouton');
+  await page.getByRole('button', { name: /Suggestion : caveman/ }).click();
+  await expect(page.locator('.skills-chosen')).toContainText('caveman');
+  // Accord refusé : rien n'est envoyé.
+  page.once('dialog', (d) => void d.dismiss());
+  await page.getByRole('button', { name: 'Envoyer' }).click();
+  await expect(page.locator('.msg[data-role="user"]')).toHaveCount(0);
+  // Accord donné : le skill part avec CE message seulement.
+  page.once('dialog', (d) => {
+    expect(d.message()).toMatch(/caveman.*tokens/);
+    void d.accept();
+  });
+  await page.getByRole('button', { name: 'Envoyer' }).click();
+  await expect(
+    page.locator('.msg[data-role="assistant"]').last(),
+  ).toContainText('[skill /caveman:caveman]');
+  await expect(
+    page.locator('.msg[data-role="assistant"]').last(),
+  ).toContainText('Skill caveman:caveman : chargé par Claude Code');
+  await expect(page.locator('.skills-chosen')).toHaveCount(0);
+  await input.fill('Ajoute un bouton');
+  await page.getByRole('button', { name: 'Envoyer' }).click();
+  await expect(
+    page.locator('.msg[data-role="assistant"]').last(),
+  ).not.toContainText('skill');
+  // Lecture seule du projet : transmise quand activée.
+  await page.getByRole('button', { name: /Skills · 1\/7/ }).click();
+  await panel.getByRole('switch', { name: /Lecture du projet/ }).check();
+  await input.fill('Ajoute un bouton');
+  await page.getByRole('button', { name: 'Envoyer' }).click();
+  await expect(
+    page.locator('.msg[data-role="assistant"]').last(),
+  ).toContainText('lecture du projet');
+  // Retour à l'état par défaut (tout désactivé).
+  await panel.getByRole('switch', { name: /caveman/ }).uncheck();
+  await panel.getByRole('switch', { name: /Lecture du projet/ }).uncheck();
+  await expect(
+    page.getByRole('button', { name: /Skills · 0\/7/ }),
+  ).toBeVisible();
 });
