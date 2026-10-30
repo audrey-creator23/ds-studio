@@ -16,6 +16,10 @@ export type Home = {
   lat: number;
   lon: number;
   savedAt: string;
+  // Personnalisation (Mes lieux) : nom libre, type, couleur de la palette.
+  name?: string;
+  type?: string;
+  color?: string;
 };
 type Result = Omit<Home, 'savedAt'> & { score: number; precision: string };
 const KEY = 'ds-v3-logement';
@@ -59,9 +63,15 @@ export default function Logement({
   onChange,
   startEditing = false,
   onCancel,
+  onSelect,
+  action,
 }: {
   home: Home | null;
   onChange?: (h: Home | null) => void;
+  // Adresse choisie rendue à l'appelant (autre lieu) au lieu du logement.
+  onSelect?: (h: Home) => void;
+  // Action compacte en pied de fiche (ex. « Recentrer »).
+  action?: React.ReactNode;
   // Ouvre directement la saisie ; `onCancel` referme (onboarding carte).
   startEditing?: boolean;
   onCancel?: () => void;
@@ -101,42 +111,57 @@ export default function Logement({
       setBusy(false);
     }
   }
-  if (home && !editing)
+  if (home && !editing) {
+    const name = home.name || 'Mon logement';
+    // Commune affichée seulement si l'adresse ne la contient pas déjà.
+    const city = home.label.includes(home.city) ? '' : home.city;
     return (
       <div className="carte-home">
-        <House size={16} aria-hidden="true" />
-        <div>
-          <strong>{home.label}</strong>
-          <small className="muted">
-            Enregistré sur cet appareil le{' '}
+        <header>
+          <House size={15} aria-hidden="true" />
+          <strong>{name}</strong>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Modifier ${name === 'Mon logement' ? 'mon logement' : name}`}
+            title="Modifier"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil size={14} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Supprimer ${name === 'Mon logement' ? 'mon logement' : name}`}
+            title="Supprimer"
+            onClick={() => {
+              if (
+                confirm('Supprimer l’adresse enregistrée sur cet appareil ?')
+              ) {
+                writeHome(null);
+                onChange?.(null);
+              }
+            }}
+          >
+            <Trash2 size={14} aria-hidden="true" />
+          </Button>
+        </header>
+        <p className="carte-home-addr" title={home.label}>
+          {home.label}
+        </p>
+        <footer>
+          <small
+            className="muted"
+            title="Gardé uniquement dans le stockage de ce navigateur, sur cet appareil ; jamais envoyé ni partagé."
+          >
+            {city && `${city} · `}Enregistré le{' '}
             {new Date(home.savedAt).toLocaleDateString('fr-FR')}
           </small>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Modifier mon logement"
-          title="Modifier"
-          onClick={() => setEditing(true)}
-        >
-          <Pencil size={14} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Supprimer mon logement"
-          title="Supprimer"
-          onClick={() => {
-            if (confirm('Supprimer l’adresse enregistrée sur cet appareil ?')) {
-              writeHome(null);
-              onChange?.(null);
-            }
-          }}
-        >
-          <Trash2 size={14} aria-hidden="true" />
-        </Button>
+          {action}
+        </footer>
       </div>
     );
+  }
   if (!editing && !home)
     return (
       <Button
@@ -205,8 +230,11 @@ export default function Logement({
                     lon: r.lon,
                     savedAt: new Date().toISOString(),
                   };
-                  writeHome(h);
-                  onChange?.(h);
+                  if (onSelect) onSelect(h);
+                  else {
+                    writeHome({ ...home, ...h });
+                    onChange?.(h);
+                  }
                   setEditing(false);
                   setResults(undefined);
                   setQ('');

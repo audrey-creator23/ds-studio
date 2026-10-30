@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import demUrl from './martinique-dem.png';
-import meta from './martinique-dem.json';
+import { meta, readHeights, toLatLon, toPixel } from './dem.js';
 import type { RiskId } from './risks.js';
+import { communeAt, communes, type Commune } from './communes.js';
 
 // Martinique en 3D à partir du MNT réel (terre SRTM, mer ETOPO1/GEBCO,
 // ~74 m/pixel, Web Mercator) : relief, fonds marins, océan plein cadre
@@ -19,7 +19,9 @@ const H = meta.height;
 const SX = W * KM;
 const SZ = H * KM;
 const levels = ['#FABC3C', '#F19143', '#F55536'];
-const PELEE = { lat: 14.8094, lon: -61.1653 };
+// Sommet (Le Chinois, 1 397 m) : IGN / GVP Smithsonian ; le point le plus
+// haut du MNT tombe à < 75 m (14,8094 ; -61,1664).
+const PELEE = { lat: 14.8094, lon: -61.1658 };
 const EPI = { lat: 14.944, lon: -61.274 };
 // Trajectoire fictive (est → ouest), pour la seule démonstration.
 const TRACK = [
@@ -29,42 +31,14 @@ const TRACK = [
   { lat: 14.7, lon: -61.27 },
 ];
 
-const N = 2 ** meta.zoom * 256;
-export function toPixel(lat: number, lon: number) {
-  const r = (lat * Math.PI) / 180;
-  return {
-    i: ((lon + 180) / 360) * N - meta.mercator.x0,
-    j:
-      ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * N -
-      meta.mercator.y0,
-  };
-}
-function toLatLon(i: number, j: number) {
-  const lon = ((i + meta.mercator.x0) / N) * 360 - 180;
-  const lat =
-    (Math.atan(Math.sinh(Math.PI * (1 - (2 * (j + meta.mercator.y0)) / N))) *
-      180) /
-    Math.PI;
-  return { lat, lon };
-}
+export { toPixel };
 // Côte légèrement relevée et fonds légèrement abaissés : pas de
 // scintillement entre la mer (y = 0) et le littoral presque au même niveau.
 const yOf = (h: number) =>
   h > 0 ? 0.02 + (h / 1000) * LAND : Math.min(-0.04, (h / 1000) * SEA);
 
 async function loadHeights() {
-  const img = new Image();
-  img.src = demUrl;
-  await img.decode();
-  const c = document.createElement('canvas');
-  c.width = W;
-  c.height = H;
-  const ctx = c.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(img, 0, 0);
-  const d = ctx.getImageData(0, 0, W, H).data;
-  const h = new Float32Array(W * H);
-  for (let k = 0; k < h.length; k++)
-    h[k] = d[k * 4] * 256 + d[k * 4 + 1] + d[k * 4 + 2] / 256 - 32768;
+  const h = await readHeights(0, 0, W, H);
   // Fonds marins issus d'une grille grossière (ETOPO1, ~1,8 km) : lissage
   // en mer seulement (flou séparable, 2 passes), la terre reste intacte.
   const sea = Float32Array.from(h, (v) => Math.min(v, 0));
@@ -206,6 +180,8 @@ export type CarteScene = {
   setBrume: (intensity: 1 | 2 | 3) => void;
   // Ondulations discrètes aux épicentres OBSERVÉS récents (sans risque).
   setPulses: (p: { lat: number; lon: number }[] | null) => void;
+  // Limites communales officielles (affichées / masquées).
+  setCommunes: (on: boolean) => void;
   dispose: () => void;
 };
 
@@ -217,6 +193,11 @@ export async function createScene(
     onHover: (h: Hover | null) => void;
     onPick: (h: Hover) => void;
     onCyclone?: (t: number) => void;
+    onCommune?: (nom: string | null) => void;
+    // Clic simple sur le relief ou la mer (placement d'un lieu).
+    onPoint?: (lat: number, lon: number) => void;
+    // Après placement des balises (anti-chevauchement des étiquettes).
+    settle?: () => void;
   },
 ): Promise<CarteScene> {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -441,6 +422,58 @@ export async function createScene(
   const zones = new THREE.Mesh(terrainGeo, zoneMat);
   zones.visible = false;
   island.add(zones);
+
+  // Limites communales officielles : traits fins drapés sur le relief,
+  // commune survolée ou choisie surlignée.
+  const drape = (rings: number[][][], lift: number) => {
+    const v: number[] = [];
+    for (const ring of rings)
+      for (let k = 1; k < ring.length; k++) {
+        const a = toPixel(ring[k - 1][1], ring[k - 1][0]);
+        const b = toPixel(ring[k][1], ring[k][0]);
+        const n = Math.max(1, Math.ceil(Math.hypot(b.i - a.i, b.j - a.j)));
+        for (let q = 0; q < n * 2; q++) {
+          const t = (Math.floor(q / 2) + (q % 2)) / n;
+          const i = a.i + (b.i - a.i) * t;
+          const j = a.j + (b.j - a.j) * t;
+          const w = world(i, j, Math.max(0.02, yOf(hAt(i, j))) + lift);
+          v.push(w.x, w.y, w.z);
+        }
+      }
+    return new THREE.BufferGeometry().setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(v, 3),
+    );
+  };
+  const borders = new THREE.LineSegments(
+    drape(
+      communes.flatMap((c) => c.rings),
+      0.03,
+    ),
+    new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.55,
+    }),
+  );
+  const picked = new THREE.LineSegments(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0xff773d }),
+  );
+  borders.visible = picked.visible = false;
+  picked.renderOrder = 2;
+  island.add(borders, picked);
+  let commune: Commune | null = null;
+  let pinned: Commune | null = null;
+  const showCommune = (c: Commune | null) => {
+    if (c === commune) return;
+    commune = c;
+    picked.geometry.dispose();
+    picked.geometry = c ? drape(c.rings, 0.06) : new THREE.BufferGeometry();
+    picked.visible = !!c && borders.visible;
+    opts.onCommune?.(c?.nom ?? null);
+    invalidate();
+  };
 
   // Effets sur la mer : vagues (tsunami), ondes (séisme), sargasses.
   const fxMat = new THREE.ShaderMaterial({
@@ -1060,7 +1093,9 @@ export async function createScene(
     if (e.buttons) return;
     const h = probe(e);
     const lv = h ? h.level : -1;
-    el.style.cursor = h && h.level > 0 ? 'pointer' : 'grab';
+    const c = borders.visible && h ? communeAt(h.lat, h.lon) : null;
+    if (borders.visible) showCommune(c ?? pinned);
+    el.style.cursor = (h && h.level > 0) || c ? 'pointer' : 'grab';
     zoneMat.uniforms.uHover.value = lv > 0 ? lv : -1;
     if (lv !== lastHover || lv > 0) opts.onHover(h && h.level > 0 ? h : null);
     lastHover = lv;
@@ -1071,12 +1106,19 @@ export async function createScene(
     zoneMat.uniforms.uHover.value = -1;
     lastHover = -2;
     opts.onHover(null);
+    if (borders.visible) showCommune(pinned);
     invalidate();
   });
   el.addEventListener('pointerup', (e) => {
     if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) {
       const h = probe(e);
+      if (h) opts.onPoint?.(h.lat, h.lon);
       if (h && h.level > 0) opts.onPick(h);
+      else if (borders.visible) {
+        const c = h ? communeAt(h.lat, h.lon) : null;
+        pinned = c === pinned ? null : c;
+        showCommune(pinned);
+      }
     }
     down = null;
   });
@@ -1200,6 +1242,7 @@ export async function createScene(
         s.z < 1 && Math.abs(s.x) < 1.05 && Math.abs(s.y) < 1.05,
       );
     }
+    opts.settle?.();
   }
   raf = requestAnimationFrame(frame);
 
@@ -1382,6 +1425,13 @@ export async function createScene(
     reset() {
       moved = false;
       flyTo(aim.clone(), home.clone());
+      invalidate();
+    },
+    setCommunes(on) {
+      borders.visible = on;
+      if (!on) pinned = null;
+      showCommune(on ? pinned : null);
+      picked.visible = on && !!commune;
       invalidate();
     },
     heightAt(lat, lon) {

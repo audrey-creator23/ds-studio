@@ -5,6 +5,68 @@ Numérotation [SemVer](https://semver.org/lang/fr/) : **patch** pour un correcti
 **minor** pour une fonctionnalité compatible, **major** pour un changement incompatible
 (schéma de tokens, API, format de données). La version suit `package.json`.
 
+## 2.46.0 — 2026-10-29
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/Dashboard.tsx`, `app/v3/Timeline.tsx`,
+  `app/v3/volcan/Volcan.tsx`, `app/v3/volcan/scene.ts`,
+  `app/v3/volcan/phases.ts`, `app/v3/v3.css`, `tests/e2e/studio.spec.ts`,
+  `PROJECT_HANDOFF.md` (nouveau).
+- **Changement** :
+  - Frise « Échéances à venir » → volcan : chaque jalon (Lancement → Fin du
+    DS) affiche la phase 1 → 6 en aperçu (jalon sélectionné, libellé
+    « Phase X/6 · … · aperçu … »), sans modifier statuts ni % ; au
+    chargement, phase de la progression réelle ; bouton « Suivre ma
+    progression » pour y revenir. Phase 3 renommée « Fumée dense ».
+  - Volcan : détail procédural du relief (strates de roche, ravines,
+    végétation), explosions en salves (éruption), lave / lueurs / fumées
+    dans la palette DS (#F55536 #FF773D #F19143 #FABC3C), maillage plus
+    fin si le GPU le permet, transitions de phase plus rapides, coulées
+    révélées en ~8 s, cadrage élargi (volcan entier).
+  - Corrections : une seule boucle de rendu (elle se dédoublait à chaque
+    ajustement de résolution : chute à ~6 i/s) ; pas de temps jamais
+    négatif (le jour / nuit pouvait dériver) ; mer opaque (elle recouvrait
+    la base des fumées) ; brume déplacée sur les flancs.
+- **Vérification** : `npm run check`, `npm test` (74), `npm run build`,
+  `npx playwright test` (45), `npm run scan` (0 alerte) ; 60 i/s mesurés
+  sur les 6 phases (Chromium sans interface, GPU Apple M1 Pro via Metal).
+
+## 2.45.0 — 2026-10-29
+
+- **Type** : minor (branche `v3-dashboard`)
+- **Fichiers** : `app/v3/volcan/` (nouveau : `scene.ts`, `Volcan.tsx`,
+  `phases.ts`), `app/v3/Dashboard.tsx`, `app/v3/Notes.tsx`,
+  `app/shared/steps.ts` (note : titre facultatif, teintes pastel),
+  `app/v3/carte/` (`communes.ts`, `martinique-communes.json`, `dem.ts`,
+  `Places.tsx` nouveaux ; `scene.ts`, `MapView.tsx`, `Logement.tsx`,
+  `Locate.tsx`, `risks.ts`), `app/v3/Carte.tsx`, `app/v3/v3.css`,
+  `pfe-mobile/src/` (`App.tsx`, `Explore.tsx`, `app.css`),
+  `scripts/fetch-martinique-communes.mjs` (nouveau), tests, docs.
+- **Changement** :
+  - App PFE : card vigilance élargie avec « Zone concernée » (adresse,
+    2 lignes) ; dock mobile flottant 5 actions (dernière en pastille
+    orange) ; zoom / recentrage flottants retirés sur mobile (recentrage
+    dans le menu) ; Mes lieux (multi-lieux, type, couleur, nom, adresse /
+    GPS / toucher sur la carte, mini-fiche, domicile principal, suppression
+    confirmée, migration sans perte) ; splash à barre continue liée au
+    chargement réel.
+  - Carte 3D : 34 limites communales officielles (IGN ADMIN EXPRESS via
+    geo.api.gouv.fr), survol / toucher → nom et surbrillance, couche
+    activable ; sommet de la Pelée recalé (IGN) ; étiquettes sans
+    chevauchement.
+  - Carte interactive : card « Vous êtes ici » compacte (adresse
+    dominante, actions discrètes, « Recentrer ») ; panneau droit rythmé
+    (20 / 10–16 / 16 px).
+  - Mes notes : post-it modernes en Bento, titre facultatif, pastels,
+    texte long tronqué, Annuler, actions tactiles sans survol.
+  - Dashboard : volcan 3D sur le relief réel de la Pelée (végétation,
+    roches, fumées / cendres / projections GPU, coulées suivant la pente),
+    jour / nuit et animations mémorisés ; 6 phases selon les étapes du PFE
+    faites ou validées (métaphore, jamais l’activité réelle) ; basse
+    consommation automatique, pause hors écran, repli SVG sans WebGL.
+- **Vérification** : `npm run check`, `npm test` (74), `npm run build`,
+  `npx playwright test` (44), `npm run scan`.
+
 ## 2.44.0 — 2026-10-29
 
 - **Type** : minor (branche `v3-dashboard`)

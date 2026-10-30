@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { MapIcon, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '../ui.js';
 import type { RiskId } from './risks.js';
 import type { CarteScene, Hover, Quake, Volcano } from './scene.js';
@@ -19,7 +19,9 @@ export type Pin = {
   status?: string;
   // Couleur de vigilance officielle seulement si publiée.
   level?: 'vert' | 'jaune' | 'orange' | 'rouge' | 'violet' | null;
-  kind?: 'home' | 'eye';
+  kind?: 'home' | 'eye' | 'place';
+  // Lieu personnel : pastille de couleur (palette DS), jamais un niveau.
+  color?: string;
   onClick?: () => void;
 };
 export const levelNames = ['faible', 'modéré', 'élevé'];
@@ -40,6 +42,7 @@ export default function MapView({
   onPickZone,
   onCyclone,
   onEngine,
+  onPickPoint,
   top,
   bottom,
   fallback,
@@ -58,6 +61,7 @@ export default function MapView({
   onPickZone?: (h: Hover) => void;
   onCyclone?: (t: number) => void;
   onEngine?: (e: CarteScene | null) => void;
+  onPickPoint?: (lat: number, lon: number) => void;
   top?: ReactNode;
   bottom?: ReactNode;
   fallback: ReactNode;
@@ -70,10 +74,26 @@ export default function MapView({
     'loading',
   );
   const [hover, setHover] = useState<Hover & { x: number; y: number }>();
+  // Limites communales officielles (IGN), nom au survol / au toucher.
+  const [communes, setCommunes] = useState(false);
+  const [commune, setCommune] = useState<{
+    nom: string;
+    x: number;
+    y: number;
+  }>();
+  // Anti-chevauchement : à chaque image, une étiquette qui en recouvre une
+  // plus prioritaire (logement d'abord, puis ordre des balises) s'efface.
+  const pos = useRef(new Map<string, { x: number; y: number; v: boolean }>());
+  const sizes = useRef(new Map<string, [number, number]>());
+  const order = useRef<string[]>([]);
+  order.current = [
+    ...pins.filter((p) => p.kind === 'home').map((p) => p.id),
+    ...pins.filter((p) => p.kind !== 'home').map((p) => p.id),
+  ];
   const pointer = useRef({ x: 0, y: 0 });
   const reduced = useMemo(reducedMotion, []);
-  const cb = useRef({ onPickZone, onCyclone, onEngine });
-  cb.current = { onPickZone, onCyclone, onEngine };
+  const cb = useRef({ onPickZone, onCyclone, onEngine, onPickPoint });
+  cb.current = { onPickZone, onCyclone, onEngine, onPickPoint };
 
   useEffect(() => {
     let alive = true;
@@ -87,11 +107,43 @@ export default function MapView({
             if (!el) return;
             el.style.transform = `translate(${x}px, ${y}px)`;
             el.hidden = !visible;
+            pos.current.set(id, { x, y, v: visible });
           },
+          settle() {
+            const kept: number[][] = [];
+            for (const id of order.current) {
+              const el = els.current.get(id);
+              const p = pos.current.get(id);
+              if (!el || !p?.v) continue;
+              let sz = sizes.current.get(id);
+              if (!sz || !sz[0]) {
+                sz = [el.offsetWidth, el.offsetHeight];
+                sizes.current.set(id, sz);
+              }
+              // Boîte de l'étiquette : centrée, au-dessus du point.
+              const b = [
+                p.x - sz[0] / 2,
+                p.y - sz[1] - 6,
+                p.x + sz[0] / 2,
+                p.y,
+              ];
+              const hit = kept.some(
+                (k) => b[0] < k[2] && b[2] > k[0] && b[1] < k[3] && b[3] > k[1],
+              );
+              if (hit) el.dataset.collide = '';
+              else {
+                delete el.dataset.collide;
+                kept.push(b);
+              }
+            }
+          },
+          onCommune: (nom) =>
+            setCommune(nom ? { nom, ...pointer.current } : undefined),
           onHover: (h) =>
             setHover(h ? { ...h, ...pointer.current } : undefined),
           onPick: (h) => cb.current.onPickZone?.(h),
           onCyclone: (t) => cb.current.onCyclone?.(t),
+          onPoint: (lat, lon) => cb.current.onPickPoint?.(lat, lon),
         }),
       )
       .then((s) => {
@@ -133,9 +185,17 @@ export default function MapView({
     engine.current?.setQuakes(quakes);
   }, [quakes, state]);
   useEffect(() => {
+    engine.current?.setCommunes(communes);
+    if (!communes) setCommune(undefined);
+  }, [communes, state]);
+  useEffect(() => {
     engine.current?.setPulses(pulses);
   }, [pulses, state, risk]);
 
+  const track = (e: React.PointerEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    pointer.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
   const onKey = (e: React.KeyboardEvent) => {
     const s = engine.current;
     if (!s || e.target !== e.currentTarget) return;
@@ -166,10 +226,9 @@ export default function MapView({
         aria-busy={state === 'loading'}
         data-ready={state === 'ready' || undefined}
         onKeyDown={onKey}
-        onPointerMove={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          pointer.current = { x: e.clientX - r.left, y: e.clientY - r.top };
-        }}
+        onPointerMove={track}
+        // Toucher : pas de survol préalable, position prise à l'appui.
+        onPointerDown={track}
       >
         {state === 'loading' && (
           <p className="carte-state" role="status">
@@ -187,6 +246,8 @@ export default function MapView({
                 : {})}
               className={`carte-pin${p.kind ? ` carte-pin--${p.kind}` : ''}`}
               data-level={p.level ?? undefined}
+              data-place={p.color ? '' : undefined}
+              style={p.color ? { ['--pin' as string]: p.color } : undefined}
               data-status={p.status ? '' : undefined}
               hidden
               title={p.status ? `${p.label} : ${p.status}` : p.label}
@@ -206,6 +267,17 @@ export default function MapView({
             </Tag>
           );
         })}
+        {communes && commune && !hover && (
+          <span
+            className="carte-hint carte-hint--commune"
+            role="status"
+            style={{
+              transform: `translate(${commune.x + 14}px, ${commune.y + 14}px)`,
+            }}
+          >
+            {commune.nom}
+          </span>
+        )}
         {hover && hintLabel && (
           <span
             className="carte-hint"
@@ -225,6 +297,18 @@ export default function MapView({
           <Button
             variant="outline"
             size="icon"
+            className="carte-tool-communes"
+            title="Limites des communes"
+            aria-label="Limites des communes"
+            aria-pressed={communes}
+            onClick={() => setCommunes(!communes)}
+          >
+            <MapIcon size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="carte-tool-nav"
             title="Zoom avant"
             aria-label="Zoom avant"
             onClick={() => engine.current?.zoom(0.85)}
@@ -234,6 +318,7 @@ export default function MapView({
           <Button
             variant="outline"
             size="icon"
+            className="carte-tool-nav"
             title="Zoom arrière"
             aria-label="Zoom arrière"
             onClick={() => engine.current?.zoom(1.18)}
@@ -243,6 +328,7 @@ export default function MapView({
           <Button
             variant="outline"
             size="icon"
+            className="carte-tool-nav"
             title="Recentrer la vue"
             aria-label="Recentrer la vue"
             onClick={() => engine.current?.reset()}

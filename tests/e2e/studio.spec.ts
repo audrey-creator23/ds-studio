@@ -917,14 +917,56 @@ test('v3 : dashboard, accès rapide, frise temporelle, thème', async ({
   // Frise : Passé / À venir ; le KPI vient avant.
   await expect(page.locator('.timeline .badge').first()).toHaveText('Passé');
   const fin = page.getByRole('button', { name: /^Fin du DS/ });
-  await fin.click();
+  // Volcan : progression réelle au chargement ; chaque jalon montre sa
+  // phase (aperçu), « Suivre ma progression » revient à l'état réel.
+  const vStage = page.locator('.volcan-stage');
+  const label = page.locator('.volcan-phase');
+  const kpiText = await page.locator('.kpis').innerText();
+  await expect(vStage).toHaveAttribute('data-phase', '1');
+  await expect(label).toContainText('Phase 1/6');
+  const items = page.locator('.timeline-item');
+  const names = [
+    'Endormi',
+    'Fumerolles',
+    'Fumée dense',
+    'Cratère incandescent',
+    'Pré-éruption',
+    'Éruption',
+  ];
+  for (let k = 0; k < 6; k++) {
+    await items.nth(k).click();
+    await expect(items.nth(k)).toHaveAttribute('aria-pressed', 'true');
+    await expect(vStage).toHaveAttribute('data-phase', String(k + 1));
+    await expect(label).toContainText(`Phase ${k + 1}/6 · ${names[k]}`);
+  }
   await expect(
-    page.getByRole('img', { name: 'Volcan, intensité 100 % : Éruption' }),
+    page.getByRole('img', {
+      name: /phase 6 sur 6 : Éruption, aperçu du jalon Fin du DS/,
+    }),
   ).toBeVisible();
-  await fin.click();
+  await page.getByRole('button', { name: 'Suivre ma progression' }).click();
+  await expect(vStage).toHaveAttribute('data-phase', '1');
   await expect(
-    page.getByText('Le volcan illustre le temps restant'),
+    page.getByRole('button', { name: 'Suivre ma progression' }),
+  ).toHaveCount(0);
+  await expect(fin).toHaveAttribute('aria-pressed', 'false');
+  // Aperçu ≠ progression : statuts et KPI inchangés.
+  expect(await page.locator('.kpis').innerText()).toBe(kpiText);
+  await expect(
+    page.getByText('Métaphore de l’avancement réel du PFE (10 % des étapes)'),
   ).toBeVisible();
+  // Jour / Nuit : mémorisé.
+  await page.getByRole('button', { name: 'Nuit' }).click();
+  await expect(page.getByRole('button', { name: 'Nuit' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Nuit' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.getByRole('button', { name: 'Jour' }).click();
   // Accès rapide : 4 tuiles 2 × 2, teintes distinctes, vraies routes.
   await expect(
     page.getByText('Retrouvez vos espaces de travail en un clic.'),
@@ -1479,6 +1521,41 @@ test('v3 : mes schémas, menu crayon, export, ajout, import', async ({
   await expect(tabs.getByRole('tab', { name: 'Storyboard' })).toBeVisible();
 });
 
+test('v3 : volcan, animations réduites et repli sans WebGL', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await expect(
+    page.getByRole('button', { name: 'Reprendre les animations' }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.volcan-stage canvas')).toHaveCount(1, {
+    timeout: 20000,
+  });
+  // Sans WebGL : volcan 2D existant, phases et frise toujours liées.
+  await page.addInitScript(() => {
+    const get = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      t: string,
+      ...a: unknown[]
+    ) {
+      return /webgl/.test(t) ? null : get.call(this, t as '2d', ...(a as []));
+    } as typeof get;
+  });
+  await page.reload();
+  await expect(page.locator('.volcan-stage .volcano-stage')).toHaveAttribute(
+    'data-render',
+    'svg',
+  );
+  await page.getByRole('button', { name: /^Fin du DS/ }).click();
+  await expect(page.locator('.volcan-stage')).toHaveAttribute(
+    'data-phase',
+    '6',
+  );
+});
+
 test('v3 : mes notes, épinglées, persistantes, rappel', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
@@ -1492,7 +1569,8 @@ test('v3 : mes notes, épinglées, persistantes, rappel', async ({ page }) => {
   await card.getByRole('button', { name: 'Valider' }).click();
   await expect(note).toHaveCount(0);
   await expect(card).toContainText('Relire la note de cadrage');
-  await expect(card).toHaveCSS('background-color', 'rgb(250, 188, 60)');
+  // Papier plein de la teinte (coin replié découpé dans le dégradé).
+  await expect(card).toHaveCSS('background-image', /rgb\(250, 188, 60\)/);
   await page.reload();
   await expect(card).toContainText('Relire la note de cadrage');
   await expect(note).toHaveCount(0);
@@ -1502,17 +1580,19 @@ test('v3 : mes notes, épinglées, persistantes, rappel', async ({ page }) => {
   await page.mouse.move(0, 0);
   await expect(tools).toHaveCSS('opacity', '0');
   const text = card.locator('.note-read');
-  const y = (await text.boundingBox())!.y;
+  const rel = async () =>
+    (await text.boundingBox())!.y - (await card.boundingBox())!.y;
+  const y = await rel();
   await card.hover();
   await expect(tools).toHaveCSS('opacity', '1');
-  expect((await text.boundingBox())!.y).toBe(y);
+  expect(await rel()).toBeCloseTo(y, 0);
   // Rééditer : texte et couleur, enregistrés seulement au nouveau Valider.
   await tools.getByRole('button', { name: 'Modifier la note' }).click();
   await note.fill('Relire la note de cadrage v2');
-  await card.getByRole('button', { name: 'Couleur 9' }).click();
+  await card.getByRole('button', { name: 'Couleur 9', exact: true }).click();
   await card.getByRole('button', { name: 'Valider' }).click();
   await expect(note).toHaveCount(0);
-  await expect(card).toHaveCSS('background-color', 'rgb(245, 85, 54)');
+  await expect(card).toHaveCSS('background-image', /rgb\(245, 85, 54\)/);
   await page.reload();
   await expect(card).toContainText('v2');
   // Épingler au clavier : focus sur la note → actions accessibles.
@@ -1535,7 +1615,33 @@ test('v3 : mes notes, épinglées, persistantes, rappel', async ({ page }) => {
   await expect(card.locator('.note-when')).toContainText('Rappel le');
   await card.hover();
   await tools.getByRole('button', { name: 'Annuler le rappel' }).click();
-  await expect(card.locator('.note-when')).toHaveCount(0);
+  await expect(card.locator('.note-when')).not.toContainText('Rappel');
+  // Titre facultatif ; Annuler restaure l'état enregistré ; texte long
+  // tronqué, ouvert en entier à la demande.
+  await card.hover();
+  await tools.getByRole('button', { name: 'Modifier la note' }).click();
+  await card
+    .getByRole('textbox', { name: 'Titre (facultatif)' })
+    .fill('Cadrage');
+  await note.fill('Brouillon abandonné');
+  await card.getByRole('button', { name: 'Annuler' }).click();
+  await expect(card).toContainText('Relire la note de cadrage v2');
+  await expect(card.locator('.note-title')).toHaveCount(0);
+  await card.hover();
+  await tools.getByRole('button', { name: 'Modifier la note' }).click();
+  await card
+    .getByRole('textbox', { name: 'Titre (facultatif)' })
+    .fill('Cadrage');
+  await note.fill('Ligne\n'.repeat(12) + 'Fin');
+  await card.getByRole('button', { name: 'Couleur 3 pastel' }).click();
+  await card.getByRole('button', { name: 'Valider' }).click();
+  await expect(card.getByRole('heading', { name: 'Cadrage' })).toBeVisible();
+  await expect(card.locator('.note-read')).toHaveAttribute('data-clamped', '');
+  await card.getByRole('button', { name: 'Lire la suite' }).click();
+  await expect(card.locator('.note-read')).not.toHaveAttribute(
+    'data-clamped',
+    /.*/,
+  );
   // Suppression.
   page.once('dialog', (d) => void d.accept());
   await card.hover();
@@ -2826,10 +2932,23 @@ test('v3 : PFE, prototype iPhone, parcours, ressources hors ligne, plan', async 
     { timeout: 30000 },
   );
   await expect(
-    app.getByRole('button', { name: /Vigilance actuelle : non disponible/ }),
+    app.getByRole('button', {
+      name: /Vigilance actuelle : non disponible\. Zone concernée : .*Rue Victor Hugo/,
+    }),
   ).toBeVisible();
   await expect(app.locator('.carte-pin--home')).toBeVisible();
+  // Mobile : dock flottant (5 actions), tiroir fermé, contrôles de zoom
+  // retirés ; « Risques » ouvre le tiroir, carte visible.
+  const dock = app.getByRole('navigation', { name: 'Navigation principale' });
+  await expect(dock.getByRole('button')).toHaveCount(5);
+  await expect(app.getByRole('button', { name: 'Zoom avant' })).toBeHidden();
   const peek = app.getByRole('group', { name: 'Aperçu des 7 risques' });
+  await expect(peek).toBeHidden();
+  await dock.getByRole('button', { name: 'Risques' }).click();
+  await expect(dock.getByRole('button', { name: 'Risques' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
   await expect(peek.getByRole('button')).toHaveCount(7);
   await peek
     .getByRole('button', { name: 'Volcanisme : vigilance non disponible' })
@@ -2844,12 +2963,13 @@ test('v3 : PFE, prototype iPhone, parcours, ressources hors ligne, plan', async 
   const menu = app.getByRole('navigation', { name: 'Menu' });
   await expect(menu.getByRole('button')).toHaveText([
     'Accueil',
-    'Ma position',
+    'Mes lieux',
     'Ressources hors ligne',
     'Mon plan d’urgence',
     'Comprendre les alertes',
     'Notifications',
     'Widgets & raccourcis',
+    'Recentrer la carte',
   ]);
   await menu.getByRole('button', { name: 'Ressources hors ligne' }).click();
   // Téléchargements réels, tailles, consultation sans réseau.
@@ -3138,9 +3258,10 @@ test('v3 : PFE, position, carte plein écran, tiroir, notifications, raccourcis'
   await page.getByRole('button', { name: 'Notifications' }).click();
   await expect(page.getByText(/ne les remplace pas/)).toBeVisible();
   await expect(page.getByText(/pas de service push/)).toBeVisible();
-  // Position : 3 choix, dernière adresse proposée une fois enregistrée.
+  // Position : 3 choix avant la carte (aucune adresse enregistrée).
   await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByRole('button', { name: 'Ma position' }).click();
+  await page.getByRole('button', { name: 'Accueil' }).click();
+  await page.getByRole('button', { name: /Explorer les risques/ }).click();
   await expect(
     page.getByRole('button', { name: 'Me géolocaliser' }),
   ).toBeVisible();
@@ -3161,55 +3282,107 @@ test('v3 : PFE, position, carte plein écran, tiroir, notifications, raccourcis'
     'true',
     { timeout: 30000 },
   );
-  // Plein écran : carte sous les éléments flottants, tiroir réduit.
+  // Plein écran : carte sous les éléments flottants, dock 5 actions,
+  // tiroir fermé ; Risques → intermédiaire → déployé → fermé.
   const box = (s: string) => page.locator(s).boundingBox();
   expect((await box('.carte-stage'))!.height).toBeGreaterThan(780);
-  await expect(page.locator('.m-explore')).toHaveAttribute(
-    'data-sheet',
-    'peek',
-  );
+  const explore = page.locator('.m-explore');
+  const dock = page.getByRole('navigation', { name: 'Navigation principale' });
+  await expect(dock.getByRole('button')).toHaveText(['', '', '', '', '']);
+  await expect(explore).toHaveAttribute('data-sheet', 'closed');
+  await expect(page.getByRole('button', { name: 'Zoom avant' })).toBeHidden();
+  await dock.getByRole('button', { name: 'Risques' }).click();
+  await expect(explore).toHaveAttribute('data-sheet', 'half');
   const handle = page.getByRole('button', { name: 'Agrandir le panneau' });
   await handle.focus();
   await page.keyboard.press('ArrowUp');
-  await expect(page.locator('.m-explore')).toHaveAttribute(
-    'data-sheet',
-    'half',
-  );
-  await page.keyboard.press('ArrowUp');
-  await expect(page.locator('.m-explore')).toHaveAttribute(
-    'data-sheet',
-    'full',
-  );
+  await expect(explore).toHaveAttribute('data-sheet', 'full');
   await expect(
     page.getByRole('region', { name: 'Niveau de vigilance actuel' }),
   ).toContainText('clé du portail API Météo-France');
   await page.getByRole('button', { name: 'Réduire le panneau' }).click();
-  await expect(page.locator('.m-explore')).toHaveAttribute(
-    'data-sheet',
-    'peek',
-  );
-  // Vigilance flottante → détail complet.
-  await page
-    .getByRole('button', { name: /Vigilance actuelle : non disponible/ })
-    .click();
-  await expect(page.locator('.m-explore')).toHaveAttribute(
-    'data-sheet',
-    'full',
-  );
+  await expect(explore).toHaveAttribute('data-sheet', 'closed');
+  // Vigilance flottante : zone = adresse enregistrée, puis détail complet.
+  const vigCard = page.getByRole('button', {
+    name: /Vigilance actuelle : non disponible/,
+  });
+  await expect(vigCard).toContainText('Zone concernée : Rue Victor Hugo');
+  await vigCard.click();
+  await expect(explore).toHaveAttribute('data-sheet', 'full');
+  await dock.getByRole('button', { name: 'Carte' }).click();
+  await expect(explore).toHaveAttribute('data-sheet', 'closed');
+  // Limites communales officielles : couche activable.
+  const communes = page.getByRole('button', { name: 'Limites des communes' });
+  await communes.click();
+  await expect(communes).toHaveAttribute('aria-pressed', 'true');
+  // Recentrage par le menu (mobile).
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: 'Recentrer la carte' }).click();
   // Explorer à nouveau : pas de redemande de position.
   await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByRole('button', { name: 'Accueil' }).click();
   await page.getByRole('button', { name: /Explorer les risques/ }).click();
-  await expect(page.locator('.m-explore')).toBeVisible();
-  // Dernière adresse : proposée, modifiable, utilisable.
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByRole('button', { name: 'Ma position' }).click();
+  await expect(explore).toBeVisible();
+  // Mes lieux : logement migré sans perte (principal), ajout d'un lieu
+  // placé d'un toucher sur la carte, mini-fiche, principal, suppression.
+  await dock.getByRole('button', { name: 'Mes lieux' }).click();
+  const list = page.getByRole('list', { name: 'Mes lieux' });
+  await expect(list.getByRole('listitem')).toHaveCount(1);
+  await expect(list).toContainText('Principal');
+  await page.getByRole('button', { name: 'Ajouter un lieu' }).click();
+  await page.getByRole('textbox', { name: 'Nom' }).fill('Bureau');
+  await page.getByRole('radio', { name: 'Travail' }).check();
+  await page.getByRole('radio', { name: 'Couleur #F55536' }).check();
+  await page.getByRole('button', { name: 'Sur la carte' }).click();
+  await expect(
+    page.getByText(/Touchez la carte pour placer « Bureau »/),
+  ).toBeVisible();
+  // Un point au nord du logement (terre ferme), au-dessus de l'étiquette.
+  await expect(page.locator('.carte-pin--home')).toBeVisible();
+  const home = (await box('.carte-pin--home'))!;
+  await page.mouse.click(home.x + home.width / 2, home.y - 40);
+  await expect(page.getByText(/Touchez la carte/)).toHaveCount(0);
+  const pin = page.getByRole('button', { name: /Bureau, ouvrir le détail/ });
+  await expect(pin).toBeAttached();
+  await pin.evaluate((el: HTMLElement) => el.click());
+  const fiche = page.getByRole('dialog', { name: 'Fiche : Bureau' });
+  await expect(fiche).toContainText('Lieu personnel');
+  await fiche.getByRole('button', { name: 'Modifier' }).click();
+  await expect(
+    page.getByRole('form', { name: 'Modifier le lieu' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Annuler' }).click();
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  await page
+    .getByRole('button', { name: 'Définir Bureau comme domicile principal' })
+    .click();
+  await expect(list.getByRole('listitem').first()).toContainText('Bureau');
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem('ds-v3-lieux')!)[0].label,
+    ),
+  ).toContain('Rue Victor Hugo');
+  page.once('dialog', (d) => void d.accept());
+  await page.getByRole('button', { name: 'Supprimer Mon logement' }).click();
+  await expect(list.getByRole('listitem')).toHaveCount(1);
+  // Dernière adresse : proposée sur « Où êtes-vous ? », utilisable.
+  await page.goto('/pfe/#where');
   await expect(
     page.getByRole('region', { name: 'Ma dernière adresse' }),
-  ).toContainText('Rue Victor Hugo');
+  ).toContainText('Bureau');
   await page
     .getByRole('button', { name: /Utiliser ma dernière adresse/ })
     .click();
-  await expect(page.locator('.m-explore')).toBeVisible();
+  await expect(explore).toBeVisible();
+  // Profil et paramètres : pastille orange, rubriques réelles.
+  await dock.getByRole('button', { name: 'Profil et paramètres' }).click();
+  await expect(
+    page.getByRole('navigation', { name: 'Paramètres' }).getByRole('button'),
+  ).toHaveText([
+    'Mes lieux',
+    'Comprendre les alertes',
+    'Notifications',
+    'Widgets & raccourcis',
+  ]);
   expect(errors).toEqual([]);
 });

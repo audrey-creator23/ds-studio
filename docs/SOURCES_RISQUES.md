@@ -46,6 +46,18 @@ Autres sources de la page :
   coupe actuellement les connexions du serveur local : « Données
   indisponibles ».
 - **Relief et fonds** : AWS Terrain Tiles (SRTM, ETOPO1, GEBCO).
+- **Limites des 34 communes** : API Découpage administratif
+  (`geo.api.gouv.fr`, Etalab), contours IGN ADMIN EXPRESS, Licence
+  Ouverte 2.0, WGS84 ; simplifiés à ~25 m (sous la résolution du relief),
+  aucune géométrie ajoutée (`scripts/fetch-martinique-communes.mjs` →
+  `app/v3/carte/martinique-communes.json`). Nom au survol / toucher,
+  couche activable.
+- **Montagne Pelée** : sommet (Le Chinois) 14,8094 N, 61,1658 O (IGN,
+  GVP Smithsonian) ; le point le plus haut du MNT tombe à moins de 75 m.
+  Saint-Pierre (14,7433 N, 61,1758 O) reste une balise distincte ;
+  étiquettes qui se chevauchent effacées selon le zoom.
+- **Lieux personnels** (app PFE) : marqueurs de l’utilisateur, stockés sur
+  l’appareil, jamais présentés comme une information officielle.
 
 Technique : `app/server/carteData.ts` (cache par source, une seule requête
 par source en cours, actualisation manuelle limitée à une réponse de plus

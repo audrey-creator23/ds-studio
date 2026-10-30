@@ -48,10 +48,17 @@ body {
 .m-loader {
   width: 140px;
   height: 4px;
+  overflow: hidden;
   border-radius: 2px;
-  background: linear-gradient(90deg, #f55536, #fabc3c) 0 0 / 40% 100% no-repeat
-    var(--muted);
-  animation: m-load 1.2s ease-in-out infinite;
+  background: #3a3a3a;
+}
+.m-loader i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff773d, #fabc3c);
+  transform-origin: left;
+  transition: transform linear;
 }
 .m-urgent {
   display: inline-flex;
@@ -76,11 +83,6 @@ body {
 @keyframes m-pop {
   to {
     transform: scale(1.06);
-  }
-}
-@keyframes m-load {
-  50% {
-    background-position: 100% 0;
   }
 }
 /* Cadre : barre latérale (grand écran) + contenu. */
@@ -495,7 +497,7 @@ details summary {
 }
 /* Outils de la carte sous les éléments flottants du haut. */
 .m-explore .carte-top {
-  top: calc(env(safe-area-inset-top) + 92px);
+  top: calc(env(safe-area-inset-top) + 164px);
 }
 .m-over {
   position: absolute;
@@ -525,7 +527,7 @@ details summary {
   display: grid;
   justify-items: start;
   gap: 1px;
-  max-width: 220px;
+  max-width: min(250px, 62%);
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -547,7 +549,7 @@ details summary {
 .m-illus {
   position: absolute;
   z-index: 3;
-  top: calc(env(safe-area-inset-top) + 140px);
+  top: calc(env(safe-area-inset-top) + 212px);
   left: var(--m-pad);
   font-size: 12px;
 }
@@ -666,8 +668,137 @@ details summary {
   }
   .m-splash,
   .m-logo,
-  .m-loader,
   .m-app {
     animation: none;
+  }
+  .m-loader i {
+    transition: none !important;
+  }
+}
+
+/* Vigilance : zone consultée (adresse, 2 lignes au plus). */
+.m-vig-zone {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+/* Placement d'un lieu sur la carte. */
+.m-placing {
+  position: absolute;
+  z-index: 5;
+  top: calc(env(safe-area-inset-top) + 212px);
+  right: var(--m-pad);
+  left: var(--m-pad);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--selected);
+  color: var(--selected-foreground);
+  font-size: 13px;
+}
+.m-placing span {
+  flex: 1;
+}
+.m-placing .button {
+  color: inherit;
+}
+.m-explore .carte-fiche {
+  z-index: 6;
+}
+.m-menu--page {
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+/* Dock mobile : pilule noire flottante, 5 actions, la dernière orange. */
+.m-dock {
+  --dock-h: 56px;
+  position: absolute;
+  z-index: 7;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: 50%;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  background: #0a0a0a;
+  box-shadow: 0 10px 28px -10px rgb(0 0 0 / 0.55);
+  translate: -50% 0;
+}
+.m-dock button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: #a3a3a3;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.m-dock button:hover,
+.m-dock button[aria-current='page'] {
+  background: #262626;
+  color: #fff;
+}
+.m-dock button:focus-visible {
+  outline: 2px solid #fabc3c;
+  outline-offset: 2px;
+}
+.m-dock button:last-child {
+  margin-left: 4px;
+  background: #ff773d;
+  color: #0a0a0a;
+}
+.m-dock button:last-child[aria-current='page'] {
+  box-shadow: 0 0 0 2px #0a0a0a, 0 0 0 4px #ff773d;
+}
+/* Contenu et tiroir au-dessus du dock ; contrôles flottants retirés
+   (pincer / glisser, recentrage dans le menu). */
+.m-main {
+  --dock-space: calc(80px + env(safe-area-inset-bottom));
+}
+.m-main .m-scroll,
+.m-home {
+  padding-bottom: var(--dock-space);
+}
+.m-explore .carte-tool-nav {
+  display: none;
+}
+.m-explore .m-sheet {
+  bottom: var(--dock-space);
+  border-bottom: 1px solid var(--border);
+  border-radius: 18px;
+  margin: 0 8px;
+}
+.m-explore .m-sheet[hidden] {
+  display: none;
+}
+@media (min-width: 900px) {
+  .m-dock {
+    display: none;
+  }
+  .m-main {
+    --dock-space: 0px;
+  }
+  .m-explore .carte-tool-nav {
+    display: inline-flex;
+  }
+  .m-explore .m-sheet {
+    bottom: 0;
+    margin: 0;
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+  }
+  .m-menu-recenter {
+    display: none !important;
   }
 }

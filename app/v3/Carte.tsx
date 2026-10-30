@@ -155,16 +155,21 @@ export default function Carte({ go }: { go: Go }) {
                   className="carte-block here"
                   aria-label="Vous êtes ici"
                 >
-                  <h3>Vous êtes ici</h3>
-                  <Logement home={home} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => engine?.focus(home.lat, home.lon)}
-                  >
-                    <MapPin size={14} aria-hidden="true" /> Recentrer sur mon
-                    logement
-                  </Button>
+                  <h3 className="sr-only">Vous êtes ici</h3>
+                  <Logement
+                    home={home}
+                    action={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title="Recentrer sur mon logement"
+                        aria-label="Recentrer sur mon logement"
+                        onClick={() => engine?.focus(home.lat, home.lon)}
+                      >
+                        <MapPin size={14} aria-hidden="true" /> Recentrer
+                      </Button>
+                    }
+                  />
                 </section>
               ) : manual ? (
                 <section

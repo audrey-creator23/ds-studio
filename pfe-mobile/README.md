@@ -74,5 +74,18 @@ maquette dans le navigateur, pas le simulateur iOS d’Xcode.
   Action) ou un widget Android. Le double appui sur le bouton
   d’alimentation n’est pas accessible à une page web ; le SOS natif reste
   intact.
+- Navigation mobile : dock flottant (Carte, Risques, Mes lieux,
+  Préparation, Profil) ; zoom et recentrage flottants retirés sur mobile
+  (pincer / glisser, « Recentrer la carte » dans le menu), conservés sur
+  grand écran.
+- Mes lieux : logement principal (stockage `ds-v3-logement` inchangé,
+  aucune migration destructive) + autres lieux (`ds-v3-lieux`) ; position
+  par adresse (BAN, consentement), GPS (consentement, ≤ 300 m) ou toucher
+  sur la carte (commune calculée localement, rien n’est envoyé). Lieux
+  hors Martinique refusés. Aucun partage.
+- Vigilance : « Zone concernée » = adresse consultée ; le périmètre
+  officiel reste le département (Météo-France · Martinique).
+- Lancement : barre continue jusqu’à 90 % en 2,4 s, 100 % seulement quand
+  la page est réellement chargée.
 - Mise en page : un seul code responsive (barre latérale ≥ 900 px,
   burger en dessous).

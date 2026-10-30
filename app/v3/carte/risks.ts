@@ -184,7 +184,7 @@ export const risks: Risk[] = [
         id: 'pelee',
         label: 'Montagne Pelée',
         lat: 14.8094,
-        lon: -61.1653,
+        lon: -61.1658,
         fiche: {
           quoi: 'Volcan actif, environ 1 397 m, surveillé en continu.',
           ou: 'Nord de la Martinique.',

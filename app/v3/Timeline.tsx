@@ -71,7 +71,7 @@ export default function Timeline({
                   type="button"
                   className="timeline-item"
                   aria-pressed={selected === m.date}
-                  aria-label={`${m.title}, ${short(m.date)}, ${label} : prévisualiser l’activité`}
+                  aria-label={`${m.title}, ${short(m.date)}, ${label} : aperçu du volcan`}
                   onClick={() => onSelect(m.date)}
                 >
                   {body}

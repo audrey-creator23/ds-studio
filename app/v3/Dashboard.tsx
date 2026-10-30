@@ -1,20 +1,19 @@
 import { useState } from 'react';
 import { ListChecks, Network, PenTool, StickyNote } from 'lucide-react';
 import { useTasks } from '../client/useTasks.js';
-import { levelOf } from '../client/Volcano.js';
-import VolcanoGL, { webglAvailable } from '../client/VolcanoGL.js';
+import Volcan from './volcan/Volcan.js';
 import {
   daysBetween,
   milestoneStatus,
   milestones,
   rendus,
-  timeProgress,
   today,
 } from '../shared/brief.js';
 import Timeline from './Timeline.js';
 import {
   renduAcquired,
   stepDone,
+  stepIds,
   stepStatus,
   type StepId,
 } from '../shared/steps.js';
@@ -74,8 +73,6 @@ export default function Dashboard() {
   const { state, error } = useTasks();
   const now = today();
   const [day, setDay] = useState(now);
-  const [gl, setGl] = useState(webglAvailable);
-  const [fail] = useState(() => () => setGl(false));
   const { data } = useUserData();
   // Statut de l'étape liée : validé = rendu acquis ; fait = remis, en
   // attente de validation (toujours à suivre) ; sinon à réaliser.
@@ -84,7 +81,14 @@ export default function Dashboard() {
   );
   const ok = renduStatus.map(renduAcquired);
 
-  const intensity = timeProgress(day);
+  // Volcan : avancement réel (étapes faites ou validées), pas les dates.
+  // Jalon choisi dans la frise → aperçu de la phase (sans rien modifier).
+  const picked = day === now ? -1 : milestones.findIndex((m) => m.date === day);
+  const pct = Math.round(
+    (stepIds.filter((id) => stepDone(stepStatus(data, state, id))).length /
+      stepIds.length) *
+      100,
+  );
   const statuses = milestones.map((_, i) => milestoneStatus(i, state, now));
   const finished = statuses.filter(
     (s) => s === 'done' || s === 'validated',
@@ -213,23 +217,19 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Activité</CardTitle>
             <CardDescription>
-              Le volcan illustre le temps restant avant le rendu final du PFE.
+              Métaphore de l’avancement réel du PFE ({pct} % des étapes).
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div
-              className="stage"
-              role="img"
-              aria-label={`Volcan, intensité ${Math.round(intensity * 100)} % : ${levelOf(intensity)}`}
-            >
-              {gl ? (
-                <VolcanoGL activity={intensity} onFail={fail} />
-              ) : (
-                <p className="stage-fallback">
-                  Rendu 3D indisponible sur cet appareil.
-                </p>
-              )}
-            </div>
+            <Volcan
+              pct={pct}
+              preview={
+                picked >= 0
+                  ? { phase: picked + 1, title: milestones[picked].title }
+                  : null
+              }
+              onFollow={() => setDay(now)}
+            />
           </CardContent>
         </Card>
 

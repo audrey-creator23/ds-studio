@@ -53,8 +53,10 @@ export const stepTasks: Record<StepId, TaskId[]> = {
 const note = z
   .object({
     id: z.string().regex(/^[a-z0-9-]{1,40}$/),
+    // Titre facultatif ; teintes de la palette + pastels (p*) assortis.
+    title: z.string().max(120).optional(),
     text: z.string().max(2000),
-    color: z.enum(['1', '3', '5', '7', '9']),
+    color: z.enum(['1', '3', '5', '7', '9', 'p1', 'p3', 'p5', 'p7', 'p9']),
     pinned: z.boolean(),
     remindAt: z.string().datetime().nullable(),
     remindedAt: z.string().datetime().nullable(),

@@ -8,7 +8,7 @@ import { writeHome } from './Logement.js';
 // navigateur (précision exigée, adresse retrouvée par la BAN, enregistrée
 // seulement avec accord) ou saisie d'adresse. Partagé Carte / app PFE.
 // Précision minimale d'une géolocalisation pour la retenir (mètres).
-const MAX_ACCURACY = 300;
+export const MAX_ACCURACY = 300;
 
 export default function Locate({ onManual }: { onManual: () => void }) {
   const [state, setState] = useState<'idle' | 'asking' | 'found' | 'error'>(
